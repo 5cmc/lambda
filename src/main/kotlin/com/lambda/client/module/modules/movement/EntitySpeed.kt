@@ -16,8 +16,8 @@ object EntitySpeed : Module(
     category = Category.MOVEMENT,
     description = "Abuse client-sided movement to shape sound barrier breaking rideables"
 ) {
-    private val boatSpeed by setting("Boat Speed", 1.4f, 0.1f..10.0f, 0.05f)
-    private val abstractHorseSpeed by setting("Horse Types Speed", 0.7f, 0.1f..10.0f, 0.05f)
+    private val boatSpeed by setting("Boat Speed", 4.4f, 0.1f..10.0f, 0.05f)
+    private val abstractHorseSpeed by setting("Horse Types Speed", 4.1f, 0.1f..10.0f, 0.05f)
     private val pigSpeed by setting("Pig Speed", 1.0f, 0.1f..10.0f, 0.05f)
     private val antiStuck by setting("Anti Stuck", true)
 
