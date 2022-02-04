@@ -17,9 +17,7 @@ Customize your experience, and improve your efficiency!
 
 Find our plugins [here](https://github.com/lambda-plugins).
 
-<p align="center">
-    <a href="https://github.com/lambda-client/lambda/releases/download/3.0.1/lambda-3.0.1.jar"><img alt="lambda-3.0.1.jar - 6. January, 2022 - 12.0 Mb" src="https://raw.githubusercontent.com/lambda-client/assets/main/download_button_3.0.1.png" width="70%" height="70%"></a>
-</p>
+Download latest 5cmc lambda build [here](https://github.com/5cmc/lambda/actions)
 
 ## Installation
 1. Install Minecraft 1.12.2
