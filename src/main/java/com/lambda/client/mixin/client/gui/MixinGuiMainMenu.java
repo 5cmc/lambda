@@ -19,9 +19,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(GuiMainMenu.class)
 public abstract class MixinGuiMainMenu extends GuiScreen {
 
-    private int widthVersion;
-    private int widthVersionRest;
-
     @Inject(method = "initGui", at = @At("RETURN"))
     public void initGui$Inject$RETURN(CallbackInfo ci) {
         MenuShader.reset();
@@ -32,29 +29,6 @@ public abstract class MixinGuiMainMenu extends GuiScreen {
         if (KamiCheck.INSTANCE.isKami() && !KamiCheck.INSTANCE.getDidDisplayWarning()) {
             KamiCheck.INSTANCE.setDidDisplayWarning(true);
             mc.displayGuiScreen(new LambdaGuiIncompat());
-        }
-        FontRenderer fr = fontRenderer;
-        String slogan = TextFormatting.WHITE + LambdaMod.NAME + " " + TextFormatting.GRAY + LambdaMod.VERSION;
-        String version;
-        if (WebUtils.INSTANCE.isLatestVersion()) {
-            version = "";
-        } else {
-            version = TextFormatting.DARK_RED + " Update Available! (" + WebUtils.INSTANCE.getLatestVersion() + ")";
-        }
-        String combined = slogan + version;
-        drawString(fr, combined, width - fr.getStringWidth(combined) - 2, this.height - 20, -1);
-
-        widthVersion = fr.getStringWidth(version);
-        widthVersionRest = width - widthVersion - 2;
-        if (mouseX > widthVersionRest && mouseX < widthVersionRest + widthVersion && mouseY > height - 20 && mouseY < height - 10 && Mouse.isInsideWindow()) {
-            drawRect(widthVersionRest, height - 11, widthVersion + widthVersionRest, height - 10, -1);
-        }
-    }
-
-    @Inject(method = "mouseClicked", at = @At("RETURN"))
-    public void mouseClicked$Inject$RETURN(int mouseX, int mouseY, int mouseButton, CallbackInfo ci) {
-        if (mouseX > widthVersionRest && mouseX < widthVersionRest + widthVersion && mouseY > height - 20 && mouseY < height - 10) {
-            WebUtils.INSTANCE.openWebLink(LambdaMod.DOWNLOAD_LINK);
         }
     }
 

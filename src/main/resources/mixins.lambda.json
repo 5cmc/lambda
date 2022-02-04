@@ -57,8 +57,6 @@
     "render.MixinFontRenderer",
     "render.MixinItemRenderer",
     "render.MixinLayerArmorBase",
-    "render.MixinLayerCape",
-    "render.MixinLayerElytra",
     "render.MixinMapItemRenderer",
     "render.MixinModelBiped",
     "render.MixinModelBoat",

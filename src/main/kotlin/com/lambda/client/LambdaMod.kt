@@ -35,14 +35,7 @@ class LambdaMod {
         const val DEPENDENCIES = "required-after:forge@[14.23.5.2860,);"
 
         const val GITHUB_API = "https://api.github.com/"
-        private const val MAIN_ORG = "lambda-client"
         const val PLUGIN_ORG = "lambda-plugins"
-        private const val REPO_NAME = "lambda"
-        const val CAPES_JSON = "https://raw.githubusercontent.com/${MAIN_ORG}/cape-api/capes/capes.json"
-        const val RELEASES_API = "${GITHUB_API}repos/${MAIN_ORG}/${REPO_NAME}/releases"
-        const val DOWNLOAD_LINK = "https://github.com/${MAIN_ORG}/${REPO_NAME}/releases"
-        const val GITHUB_LINK = "https://github.com/$MAIN_ORG/"
-        const val DISCORD_INVITE = "https://discord.gg/QjfBxJzE5x"
 
         const val LAMBDA = "λ"
 
@@ -72,7 +65,6 @@ class LambdaMod {
 
         BackgroundScope.start()
 
-        WebUtils.updateCheck()
         LambdaClickGui.populateRemotePlugins()
 
         KamiCheck.runCheck()
