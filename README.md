@@ -2,14 +2,8 @@
     <img src="https://raw.githubusercontent.com/lambda-client/assets/main/lambda%20logo%20text.svg" style="width: 69%">
 </p>
 
-![GitHub All Releases](https://img.shields.io/github/downloads/lambda-client/lambda/total)
-[![CodeFactor](https://www.codefactor.io/repository/github/lambda-client/lambda/badge)](https://www.codefactor.io/repository/github/lambda-client/lambda)
-[![build](https://github.com/lambda-client/lambda/workflows/gradle_build/badge.svg)](https://github.com/lambda-client/lambda/actions)
-[![Discord Mine](https://img.shields.io/discord/834570721070022687?label=chat&logo=discord&logoColor=white)](https://discord.gg/QjfBxJzE5x)
+[![build](https://github.com/5cmc/lambda/workflows/gradle_build/badge.svg)](https://github.com/5cmc/lambda/actions)
 ![minecraft](https://img.shields.io/badge/Minecraft-1.12.2-blue.svg)
-<img src="https://img.shields.io/github/languages/code-size/lambda-client/lambda.svg" alt="Code size"/>
-<img src="https://img.shields.io/github/repo-size/lambda-client/lambda.svg" alt="GitHub repo size"/>
-<img src="https://tokei.rs/b1/github/lambda-client/lambda?category=code" alt="Lines of Code"/>
 
 Lambda is a free, open-source, Minecraft 1.12.2 utility mod made for the anarchy experience.
 A visionary plugin system that allows additional modules to be added, without the need to create a fork!
@@ -22,7 +16,7 @@ Download latest 5cmc lambda build [here](https://github.com/5cmc/lambda/actions)
 ## Installation
 1. Install Minecraft 1.12.2
 2. Install Forge
-3. Download the mod file [here](https://github.com/lambda-client/lambda/releases/download/3.0.1/lambda-3.0.1.jar)
+3. Download the mod file [here](https://github.com/5cmc/lambda/actions)
 4. Put the file in your `.minecraft/mods` folder
 
 ## FAQ
@@ -85,7 +79,7 @@ How do I...
 
 Clone the repository to your local machine. Use the link of either your fork or the main repository.
 ```
-git clone https://github.com/lambda-client/lambda
+git clone https://github.com/5cmc/lambda
 ```
 
 Run `setupWorkspace.sh` to initialize the environment. 
@@ -119,9 +113,6 @@ Test if the environment is set up correctly by building the client and run it in
 [MinecraftForge](https://github.com/MinecraftForge) for [Forge](https://github.com/MinecraftForge/MinecraftForge)
 
 Our [contributors](https://github.com/lambda-client/lambda/graphs/contributors)
-
-### Stargazers
-[![Stargazers](https://starchart.cc/lambda-client/lambda.svg)](https://starchart.cc/lambda-client/lambda)
 
 > ### Disclaimer
 > This software does not contain any copyrighted Minecraft code. This is a Forge utility mod. Only meant for use in anarchy environments. Do not use without permission of server administration.
