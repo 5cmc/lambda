@@ -44,6 +44,7 @@ object ElytraFlight : Module(
     /* Takeoff */
     private val easyTakeOff by setting("Easy Takeoff", true, { page == Page.GENERIC_SETTINGS })
     private val timerControl by setting("Takeoff Timer", true, { easyTakeOff && page == Page.GENERIC_SETTINGS })
+    private val takeoffTimerSpeed by setting("Takeoff Timer Tick Length", 350.0f, 100.0f..1000.0f, 1.0f, { easyTakeOff && page == Page.GENERIC_SETTINGS})
     private val highPingOptimize by setting("High Ping Optimize", false, { easyTakeOff && page == Page.GENERIC_SETTINGS })
     private val minTakeoffHeight by setting("Min Takeoff Height", 0.5f, 0.0f..1.5f, 0.1f, { easyTakeOff && !highPingOptimize && page == Page.GENERIC_SETTINGS })
 
@@ -277,7 +278,7 @@ object ElytraFlight : Module(
     /* The best takeoff method <3 */
     private fun SafeClientEvent.takeoff(event: PlayerTravelEvent) {
         /* Pause Takeoff if server is lagging, player is in water/lava, or player is on ground */
-        val timerSpeed = if (highPingOptimize) 400.0f else 200.0f
+        val timerSpeed = if (highPingOptimize) 400.0f else takeoffTimerSpeed
         val height = if (highPingOptimize) 0.0f else minTakeoffHeight
         val closeToGround = player.posY <= world.getGroundPos(player).y + height && !wasInLiquid && !mc.isSingleplayer
 
