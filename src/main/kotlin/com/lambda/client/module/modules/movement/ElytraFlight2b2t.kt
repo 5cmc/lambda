@@ -40,10 +40,10 @@ object ElytraFlight2b2t : Module(
     category = Category.MOVEMENT,
     modulePriority = 1000
 ) {
-    private val ticksBetweenBoosts by setting("Ticks between boost", 5, 1..500, 1)
-    private val boostDelayTicks by setting("Boost delay ticks", 5, 1..200, 1)
+    private val ticksBetweenBoosts by setting("Ticks between boost", 11, 1..500, 1)
+    private val boostDelayTicks by setting("Boost delay ticks", 16, 1..200, 1)
     private val boostAcceleration by setting("Boost speed acceleration", 1.02, 1.00..2.0, 0.001)
-    private val takeoffTimerSpeed by setting("Takeoff Timer Tick Length", 350.0f, 100.0f..1000.0f, 1.0f)
+    private val takeoffTimerSpeed by setting("Takeoff Timer Tick Length", 250.0f, 100.0f..1000.0f, 1.0f)
 
     private val strafeAirSpeedBoost = 0.016f
     private val baseFlightSpeed: Double = 40.2
@@ -84,6 +84,7 @@ object ElytraFlight2b2t : Module(
 
         safeListener<ConnectionEvent.Disconnect> {
             mc.timer.tickLength = 50.0f
+            disable()
         }
 
         safeListener<TickEvent.ClientTickEvent> {
@@ -254,7 +255,6 @@ object ElytraFlight2b2t : Module(
 
             if (!mc.isSingleplayer) mc.timer.tickLength = timerSpeed * 2.0f
             connection.sendPacket(CPacketEntityAction(player, CPacketEntityAction.Action.START_FALL_FLYING))
-//            hoverTarget = player.posY + 0.2
         }
     }
 
