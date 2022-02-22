@@ -13,6 +13,7 @@ import com.lambda.client.mixin.extension.tickLength
 import com.lambda.client.mixin.extension.timer
 import com.lambda.client.module.Category
 import com.lambda.client.module.Module
+import com.lambda.client.module.modules.player.ViewLock
 import com.lambda.client.util.BaritoneUtils
 import com.lambda.client.util.EntityUtils.isInOrAboveLiquid
 import com.lambda.client.util.MovementUtils
@@ -88,6 +89,7 @@ object ElytraFlight2b2t : Module(
         safeListener<ConnectionEvent.Disconnect> {
             mc.timer.tickLength = 50.0f
             disable()
+            ViewLock.disable()
         }
 
         safeListener<TickEvent.ClientTickEvent> {
