@@ -1,5 +1,6 @@
 package com.lambda.client.module.modules.movement
 
+import com.lambda.client.LambdaMod
 import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.event.events.ConnectionEvent
 import com.lambda.client.event.events.PacketEvent
@@ -31,6 +32,7 @@ import net.minecraft.network.play.client.CPacketEntityAction
 import net.minecraft.network.play.server.SPacketPlayerPosLook
 import net.minecraftforge.client.event.InputUpdateEvent
 import net.minecraftforge.fml.common.gameevent.TickEvent
+import java.time.Instant
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -60,6 +62,7 @@ object ElytraFlight2b2t : Module(
     private var isFlying: Boolean = false
     private var isStandingStill = false
     private var isStandingStillH: Boolean = false
+    private var lastSPacketPlayerPosLook: Long = Instant.now().toEpochMilli()
 
     enum class State {
         FLYING, WALKING, PAUSED
@@ -123,6 +126,11 @@ object ElytraFlight2b2t : Module(
             if (currentState != State.FLYING || it.packet !is SPacketPlayerPosLook) return@safeAsyncListener
             timer.reset()
             resetFlightSpeed()
+            if (Instant.now().toEpochMilli() - lastSPacketPlayerPosLook < 500L) {
+                LambdaMod.LOG.info("Rubberband detected")
+                mc.player.capabilities.isFlying = false
+            }
+            lastSPacketPlayerPosLook = Instant.now().toEpochMilli()
         }
 
         safeListener<PlayerTravelEvent> {
