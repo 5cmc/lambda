@@ -16,6 +16,7 @@ import com.lambda.client.util.MovementUtils.setSpeed
 import com.lambda.client.util.TickTimer
 import com.lambda.client.util.TimeUnit
 import com.lambda.client.util.math.Vec2f
+import com.lambda.client.util.text.MessageSendHelper
 import com.lambda.client.util.threads.safeAsyncListener
 import com.lambda.client.util.threads.safeListener
 import com.lambda.client.util.world.getGroundPos
@@ -40,6 +41,7 @@ object ElytraFlight2b2t : Module(
     private val boostDelayTicks by setting("Boost delay ticks", 16, 1..200, 1)
     private val boostAcceleration by setting("Boost speed acceleration", 1.02, 1.00..2.0, 0.001)
     private val takeoffTimerSpeed by setting("Takeoff Timer Tick Length", 250.0f, 100.0f..1000.0f, 1.0f)
+    private val minHoverTakeoffHeight by setting("Min Hover Takeoff Height", 0.5, 0.0..1.0, 0.01)
 
     private val baseFlightSpeed: Double = 40.2
     private var currentState = State.PAUSED
@@ -85,22 +87,31 @@ object ElytraFlight2b2t : Module(
             ViewLock.disable()
         }
 
-        safeListener<TickEvent.ClientTickEvent> {
+        safeListener<TickEvent.ClientTickEvent>(priority = 9999) {
             if (it.phase != TickEvent.Phase.END) return@safeListener
 
             when (currentState) {
                 State.PAUSED -> {
+                    val armorSlot = player.inventory.armorInventory[2]
+                    elytraIsEquipped = armorSlot.item == Items.ELYTRA
+                    if (!elytraIsEquipped) {
+                        MessageSendHelper.sendChatMessage("No Elytra equipped")
+                        disable()
+                    }
+                    if (armorSlot.maxDamage <= 5) {
+                        MessageSendHelper.sendChatMessage("Equipped Elytra broken or almost broken")
+                        disable()
+                    }
                     currentState = State.PRETAKEOFF
                 }
                 State.PRETAKEOFF -> {
-                    val expectedMotionY = -0.16976
-                    val height = 1.5
-                    val notCloseToGround = player.posY >= world.getGroundPos(player).y + height && !wasInLiquid && !mc.isSingleplayer
+                    val expectedMotionY = -0.16976 // magic number, do not question
+                    val notCloseToGround = player.posY >= world.getGroundPos(player).y + minHoverTakeoffHeight && !wasInLiquid && !mc.isSingleplayer
 
                     if ((withinRange(mc.player.motionY, expectedMotionY, 0.05)) && !mc.player.isElytraFlying) {
                         currentState = State.FLYING
                         timer.reset()
-                    } else if (notCloseToGround && !unequipedElytra) {
+                    } else if (!unequipedElytra && (mc.player.isElytraFlying || notCloseToGround)) {
                         currentState = State.HOVER
                     }
                 }
@@ -138,20 +149,20 @@ object ElytraFlight2b2t : Module(
         }
 
         safeAsyncListener<PacketEvent.Receive> {
-            if (it.packet !is SPacketPlayerPosLook) return@safeAsyncListener
-            if (currentState == State.FLYING) {
-                timer.reset()
-                resetFlightSpeed()
-                if (Instant.now().toEpochMilli() - lastSPacketPlayerPosLook < 200L) {
-                    LambdaMod.LOG.info("Rubberband detected")
-                    currentState = State.PRETAKEOFF
+            if (it.packet is SPacketPlayerPosLook) {
+                if (currentState == State.FLYING) {
+                    timer.reset()
+                    resetFlightSpeed()
+                    if (Instant.now().toEpochMilli() - lastSPacketPlayerPosLook < 1000L) {
+                        LambdaMod.LOG.info("Rubberband detected")
+                        currentState = State.PRETAKEOFF
+                    }
+                    lastSPacketPlayerPosLook = Instant.now().toEpochMilli()
+                } else if (shouldHover) {
+                    it.cancel()
+                    connection.sendPacket(CPacketConfirmTeleport(it.packet.teleportId))
                 }
-                lastSPacketPlayerPosLook = Instant.now().toEpochMilli()
-            } else if (shouldHover) {
-                it.cancel()
-                connection.sendPacket(CPacketConfirmTeleport(it.packet.teleportId))
             }
-
         }
 
         safeListener<PlayerTravelEvent> {
@@ -184,7 +195,7 @@ object ElytraFlight2b2t : Module(
                 it.movementInput.moveForward = 0.0f
                 it.movementInput.moveStrafe = 0.0f
             }
-            if (currentState != State.PAUSED) {
+            if (currentState != State.PAUSED && !mc.player.onGround) {
                 it.movementInput.moveForward = 1.0f
             }
         }
@@ -216,7 +227,7 @@ object ElytraFlight2b2t : Module(
         return if (itemStack.maxDamage == 0) {
             false
         } else {
-            itemStack.maxDamage - itemStack.itemDamage <= 2
+            itemStack.maxDamage - itemStack.itemDamage <= 5
         }
     }
 
