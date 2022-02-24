@@ -42,6 +42,7 @@ object ElytraFlight2b2t : Module(
     private val boostAcceleration by setting("Boost speed acceleration", 1.02, 1.00..2.0, 0.001)
     private val takeoffTimerSpeed by setting("Takeoff Timer Tick Length", 250.0f, 100.0f..1000.0f, 1.0f)
     private val minHoverTakeoffHeight by setting("Min Hover Takeoff Height", 0.5, 0.0..1.0, 0.01)
+    private val rubberBandDetectionTime by setting("Rubberband Detection Time", 500, 100..2000, 50)
 
     private val baseFlightSpeed: Double = 40.2
     private var currentState = State.PAUSED
@@ -153,7 +154,7 @@ object ElytraFlight2b2t : Module(
                 if (currentState == State.FLYING) {
                     timer.reset()
                     resetFlightSpeed()
-                    if (Instant.now().toEpochMilli() - lastSPacketPlayerPosLook < 1000L) {
+                    if (Instant.now().toEpochMilli() - lastSPacketPlayerPosLook < rubberBandDetectionTime.toLong()) {
                         LambdaMod.LOG.info("Rubberband detected")
                         currentState = State.PRETAKEOFF
                     }
