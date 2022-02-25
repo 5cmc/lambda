@@ -1,7 +1,7 @@
 package com.lambda.client.util
 
 import com.lambda.client.LambdaMod
-import com.lambda.commons.utils.ConnectionUtils
+import com.lambda.client.commons.utils.ConnectionUtils
 import java.awt.Desktop
 import java.io.BufferedReader
 import java.io.IOException

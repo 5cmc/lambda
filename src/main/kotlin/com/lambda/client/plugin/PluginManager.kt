@@ -5,8 +5,9 @@ import com.lambda.client.LambdaMod
 import com.lambda.client.gui.clickgui.LambdaClickGui
 import com.lambda.client.gui.clickgui.component.PluginButton
 import com.lambda.client.plugin.api.Plugin
+import com.lambda.client.util.FolderUtils
 import com.lambda.client.util.text.MessageSendHelper
-import com.lambda.commons.collections.NameableSet
+import com.lambda.client.commons.collections.NameableSet
 import kotlinx.coroutines.Deferred
 import net.minecraft.util.text.TextFormatting
 import org.apache.maven.artifact.versioning.DefaultArtifactVersion
@@ -19,8 +20,6 @@ internal object PluginManager : AsyncLoader<List<PluginLoader>> {
     val loadedPlugins = NameableSet<Plugin>()
     val loadedPluginLoader = NameableSet<PluginLoader>()
 
-    const val pluginPath = "${LambdaMod.DIRECTORY}plugins/"
-
     private val lambdaVersion = DefaultArtifactVersion(LambdaMod.VERSION)
 
     override fun preLoad0() = checkPluginLoaders(getLoaders())
@@ -30,7 +29,7 @@ internal object PluginManager : AsyncLoader<List<PluginLoader>> {
     }
 
     fun getLoaders(): List<PluginLoader> {
-        val dir = File(pluginPath)
+        val dir = File(FolderUtils.pluginFolder)
         if (!dir.exists()) dir.mkdir()
 
         val files = dir.listFiles() ?: return emptyList()
@@ -70,7 +69,7 @@ internal object PluginManager : AsyncLoader<List<PluginLoader>> {
 
         for (loader in loaders) {
             // Hot reload check, the error shouldn't be show when reload in game
-            if (LambdaMod.ready && !loader.info.hotReload) {
+            if (LambdaMod.ready && loader.info.mixins.isNotEmpty()) {
                 invalids.add(loader)
             }
 
@@ -140,7 +139,7 @@ internal object PluginManager : AsyncLoader<List<PluginLoader>> {
 
     fun load(loader: PluginLoader) {
         synchronized(this) {
-            val hotReload = LambdaMod.ready && !loader.info.hotReload
+            val hotReload = LambdaMod.ready && loader.info.mixins.isNotEmpty()
             val duplicate = loadedPlugins.containsName(loader.name)
             val unsupported = DefaultArtifactVersion(loader.info.minApiVersion) > lambdaVersion
             val missing = !loadedPlugins.containsNames(loader.info.requiredPlugins)
@@ -161,13 +160,13 @@ internal object PluginManager : AsyncLoader<List<PluginLoader>> {
             val plugin = runCatching(loader::load).getOrElse {
                 when (it) {
                     is ClassNotFoundException -> {
-                        PluginError.log("Main class not found in plugin $loader", it)
+                        PluginError.CLASS_NOT_FOUND.handleError(loader, throwable = it)
                     }
                     is IllegalAccessException -> {
-                        PluginError.log(it.message, it)
+                        PluginError.ILLEGAL_ACCESS.handleError(loader, throwable = it)
                     }
                     else -> {
-                        PluginError.log("Failed to load plugin $loader", it)
+                        PluginError.OTHERS.handleError(loader, throwable = it)
                     }
                 }
                 return
@@ -176,13 +175,17 @@ internal object PluginManager : AsyncLoader<List<PluginLoader>> {
             try {
                 plugin.onLoad()
             } catch (e: NoSuchFieldError) {
-                PluginError.log("Failed to load plugin $loader (NoSuchFieldError)", e)
+                PluginError.MISSING_DEFINITION.handleError(loader, throwable = e)
                 return
             } catch (e: NoSuchMethodError) {
-                PluginError.log("Failed to load plugin $loader (NoSuchMethodError)", e)
+                if (e.message?.contains("getModules()Lcom") == true) {
+                    PluginError.OUTDATED_PLUGIN.handleError(loader)
+                } else {
+                    PluginError.MISSING_DEFINITION.handleError(loader, throwable = e)
+                }
                 return
             } catch (e: NoClassDefFoundError) {
-                PluginError.log("Failed to load plugin $loader (NoClassDefFoundError)", e)
+                PluginError.MISSING_DEFINITION.handleError(loader, throwable = e)
                 return
             }
 
@@ -203,22 +206,24 @@ internal object PluginManager : AsyncLoader<List<PluginLoader>> {
     }
 
     fun unloadAll() {
-        loadedPlugins.filter { it.hotReload }.forEach(PluginManager::unloadWithoutCheck)
+        loadedPlugins.filter { it.mixins.isEmpty() }.forEach(PluginManager::unloadWithoutCheck)
 
         LambdaMod.LOG.info("Unloaded all plugins!")
     }
 
-    fun unload(plugin: Plugin) {
+    fun unload(plugin: Plugin): Boolean {
         if (loadedPlugins.any { it.requiredPlugins.contains(plugin.name) }) {
-            throw IllegalArgumentException("Plugin $plugin is required by another plugin!")
+            MessageSendHelper.sendErrorMessage("Plugin ${plugin.name} is required by another plugin!")
         }
 
-        unloadWithoutCheck(plugin)
+        return unloadWithoutCheck(plugin)
     }
 
-    private fun unloadWithoutCheck(plugin: Plugin) {
-        if (!plugin.hotReload) {
-            throw IllegalArgumentException("Plugin $plugin cannot be hot reloaded!")
+    private fun unloadWithoutCheck(plugin: Plugin): Boolean {
+        // Necessary because of plugin GUI
+        if (plugin.mixins.isNotEmpty()) {
+            MessageSendHelper.sendErrorMessage("Plugin ${plugin.name} cannot be hot reloaded because of contained mixins.")
+            return false
         }
 
         synchronized(this) {
@@ -235,5 +240,6 @@ internal object PluginManager : AsyncLoader<List<PluginLoader>> {
 
         LambdaMod.LOG.info("Unloaded plugin ${plugin.name} v${plugin.version}")
         MessageSendHelper.sendChatMessage("[Plugin Manager] ${LambdaClickGui.printInfo(plugin.name, plugin.version)} unloaded.")
+        return true
     }
 }
