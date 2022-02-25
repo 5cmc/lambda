@@ -45,6 +45,7 @@ object ElytraFlight2b2t : Module(
     private val takeoffTimerSpeed by setting("Takeoff Timer Tick Length", 250.0f, 100.0f..1000.0f, 1.0f)
     private val minHoverTakeoffHeight by setting("Min Hover Takeoff Height", 0.5, 0.0..1.0, 0.01)
     private val rubberBandDetectionTime by setting("Rubberband Detection Time", 500, 100..2000, 50)
+    private val enableHoverRedeploy by setting("Hover Redeploy", true)
 
     private val baseFlightSpeed: Double = 40.2
     private var currentState = State.PAUSED
@@ -126,7 +127,7 @@ object ElytraFlight2b2t : Module(
                         unequipElytraConfirmed = false
                         reEquipedElytraConfirmed = false
                         reEquipedElytra = false
-                    } else if (!unequipedElytra && (mc.player.isElytraFlying || notCloseToGround)) {
+                    } else if (!unequipedElytra && (mc.player.isElytraFlying || notCloseToGround) && enableHoverRedeploy) {
                         currentState = State.HOVER
                     }
                 }
@@ -136,7 +137,6 @@ object ElytraFlight2b2t : Module(
                         unequipedElytra = true
                         shouldHover = true
                     } else if (unequipedElytra && unequipElytraConfirmed && !reEquipedElytra) {
-//                        var slot: Int = getSlotOfNextElytra()
                         mc.connection!!.sendPacket(CPacketClickWindow(0, 6, 0, ClickType.PICKUP, ItemStack(Items.AIR), player.openContainer.getNextTransactionID(player.inventory)))
                         shouldHover = true
                         reEquipedElytra = true
@@ -243,28 +243,6 @@ object ElytraFlight2b2t : Module(
 
     private fun resetFlightSpeed() {
         setFlightSpeed(baseFlightSpeed)
-    }
-
-    private fun getSlotOfNextElytra(): Int {
-        (0..44).forEach { slot ->
-            val stack = mc.player.inventory.getStackInSlot(slot)
-            if (stack.item !is ItemElytra) return@forEach
-
-            if (stack.count > 1) return@forEach
-
-            if (!isItemBroken(stack)) {
-                return slot
-            }
-        }
-        return -1
-    }
-
-    private fun isItemBroken(itemStack: ItemStack): Boolean { // (100 * damage / max damage) >= (100 - 70)
-        return if (itemStack.maxDamage == 0) {
-            false
-        } else {
-            itemStack.maxDamage - itemStack.itemDamage <= 5
-        }
     }
 
     private fun setFlightSpeed(speed: Double) {
