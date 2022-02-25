@@ -22,7 +22,6 @@ import com.lambda.client.util.threads.safeListener
 import com.lambda.client.util.world.getGroundPos
 import net.minecraft.init.Items
 import net.minecraft.inventory.ClickType
-import net.minecraft.item.ItemElytra
 import net.minecraft.item.ItemStack
 import net.minecraft.network.play.client.CPacketClickWindow
 import net.minecraft.network.play.client.CPacketConfirmTeleport
@@ -46,6 +45,7 @@ object ElytraFlight2b2t : Module(
     private val minHoverTakeoffHeight by setting("Min Hover Takeoff Height", 0.5, 0.0..1.0, 0.01)
     private val rubberBandDetectionTime by setting("Rubberband Detection Time", 500, 100..2000, 50)
     private val enableHoverRedeploy by setting("Hover Redeploy", true)
+    private val enablePauseOnSneak by setting("Pause Flight on Sneak", true)
 
     private val baseFlightSpeed: Double = 40.2
     private var currentState = State.PAUSED
@@ -217,6 +217,12 @@ object ElytraFlight2b2t : Module(
         }
 
         safeListener<PlayerMoveEvent> {
+            if (enablePauseOnSneak && mc.gameSettings.keyBindSneak.isKeyDown) {
+                setSpeed(0.0)
+                player.motionY = 0.0
+                return@safeListener
+            }
+
             if (currentState == State.FLYING) {
                 setSpeed(currentFlightSpeed / 10.0)
                 player.motionY = 0.0
@@ -232,6 +238,9 @@ object ElytraFlight2b2t : Module(
                 it.movementInput.moveStrafe = 0.0f
             }
             if (currentState != State.PAUSED && !mc.player.onGround) {
+                if (enablePauseOnSneak && mc.gameSettings.keyBindSneak.isKeyDown) {
+                    return@safeListener
+                }
                 it.movementInput.moveForward = 1.0f
             }
         }
