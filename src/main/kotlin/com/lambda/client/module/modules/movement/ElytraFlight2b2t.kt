@@ -220,6 +220,7 @@ object ElytraFlight2b2t : Module(
             if (enablePauseOnSneak && mc.gameSettings.keyBindSneak.isKeyDown) {
                 setSpeed(0.0)
                 player.motionY = 0.0
+                currentState = State.PRETAKEOFF
                 return@safeListener
             }
 
@@ -239,6 +240,7 @@ object ElytraFlight2b2t : Module(
             }
             if (currentState != State.PAUSED && !mc.player.onGround) {
                 if (enablePauseOnSneak && mc.gameSettings.keyBindSneak.isKeyDown) {
+                    currentState = State.PRETAKEOFF
                     return@safeListener
                 }
                 it.movementInput.moveForward = 1.0f
