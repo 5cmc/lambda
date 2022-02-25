@@ -24,8 +24,10 @@ import net.minecraft.init.Items
 import net.minecraft.inventory.ClickType
 import net.minecraft.item.ItemElytra
 import net.minecraft.item.ItemStack
+import net.minecraft.network.play.client.CPacketClickWindow
 import net.minecraft.network.play.client.CPacketConfirmTeleport
 import net.minecraft.network.play.client.CPacketEntityAction
+import net.minecraft.network.play.server.SPacketConfirmTransaction
 import net.minecraft.network.play.server.SPacketPlayerPosLook
 import net.minecraftforge.client.event.InputUpdateEvent
 import net.minecraftforge.fml.common.gameevent.TickEvent
@@ -58,6 +60,11 @@ object ElytraFlight2b2t : Module(
     private var lastSPacketPlayerPosLook: Long = Instant.now().toEpochMilli()
     private var unequipedElytra: Boolean = false
     private var shouldHover: Boolean = false
+    private var unequipElytraConfirmed: Boolean = false
+    private var unequipTransactionId: Short = 0
+    private var equipTransactionId: Short = 0
+    private var reEquipedElytraConfirmed: Boolean = false
+    private var reEquipedElytra: Boolean = false
 
     enum class State {
         FLYING, PRETAKEOFF, PAUSED, HOVER
@@ -80,6 +87,9 @@ object ElytraFlight2b2t : Module(
             isFlying = false
             shouldHover = false
             unequipedElytra = false
+            unequipElytraConfirmed = false
+            reEquipedElytraConfirmed = false
+            reEquipedElytra = false
         }
 
         safeListener<ConnectionEvent.Disconnect> {
@@ -110,32 +120,36 @@ object ElytraFlight2b2t : Module(
                     val notCloseToGround = player.posY >= world.getGroundPos(player).y + minHoverTakeoffHeight && !wasInLiquid && !mc.isSingleplayer
 
                     if ((withinRange(mc.player.motionY, expectedMotionY, 0.05)) && !mc.player.isElytraFlying) {
-                        currentState = State.FLYING
                         timer.reset()
+                        currentState = State.FLYING
+                        unequipedElytra = false
+                        unequipElytraConfirmed = false
+                        reEquipedElytraConfirmed = false
+                        reEquipedElytra = false
                     } else if (!unequipedElytra && (mc.player.isElytraFlying || notCloseToGround)) {
                         currentState = State.HOVER
                     }
                 }
                 State.HOVER -> {
-                    val armorSlot = player.inventory.armorInventory[2]
-                    elytraIsEquipped = armorSlot.item == Items.ELYTRA
-                    if (elytraIsEquipped && !unequipedElytra) {
-                        mc.playerController.windowClick(0, 6, 0,
-                            ClickType.QUICK_MOVE, mc.player)
+                    if (!unequipedElytra) {
+                        mc.connection!!.sendPacket(CPacketClickWindow(0, 6, 0, ClickType.PICKUP, mc.player.inventoryContainer!!.inventorySlots[6].stack, player.openContainer.getNextTransactionID(player.inventory)))
                         unequipedElytra = true
                         shouldHover = true
-                    } else if (!elytraIsEquipped && unequipedElytra) {
-                        var slot: Int = getSlotOfNextElytra()
-                        mc.playerController.windowClick(0, slot, 0, ClickType.QUICK_MOVE, mc.player)
+                    } else if (unequipedElytra && unequipElytraConfirmed && !reEquipedElytra) {
+//                        var slot: Int = getSlotOfNextElytra()
+                        mc.connection!!.sendPacket(CPacketClickWindow(0, 6, 0, ClickType.PICKUP, ItemStack(Items.AIR), player.openContainer.getNextTransactionID(player.inventory)))
                         shouldHover = true
-                    } else if (elytraIsEquipped && unequipedElytra) {
+                        reEquipedElytra = true
+                    } else if (unequipedElytra && reEquipedElytraConfirmed) {
                         // ok, ready to fall
                         shouldHover = false
                         currentState = State.PRETAKEOFF
+                        unequipElytraConfirmed = false
+                        reEquipedElytraConfirmed = false
+                        reEquipedElytra = false
                     }
                 }
                 State.FLYING -> {
-                    unequipedElytra = false
                     if (shouldStartBoosting) {
                         if (timer.tick(ticksBetweenBoosts, true)) {
                             setFlightSpeed(currentFlightSpeed * boostAcceleration)
@@ -163,8 +177,29 @@ object ElytraFlight2b2t : Module(
                     it.cancel()
                     connection.sendPacket(CPacketConfirmTeleport(it.packet.teleportId))
                 }
+            } else if (it.packet is SPacketConfirmTransaction) {
+                if (currentState == State.HOVER) {
+                    if (!unequipElytraConfirmed && it.packet.actionNumber == unequipTransactionId) {
+                        unequipElytraConfirmed = true
+                    } else if (!reEquipedElytraConfirmed && it.packet.actionNumber == equipTransactionId) {
+                        reEquipedElytraConfirmed = true
+                    }
+                }
             }
         }
+
+        safeAsyncListener<PacketEvent.Send> {
+            if (it.packet is CPacketClickWindow) {
+                if (currentState == State.HOVER) {
+                    if (!unequipElytraConfirmed && it.packet.clickedItem.item == Items.ELYTRA) {
+                        unequipTransactionId = it.packet.actionNumber
+                    } else if (!reEquipedElytraConfirmed && it.packet.clickedItem.item == Items.AIR) {
+                        equipTransactionId = it.packet.actionNumber
+                    }
+                }
+            }
+        }
+
 
         safeListener<PlayerTravelEvent> {
             stateUpdate(it)
@@ -182,7 +217,7 @@ object ElytraFlight2b2t : Module(
         }
 
         safeListener<PlayerMoveEvent> {
-            if (currentState == State.FLYING && mc.player.isElytraFlying) {
+            if (currentState == State.FLYING) {
                 setSpeed(currentFlightSpeed / 10.0)
                 player.motionY = 0.0
             } else if (shouldHover) {
