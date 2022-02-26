@@ -42,12 +42,16 @@ object ElytraFlight2b2t : Module(
     private val boostDelayTicks by setting("Boost delay ticks", 16, 1..200, 1)
     private val boostAcceleration by setting("Boost speed acceleration", 1.02, 1.00..2.0, 0.001)
     private val takeoffTimerSpeed by setting("Takeoff Timer Tick Length", 250.0f, 100.0f..1000.0f, 1.0f)
-    private val minHoverTakeoffHeight by setting("Min Hover Takeoff Height", 0.5, 0.0..1.0, 0.01)
     private val rubberBandDetectionTime by setting("Rubberband Detection Time", 500, 100..2000, 50)
-    private val enableHoverRedeploy by setting("Hover Redeploy", true)
+    private val enableHoverRedeploy by setting("Elytra Swap Redeploy", true,
+        description = "Attempt takeoff from midair using an elytra swap redeploy. " +
+            "If this fails, try mid-air glide takeoff with this setting disabled.")
+    private val minHoverTakeoffHeight by setting("Min Elytra Swap Takeoff Height", 0.5, 0.0..1.0, 0.01)
     private val enablePauseOnSneak by setting("Pause Flight on Sneak", true)
+    private val initialFlightSpeed by setting("Initial Flight Speed", 40.2, 40.0..80.0, 0.01)
+    private val pitch by setting("Pitch", -2.02, -3.0..-1.0, 0.0001)
+    private val takeOffYVelocity by setting("Takeoff Y Velocity", -0.16976, -0.5..0.0, 0.0001)
 
-    private val baseFlightSpeed: Double = 40.2
     private var currentState = State.PAUSED
     private var timer = TickTimer(TimeUnit.TICKS)
     private var currentFlightSpeed: Double = 40.2
@@ -117,10 +121,9 @@ object ElytraFlight2b2t : Module(
                     currentState = State.PRETAKEOFF
                 }
                 State.PRETAKEOFF -> {
-                    val expectedMotionY = -0.16976 // magic number, do not question
                     val notCloseToGround = player.posY >= world.getGroundPos(player).y + minHoverTakeoffHeight && !wasInLiquid && !mc.isSingleplayer
 
-                    if ((withinRange(mc.player.motionY, expectedMotionY, 0.05)) && !mc.player.isElytraFlying) {
+                    if ((withinRange(mc.player.motionY, takeOffYVelocity, 0.05)) && !mc.player.isElytraFlying) {
                         timer.reset()
                         currentState = State.FLYING
                         unequipedElytra = false
@@ -200,12 +203,12 @@ object ElytraFlight2b2t : Module(
             }
         }
 
-
         safeListener<PlayerTravelEvent> {
             stateUpdate(it)
             if (currentState == State.FLYING) {
                 if (elytraIsEquipped && elytraDurability > 1) {
                     if (!isFlying) {
+                        resetFlightSpeed()
                         takeoff(it)
                     } else {
                         mc.timer.tickLength = 50.0f
@@ -251,7 +254,7 @@ object ElytraFlight2b2t : Module(
     }
 
     private fun resetFlightSpeed() {
-        setFlightSpeed(baseFlightSpeed)
+        setFlightSpeed(this.initialFlightSpeed)
     }
 
     private fun setFlightSpeed(speed: Double) {
@@ -311,7 +314,7 @@ object ElytraFlight2b2t : Module(
 
         var rotation = Vec2f(player)
 
-        if (!isStandingStill) rotation = Vec2f(rotation.x, -2.02f)
+        if (!isStandingStill) rotation = Vec2f(rotation.x, pitch.toFloat())
 
         /* Cancels rotation packets if player is not moving and not clicking */
         var cancelRotation = isStandingStill && ((!mc.gameSettings.keyBindUseItem.isKeyDown && !mc.gameSettings.keyBindAttack.isKeyDown))
