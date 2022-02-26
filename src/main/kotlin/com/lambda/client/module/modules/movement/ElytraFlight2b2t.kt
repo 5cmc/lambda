@@ -31,6 +31,7 @@ import net.minecraft.network.play.server.SPacketPlayerPosLook
 import net.minecraftforge.client.event.InputUpdateEvent
 import net.minecraftforge.fml.common.gameevent.TickEvent
 import java.time.Instant
+import kotlin.math.min
 
 object ElytraFlight2b2t : Module(
     name = "ElytraFlight2b2t",
@@ -51,10 +52,13 @@ object ElytraFlight2b2t : Module(
     private val initialFlightSpeed by setting("Initial Flight Speed", 40.2, 40.0..80.0, 0.01)
     private val pitch by setting("Pitch", -2.02, -90.0..-1.0, 0.0001)
     private val takeOffYVelocity by setting("Takeoff Y Velocity", -0.16976, -0.5..0.0, 0.0001)
+    private val redeploySpeedIncrease by setting("Redeploy Speed increase", 1.0, 0.0..5.0, 0.1)
+    private val redeploySpeedMax by setting("Redeploy Speed Max", 60.0, 40.0..90.0, 0.1)
 
     private var currentState = State.PAUSED
     private var timer = TickTimer(TimeUnit.TICKS)
     private var currentFlightSpeed: Double = 40.2
+    private var currentBaseFlightSpeed: Double = 40.2
     private var shouldStartBoosting: Boolean = false;
     private var elytraIsEquipped = false
     private var elytraDurability = 0
@@ -121,6 +125,8 @@ object ElytraFlight2b2t : Module(
                     currentState = State.PRETAKEOFF
                 }
                 State.PRETAKEOFF -> {
+                    setFlightSpeed(initialFlightSpeed)
+                    currentBaseFlightSpeed = initialFlightSpeed
                     val notCloseToGround = player.posY >= world.getGroundPos(player).y + minHoverTakeoffHeight && !wasInLiquid && !mc.isSingleplayer
 
                     if ((withinRange(mc.player.motionY, takeOffYVelocity, 0.05)) && !mc.player.isElytraFlying) {
@@ -170,7 +176,6 @@ object ElytraFlight2b2t : Module(
             if (it.packet is SPacketPlayerPosLook) {
                 if (currentState == State.FLYING) {
                     timer.reset()
-                    resetFlightSpeed()
                     if (Instant.now().toEpochMilli() - lastSPacketPlayerPosLook < rubberBandDetectionTime.toLong()) {
                         LambdaMod.LOG.info("Rubberband detected")
                         currentState = State.PRETAKEOFF
@@ -208,8 +213,9 @@ object ElytraFlight2b2t : Module(
             if (currentState == State.FLYING) {
                 if (elytraIsEquipped && elytraDurability > 1) {
                     if (!isFlying) {
-                        resetFlightSpeed()
                         takeoff(it)
+                        currentBaseFlightSpeed += redeploySpeedIncrease
+                        setFlightSpeed(min(currentBaseFlightSpeed, redeploySpeedMax))
                     } else {
                         mc.timer.tickLength = 50.0f
                         player.isSprinting = false
