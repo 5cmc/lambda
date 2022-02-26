@@ -39,21 +39,40 @@ object ElytraFlight2b2t : Module(
     category = Category.MOVEMENT,
     modulePriority = 1000
 ) {
-    private val ticksBetweenBoosts by setting("Ticks between boost", 11, 1..500, 1)
-    private val boostDelayTicks by setting("Boost delay ticks", 16, 1..200, 1)
-    private val boostAcceleration by setting("Boost speed acceleration", 1.02, 1.00..2.0, 0.001)
-    private val takeoffTimerSpeed by setting("Takeoff Timer Tick Length", 250.0f, 100.0f..1000.0f, 1.0f)
-    private val rubberBandDetectionTime by setting("Rubberband Detection Time", 500, 100..2000, 50)
-    private val enableHoverRedeploy by setting("Elytra Swap Redeploy", true,
+    private val takeoffTimerSpeed by setting("Takeoff Timer Tick Length", 450.0f, 100.0f..1000.0f, 1.0f,
+        description = "How long each timer tick is during redeploy (ms). Lower length = faster timer. " +
+            "Try increasing this if experiencing elytra timeout or rubberbands. This value is multiplied by 2 when setting timer")
+    private val enableHoverRedeploy by setting("Elytra Swap Redeploy", false,
         description = "Attempt takeoff from midair using an elytra swap redeploy. " +
             "If this fails, try mid-air glide takeoff with this setting disabled.")
-    private val minHoverTakeoffHeight by setting("Min Elytra Swap Takeoff Height", 0.5, 0.0..1.0, 0.01)
-    private val enablePauseOnSneak by setting("Pause Flight on Sneak", true)
-    private val initialFlightSpeed by setting("Initial Flight Speed", 40.2, 35.0..80.0, 0.01)
-    private val pitch by setting("Pitch", -2.02, -90.0..-1.0, 0.0001)
-    private val takeOffYVelocity by setting("Takeoff Y Velocity", -0.16976, -0.5..0.0, 0.0001)
-    private val redeploySpeedIncrease by setting("Redeploy Speed increase", 1.0, 0.0..5.0, 0.1)
-    private val redeploySpeedMax by setting("Redeploy Speed Max", 60.0, 40.0..90.0, 0.1)
+    private val minHoverTakeoffHeight by setting("Min Elytra Swap Takeoff Height", 0.5, 0.0..1.0, 0.01,
+        visibility = { enableHoverRedeploy },
+        description = "Minimum height from ground (m) to attempt an ElytraSwap hover deploy")
+    private val rubberBandDetectionTime by setting("Rubberband Detection Time", 200, 0..2000, 10,
+        description = "Time period (ms) between which to detect rubberband teleports. Lower period = more sensitive.")
+    private val enablePauseOnSneak by setting("Pause Flight on Sneak", false,
+        description = "Pause ongoing flight speed on pressing sneak keybind")
+    private val enableBoost by setting("Enable boost", false,
+        description = "Enable boost during mid-air flight. This is NOT related to redeploy speed increase.")
+    private val ticksBetweenBoosts by setting("Ticks between boost", 3, 1..500, 1,
+        visibility = { enableBoost },
+        description = "Number of ticks between boost speed increases")
+    private val boostDelayTicks by setting("Boost delay ticks", 16, 1..200, 1,
+        visibility = { enableBoost },
+        description = "Number of ticks to wait before beginning boost")
+    private val boostAcceleration by setting("Boost speed acceleration", 1.01, 1.00..2.0, 0.001,
+        visibility = { enableBoost },
+        description = "How much to multiply current speed by to calculate boost")
+    private val pitch by setting("Pitch", -2.92, -5.0..-1.0, 0.0001,
+        description = "Pitch to spoof during pretakeoff and flight. Default: -2.92.")
+    private val takeOffYVelocity by setting("Takeoff Y Velocity", -0.16976, -0.5..0.0, 0.0001,
+        description = "Y velocity (+- 0.05) required to trigger deploy. Edit this with caution. Default: -0.16976 aligns near to apex of a jump")
+    private val initialFlightSpeed by setting("Initial Flight Speed", 40.2, 35.0..80.0, 0.01,
+        description = "Speed to start at for first successful deployment (blocks per second / 2). Edit this with caution. Default: 40.2")
+    private val redeploySpeedIncrease by setting("Redeploy Speed increase", 1.0, 0.0..5.0, 0.1,
+        description = "How much speed to increment during redeploys (blocks per second / 2).")
+    private val redeploySpeedMax by setting("Redeploy Speed Max", 75.0, 40.0..200.0, 0.1,
+        description = "Max redeploy speed (blocks per second / 2). Once this speed is reached redeploys will not increment speed.")
 
     private var currentState = State.PAUSED
     private var timer = TickTimer(TimeUnit.TICKS)
@@ -126,7 +145,7 @@ object ElytraFlight2b2t : Module(
                 }
                 State.PRETAKEOFF -> {
                     setFlightSpeed(initialFlightSpeed)
-                    currentBaseFlightSpeed = initialFlightSpeed
+                    currentBaseFlightSpeed = initialFlightSpeed - redeploySpeedIncrease // we will increment this backup during takeoff
                     val notCloseToGround = player.posY >= world.getGroundPos(player).y + minHoverTakeoffHeight && !wasInLiquid && !mc.isSingleplayer
 
                     if ((withinRange(mc.player.motionY, takeOffYVelocity, 0.05)) && !mc.player.isElytraFlying) {
@@ -142,11 +161,23 @@ object ElytraFlight2b2t : Module(
                 }
                 State.HOVER -> {
                     if (!unequipedElytra) {
-                        mc.connection!!.sendPacket(CPacketClickWindow(0, 6, 0, ClickType.PICKUP, mc.player.inventoryContainer!!.inventorySlots[6].stack, player.openContainer.getNextTransactionID(player.inventory)))
+                        mc.connection!!.sendPacket(CPacketClickWindow(
+                            0,
+                            6,
+                            0,
+                            ClickType.PICKUP,
+                            mc.player.inventoryContainer!!.inventorySlots[6].stack,
+                            player.openContainer.getNextTransactionID(player.inventory)))
                         unequipedElytra = true
                         shouldHover = true
                     } else if (unequipedElytra && unequipElytraConfirmed && !reEquipedElytra) {
-                        mc.connection!!.sendPacket(CPacketClickWindow(0, 6, 0, ClickType.PICKUP, ItemStack(Items.AIR), player.openContainer.getNextTransactionID(player.inventory)))
+                        mc.connection!!.sendPacket(CPacketClickWindow(
+                            0,
+                            6,
+                            0,
+                            ClickType.PICKUP,
+                            ItemStack(Items.AIR),
+                            player.openContainer.getNextTransactionID(player.inventory)))
                         shouldHover = true
                         reEquipedElytra = true
                     } else if (unequipedElytra && reEquipedElytraConfirmed) {
@@ -159,13 +190,15 @@ object ElytraFlight2b2t : Module(
                     }
                 }
                 State.FLYING -> {
-                    if (shouldStartBoosting) {
-                        if (timer.tick(ticksBetweenBoosts, true)) {
-                            setFlightSpeed(currentFlightSpeed * boostAcceleration)
-                        }
-                    } else {
-                        if (timer.tick(boostDelayTicks, true)) {
-                            shouldStartBoosting = true;
+                    if (enableBoost) {
+                        if (shouldStartBoosting) {
+                            if (timer.tick(ticksBetweenBoosts, true)) {
+                                setFlightSpeed(currentFlightSpeed * boostAcceleration)
+                            }
+                        } else {
+                            if (timer.tick(boostDelayTicks, true)) {
+                                shouldStartBoosting = true;
+                            }
                         }
                     }
                 }
@@ -209,7 +242,7 @@ object ElytraFlight2b2t : Module(
         }
 
         safeListener<PlayerTravelEvent> {
-            stateUpdate(it)
+            stateUpdate()
             if (currentState == State.FLYING) {
                 if (elytraIsEquipped && elytraDurability > 1) {
                     if (!isFlying) {
@@ -222,6 +255,7 @@ object ElytraFlight2b2t : Module(
                     }
                 }
             }
+            // rotation spoof also kicks us out of elytra during glide takeoffs (happy accident) for unknown anticheat reasons
             spoofRotation()
         }
 
@@ -267,14 +301,13 @@ object ElytraFlight2b2t : Module(
         currentFlightSpeed = speed
     }
 
-    private fun SafeClientEvent.stateUpdate(event: PlayerTravelEvent) {
+    private fun SafeClientEvent.stateUpdate() {
         /* Elytra Check */
         val armorSlot = player.inventory.armorInventory[2]
         elytraIsEquipped = armorSlot.item == Items.ELYTRA
 
         /* Elytra Durability Check */
         if (elytraIsEquipped) {
-            val oldDurability = elytraDurability
             elytraDurability = armorSlot.maxDamage - armorSlot.itemDamage
         } else elytraDurability = 0
 
@@ -323,7 +356,8 @@ object ElytraFlight2b2t : Module(
         if (!isStandingStill) rotation = Vec2f(rotation.x, pitch.toFloat())
 
         /* Cancels rotation packets if player is not moving and not clicking */
-        var cancelRotation = isStandingStill && ((!mc.gameSettings.keyBindUseItem.isKeyDown && !mc.gameSettings.keyBindAttack.isKeyDown))
+        var cancelRotation = isStandingStill
+            && ((!mc.gameSettings.keyBindUseItem.isKeyDown && !mc.gameSettings.keyBindAttack.isKeyDown))
 
         sendPlayerPacket {
             if (cancelRotation) {
