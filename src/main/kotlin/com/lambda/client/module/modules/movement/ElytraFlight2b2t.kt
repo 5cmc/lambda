@@ -49,7 +49,7 @@ object ElytraFlight2b2t : Module(
     private val minHoverTakeoffHeight by setting("Min Elytra Swap Takeoff Height", 0.5, 0.0..1.0, 0.01)
     private val enablePauseOnSneak by setting("Pause Flight on Sneak", true)
     private val initialFlightSpeed by setting("Initial Flight Speed", 40.2, 40.0..80.0, 0.01)
-    private val pitch by setting("Pitch", -2.02, -3.0..-1.0, 0.0001)
+    private val pitch by setting("Pitch", -2.02, -90.0..-1.0, 0.0001)
     private val takeOffYVelocity by setting("Takeoff Y Velocity", -0.16976, -0.5..0.0, 0.0001)
 
     private var currentState = State.PAUSED
