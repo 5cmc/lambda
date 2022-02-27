@@ -144,6 +144,7 @@ object ElytraFlight2b2t : Module(
                     currentState = State.PRETAKEOFF
                 }
                 State.PRETAKEOFF -> {
+                    mc.timer.tickLength = 50.0f
                     setFlightSpeed(initialFlightSpeed)
                     currentBaseFlightSpeed = initialFlightSpeed - redeploySpeedIncrease // we will increment this backup during takeoff
                     val notCloseToGround = player.posY >= world.getGroundPos(player).y + minHoverTakeoffHeight && !wasInLiquid && !mc.isSingleplayer
