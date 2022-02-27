@@ -39,7 +39,7 @@ object ElytraFlight2b2t : Module(
     category = Category.MOVEMENT,
     modulePriority = 1000
 ) {
-    private val takeoffTimerSpeed by setting("Takeoff Timer Tick Length", 450.0f, 100.0f..1000.0f, 1.0f,
+    private val takeoffTimerSpeed by setting("Takeoff Timer Tick Length", 395.0f, 100.0f..1000.0f, 1.0f,
         description = "How long each timer tick is during redeploy (ms). Lower length = faster timer. " +
             "Try increasing this if experiencing elytra timeout or rubberbands. This value is multiplied by 2 when setting timer")
     private val enableHoverRedeploy by setting("Elytra Swap Redeploy", false,
@@ -48,22 +48,22 @@ object ElytraFlight2b2t : Module(
     private val minHoverTakeoffHeight by setting("Min Elytra Swap Takeoff Height", 0.5, 0.0..1.0, 0.01,
         visibility = { enableHoverRedeploy },
         description = "Minimum height from ground (m) to attempt an ElytraSwap hover deploy")
-    private val rubberBandDetectionTime by setting("Rubberband Detection Time", 200, 0..2000, 10,
+    private val rubberBandDetectionTime by setting("Rubberband Detection Time", 1320, 0..2000, 10,
         description = "Time period (ms) between which to detect rubberband teleports. Lower period = more sensitive.")
     private val enablePauseOnSneak by setting("Pause Flight on Sneak", false,
         description = "Pause ongoing flight speed on pressing sneak keybind")
-    private val enableBoost by setting("Enable boost", false,
+    private val enableBoost by setting("Enable boost", true,
         description = "Enable boost during mid-air flight. This is NOT related to redeploy speed increase.")
-    private val ticksBetweenBoosts by setting("Ticks between boost", 3, 1..500, 1,
+    private val ticksBetweenBoosts by setting("Ticks between boost", 5, 1..500, 1,
         visibility = { enableBoost },
         description = "Number of ticks between boost speed increases")
-    private val boostDelayTicks by setting("Boost delay ticks", 16, 1..200, 1,
+    private val boostDelayTicks by setting("Boost delay ticks", 20, 1..200, 1,
         visibility = { enableBoost },
         description = "Number of ticks to wait before beginning boost")
     private val boostAcceleration by setting("Boost speed acceleration", 1.01, 1.00..2.0, 0.001,
         visibility = { enableBoost },
         description = "How much to multiply current speed by to calculate boost")
-    private val pitch by setting("Pitch", -2.92, -5.0..-1.0, 0.0001,
+    private val pitch by setting("Pitch", -2.52, -5.0..-1.0, 0.0001,
         description = "Pitch to spoof during pretakeoff and flight. Default: -2.92.")
     private val takeOffYVelocity by setting("Takeoff Y Velocity", -0.16976, -0.5..0.0, 0.0001,
         description = "Y velocity (+- 0.05) required to trigger deploy. Edit this with caution. Default: -0.16976 aligns near to apex of a jump")
