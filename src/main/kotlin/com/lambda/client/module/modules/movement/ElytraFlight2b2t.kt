@@ -194,7 +194,7 @@ object ElytraFlight2b2t : Module(
                     if (enableBoost) {
                         if (shouldStartBoosting) {
                             if (timer.tick(ticksBetweenBoosts, true)) {
-                                setFlightSpeed(currentFlightSpeed * boostAcceleration)
+                                setFlightSpeed(Math.min(currentFlightSpeed * boostAcceleration, redeploySpeedMax))
                             }
                         } else {
                             if (timer.tick(boostDelayTicks, true)) {
