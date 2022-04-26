@@ -17,7 +17,7 @@ object MenuShader : Module(
     description = "Shows a shader on the main menu",
     showOnArray = false,
     category = Category.CLIENT,
-    enabledByDefault = true
+    enabledByDefault = false
 ) {
     private val mode by setting("Mode", Mode.SET)
     private val shader by setting("Shader", ShaderEnum.CLOUDS, { mode == Mode.SET })

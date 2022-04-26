@@ -6,6 +6,8 @@ import com.lambda.client.event.events.ConnectionEvent
 import com.lambda.client.event.events.PacketEvent
 import com.lambda.client.event.events.PlayerMoveEvent
 import com.lambda.client.event.events.PlayerTravelEvent
+import com.lambda.client.manager.managers.PlayerInventoryManager
+import com.lambda.client.manager.managers.PlayerInventoryManager.addInventoryTask
 import com.lambda.client.manager.managers.PlayerPacketManager.sendPlayerPacket
 import com.lambda.client.mixin.extension.tickLength
 import com.lambda.client.mixin.extension.timer
@@ -13,15 +15,19 @@ import com.lambda.client.module.Category
 import com.lambda.client.module.Module
 import com.lambda.client.module.modules.player.ViewLock
 import com.lambda.client.util.MovementUtils.setSpeed
+import com.lambda.client.util.TaskState
 import com.lambda.client.util.TickTimer
 import com.lambda.client.util.TimeUnit
+import com.lambda.client.util.items.removeHoldingItem
 import com.lambda.client.util.math.Vec2f
 import com.lambda.client.util.text.MessageSendHelper
 import com.lambda.client.util.threads.safeAsyncListener
 import com.lambda.client.util.threads.safeListener
 import com.lambda.client.util.world.getGroundPos
+import net.minecraft.client.gui.inventory.GuiContainer
 import net.minecraft.init.Items
 import net.minecraft.inventory.ClickType
+import net.minecraft.item.ItemElytra
 import net.minecraft.item.ItemStack
 import net.minecraft.network.play.client.CPacketClickWindow
 import net.minecraft.network.play.client.CPacketConfirmTeleport
@@ -45,6 +51,7 @@ object ElytraFlight2b2t : Module(
     private val enableHoverRedeploy by setting("Elytra Swap Redeploy", false,
         description = "Attempt takeoff from midair using an elytra swap redeploy. " +
             "If this fails, try mid-air glide takeoff with this setting disabled.")
+    private val equipDelay by setting("Elytra Swap equip delay", 5, 1..10, 1, visibility = { enableHoverRedeploy })
     private val minHoverTakeoffHeight by setting("Min Elytra Swap Takeoff Height", 0.5, 0.0..1.0, 0.01,
         visibility = { enableHoverRedeploy },
         description = "Minimum height from ground (m) to attempt an ElytraSwap hover deploy")
@@ -88,11 +95,9 @@ object ElytraFlight2b2t : Module(
     private var lastSPacketPlayerPosLook: Long = Instant.now().toEpochMilli()
     private var unequipedElytra: Boolean = false
     private var shouldHover: Boolean = false
-    private var unequipElytraConfirmed: Boolean = false
-    private var unequipTransactionId: Short = 0
-    private var equipTransactionId: Short = 0
-    private var reEquipedElytraConfirmed: Boolean = false
     private var reEquipedElytra: Boolean = false
+    private var lastEquipTask = TaskState(true)
+    private val equipTimer = TickTimer(TimeUnit.TICKS)
 
     enum class State {
         FLYING, PRETAKEOFF, PAUSED, HOVER
@@ -115,8 +120,6 @@ object ElytraFlight2b2t : Module(
             isFlying = false
             shouldHover = false
             unequipedElytra = false
-            unequipElytraConfirmed = false
-            reEquipedElytraConfirmed = false
             reEquipedElytra = false
         }
 
@@ -145,49 +148,47 @@ object ElytraFlight2b2t : Module(
                 }
                 State.PRETAKEOFF -> {
                     mc.timer.tickLength = 50.0f
+                    shouldStartBoosting = false
                     setFlightSpeed(initialFlightSpeed)
                     currentBaseFlightSpeed = initialFlightSpeed - redeploySpeedIncrease // we will increment this backup during takeoff
-                    val notCloseToGround = player.posY >= world.getGroundPos(player).y + minHoverTakeoffHeight && !wasInLiquid && !mc.isSingleplayer
+                    val notCloseToGround = player.posY >= world.getGroundPos(player).y + minHoverTakeoffHeight && !wasInLiquid
 
                     if ((withinRange(mc.player.motionY, takeOffYVelocity, 0.05)) && !mc.player.isElytraFlying) {
                         timer.reset()
                         currentState = State.FLYING
                         unequipedElytra = false
-                        unequipElytraConfirmed = false
-                        reEquipedElytraConfirmed = false
                         reEquipedElytra = false
                     } else if (!unequipedElytra && (mc.player.isElytraFlying || notCloseToGround) && enableHoverRedeploy) {
+                        shouldHover = true
+                        lastEquipTask = addInventoryTask(
+                            PlayerInventoryManager.ClickInfo(0, 6, type = ClickType.PICKUP)
+                        )
+                        equipTimer.reset()
                         currentState = State.HOVER
                     }
                 }
                 State.HOVER -> {
-                    if (!unequipedElytra) {
-                        mc.connection!!.sendPacket(CPacketClickWindow(
-                            0,
-                            6,
-                            0,
-                            ClickType.PICKUP,
-                            mc.player.inventoryContainer!!.inventorySlots[6].stack,
-                            player.openContainer.getNextTransactionID(player.inventory)))
-                        unequipedElytra = true
-                        shouldHover = true
-                    } else if (unequipedElytra && unequipElytraConfirmed && !reEquipedElytra) {
-                        mc.connection!!.sendPacket(CPacketClickWindow(
-                            0,
-                            6,
-                            0,
-                            ClickType.PICKUP,
-                            ItemStack(Items.AIR),
-                            player.openContainer.getNextTransactionID(player.inventory)))
-                        shouldHover = true
-                        reEquipedElytra = true
-                    } else if (unequipedElytra && reEquipedElytraConfirmed) {
-                        // ok, ready to fall
+                    if (!equipTimer.tick(equipDelay.toLong()) || !lastEquipTask.done) return@safeListener
+
+                    val armorSlot = player.inventory.armorInventory[2]
+                    elytraIsEquipped = armorSlot.item == Items.ELYTRA
+
+                    if (!player.isElytraFlying && elytraIsEquipped) {
                         shouldHover = false
+                        unequipedElytra = true
                         currentState = State.PRETAKEOFF
-                        unequipElytraConfirmed = false
-                        reEquipedElytraConfirmed = false
-                        reEquipedElytra = false
+                        return@safeListener
+                    } else {
+                        shouldHover = true
+                    }
+                    lastEquipTask = if (player.inventory.itemStack.isEmpty && !elytraIsEquipped) {
+                        addInventoryTask(
+                            PlayerInventoryManager.ClickInfo(0, getSlotOfNextElytra(), type = ClickType.QUICK_MOVE)
+                        )
+                    } else {
+                        addInventoryTask(
+                            PlayerInventoryManager.ClickInfo(0, 6, type = ClickType.PICKUP)
+                        )
                     }
                 }
                 State.FLYING -> {
@@ -215,29 +216,6 @@ object ElytraFlight2b2t : Module(
                         currentState = State.PRETAKEOFF
                     }
                     lastSPacketPlayerPosLook = Instant.now().toEpochMilli()
-                } else if (shouldHover) {
-                    it.cancel()
-                    connection.sendPacket(CPacketConfirmTeleport(it.packet.teleportId))
-                }
-            } else if (it.packet is SPacketConfirmTransaction) {
-                if (currentState == State.HOVER) {
-                    if (!unequipElytraConfirmed && it.packet.actionNumber == unequipTransactionId) {
-                        unequipElytraConfirmed = true
-                    } else if (!reEquipedElytraConfirmed && it.packet.actionNumber == equipTransactionId) {
-                        reEquipedElytraConfirmed = true
-                    }
-                }
-            }
-        }
-
-        safeAsyncListener<PacketEvent.Send> {
-            if (it.packet is CPacketClickWindow) {
-                if (currentState == State.HOVER) {
-                    if (!unequipElytraConfirmed && it.packet.clickedItem.item == Items.ELYTRA) {
-                        unequipTransactionId = it.packet.actionNumber
-                    } else if (!reEquipedElytraConfirmed && it.packet.clickedItem.item == Items.AIR) {
-                        equipTransactionId = it.packet.actionNumber
-                    }
                 }
             }
         }
@@ -287,6 +265,28 @@ object ElytraFlight2b2t : Module(
                 }
                 it.movementInput.moveForward = 1.0f
             }
+        }
+    }
+
+    private fun getSlotOfNextElytra(): Int {
+        (0..44).forEach { slot ->
+            val stack = mc.player.inventory.getStackInSlot(slot)
+            if (stack.item !is ItemElytra) return@forEach
+
+            if (stack.count > 1) return@forEach
+
+            if (!isItemBroken(stack)) {
+                return slot
+            }
+        }
+        return -1
+    }
+
+    private fun isItemBroken(itemStack: ItemStack): Boolean { // (100 * damage / max damage) >= (100 - 70)
+        return if (itemStack.maxDamage == 0) {
+            false
+        } else {
+            itemStack.maxDamage - itemStack.itemDamage <= 5
         }
     }
 
