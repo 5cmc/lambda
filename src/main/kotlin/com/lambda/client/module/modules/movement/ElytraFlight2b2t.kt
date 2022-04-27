@@ -18,21 +18,16 @@ import com.lambda.client.util.MovementUtils.setSpeed
 import com.lambda.client.util.TaskState
 import com.lambda.client.util.TickTimer
 import com.lambda.client.util.TimeUnit
-import com.lambda.client.util.items.removeHoldingItem
 import com.lambda.client.util.math.Vec2f
 import com.lambda.client.util.text.MessageSendHelper
 import com.lambda.client.util.threads.safeAsyncListener
 import com.lambda.client.util.threads.safeListener
 import com.lambda.client.util.world.getGroundPos
-import net.minecraft.client.gui.inventory.GuiContainer
 import net.minecraft.init.Items
 import net.minecraft.inventory.ClickType
 import net.minecraft.item.ItemElytra
 import net.minecraft.item.ItemStack
-import net.minecraft.network.play.client.CPacketClickWindow
-import net.minecraft.network.play.client.CPacketConfirmTeleport
 import net.minecraft.network.play.client.CPacketEntityAction
-import net.minecraft.network.play.server.SPacketConfirmTransaction
 import net.minecraft.network.play.server.SPacketPlayerPosLook
 import net.minecraftforge.client.event.InputUpdateEvent
 import net.minecraftforge.fml.common.gameevent.TickEvent
@@ -52,6 +47,7 @@ object ElytraFlight2b2t : Module(
         description = "Attempt takeoff from midair using an elytra swap redeploy. " +
             "If this fails, try mid-air glide takeoff with this setting disabled.")
     private val equipDelay by setting("Elytra Swap equip delay", 5, 1..10, 1, visibility = { enableHoverRedeploy })
+    private val hoverDelay by setting("Hover Pause", 40, 0..120, 1, visibility = { enableHoverRedeploy })
     private val minHoverTakeoffHeight by setting("Min Elytra Swap Takeoff Height", 0.5, 0.0..1.0, 0.01,
         visibility = { enableHoverRedeploy },
         description = "Minimum height from ground (m) to attempt an ElytraSwap hover deploy")
@@ -61,7 +57,7 @@ object ElytraFlight2b2t : Module(
         description = "Pause ongoing flight speed on pressing sneak keybind")
     private val enableBoost by setting("Enable boost", true,
         description = "Enable boost during mid-air flight. This is NOT related to redeploy speed increase.")
-    private val ticksBetweenBoosts by setting("Ticks between boost", 5, 1..500, 1,
+    private val ticksBetweenBoosts by setting("Ticks between boost", 2, 1..500, 1,
         visibility = { enableBoost },
         description = "Number of ticks between boost speed increases")
     private val boostDelayTicks by setting("Boost delay ticks", 20, 1..200, 1,
@@ -71,7 +67,7 @@ object ElytraFlight2b2t : Module(
         visibility = { enableBoost },
         description = "How much to multiply current speed by to calculate boost")
     private val pitch by setting("Pitch", -2.52, -5.0..-1.0, 0.0001,
-        description = "Pitch to spoof during pretakeoff and flight. Default: -2.92.")
+        description = "Pitch to spoof during pretakeoff and flight. Default: -2.52.")
     private val takeOffYVelocity by setting("Takeoff Y Velocity", -0.16976, -0.5..0.0, 0.0001,
         description = "Y velocity (+- 0.05) required to trigger deploy. Edit this with caution. Default: -0.16976 aligns near to apex of a jump")
     private val initialFlightSpeed by setting("Initial Flight Speed", 40.2, 35.0..80.0, 0.01,
@@ -98,6 +94,8 @@ object ElytraFlight2b2t : Module(
     private var reEquipedElytra: Boolean = false
     private var lastEquipTask = TaskState(true)
     private val equipTimer = TickTimer(TimeUnit.TICKS)
+    private val hoverTimer = TickTimer(TimeUnit.TICKS)
+    private var hasHoverPaused = false
 
     enum class State {
         FLYING, PRETAKEOFF, PAUSED, HOVER
@@ -164,10 +162,21 @@ object ElytraFlight2b2t : Module(
                             PlayerInventoryManager.ClickInfo(0, 6, type = ClickType.PICKUP)
                         )
                         equipTimer.reset()
+                        hoverTimer.reset()
+                        hasHoverPaused = false
                         currentState = State.HOVER
                     }
                 }
                 State.HOVER -> {
+                    if (!hasHoverPaused) {
+                        if (hoverTimer.tick(hoverDelay)) {
+                            hasHoverPaused = true
+                            equipTimer.reset()
+                        } else {
+                            return@safeListener
+                        }
+                    }
+
                     if (!equipTimer.tick(equipDelay.toLong()) || !lastEquipTask.done) return@safeListener
 
                     val armorSlot = player.inventory.armorInventory[2]
@@ -195,7 +204,7 @@ object ElytraFlight2b2t : Module(
                     if (enableBoost) {
                         if (shouldStartBoosting) {
                             if (timer.tick(ticksBetweenBoosts, true)) {
-                                setFlightSpeed(Math.min(currentFlightSpeed * boostAcceleration, redeploySpeedMax))
+                                setFlightSpeed(currentFlightSpeed * boostAcceleration)
                             }
                         } else {
                             if (timer.tick(boostDelayTicks, true)) {
