@@ -15,20 +15,20 @@ import java.time.Instant
 
 object ElytraFlightHighway : Module(
     name = "ElytraFlightHighway",
-    description = "280km/h elytra fly on highway",
+    description = "efly on the highway",
     category = Category.MOVEMENT,
     modulePriority = 1000
 ) {
-    private val waitTicks by setting("Rubberband Wait Ticks", 80, 0..150, 1)
-    private val flightToggleY by setting("Flight Toggle Y", 121.0, 120.0..122.0, .05)
-    private val glideToggleY by setting("Glide Toggle Y", 120.4, 118.0..121.0, .05)
+    private val waitTicks by setting("Rubberband Wait Ticks", 80, 0..300, 1)
 
     private var currentState = State.PAUSED
     private var timer = TickTimer(TimeUnit.TICKS)
     private var lastSPacketPlayerPosLook: Long = Instant.now().toEpochMilli()
+    private var flyTickCount = 0
+
 
     enum class State {
-        FLYING, WALKING, PAUSED, GLIDE
+        FLYING, WALKING, PAUSED
     }
 
     init {
@@ -36,7 +36,7 @@ object ElytraFlightHighway : Module(
         onEnable {
             currentState = State.WALKING
             toggleAllOff()
-            toggleWalkOn()
+            toggleAllOn()
         }
 
         onDisable {
@@ -51,36 +51,30 @@ object ElytraFlightHighway : Module(
                 State.PAUSED -> {
                     if (timer.tick(waitTicks)) {
                         currentState = State.WALKING
-                        toggleWalkOn()
+                        toggleAllOn()
                     }
                 }
                 State.WALKING -> {
-                    val currentY = mc.player.posY
-                    // need to add some leniency here for actual coord being a long decimal
-                    if (currentY >= flightToggleY - 0.05 && currentY <= flightToggleY + 0.05) {
+                    if (mc.player.isElytraFlying) {
                         currentState = State.FLYING
-                        toggleFlightOn()
-                        timer.reset()
                     }
                 }
                 State.FLYING -> {
-                    val currentY = mc.player.posY
-                    if (currentY <= glideToggleY) {
-                        toggleFlightOff()
-                        currentState = State.GLIDE
-                    }
-                }
-                State.GLIDE -> {
                     if (!mc.player.isElytraFlying) {
-                        currentState = State.WALKING
-                        timer.reset()
+                        if (flyTickCount++ > 30) {
+                            toggleAllOff()
+                            timer.reset()
+                            currentState = State.PAUSED
+                        }
+                    } else {
+                        flyTickCount = 0
                     }
                 }
             }
         }
 
         safeAsyncListener<PacketEvent.Receive> {
-            if (currentState != State.FLYING || it.packet !is SPacketPlayerPosLook) return@safeAsyncListener
+            if ((currentState != State.FLYING && currentState != State.WALKING) || it.packet !is SPacketPlayerPosLook) return@safeAsyncListener
             val now = Instant.now().toEpochMilli()
             if (now - lastSPacketPlayerPosLook < 1000L) {
                 LambdaMod.LOG.info("Rubberband detected")
@@ -94,25 +88,16 @@ object ElytraFlightHighway : Module(
 
 
     private fun toggleAllOff() {
-        mc.player.sendChatMessage(".toggle elytrafly off")
-        mc.player.sendChatMessage(".toggle speed off")
-        mc.player.sendChatMessage(".toggle autowalk off")
-        ElytraFlight.disable()
+        ElytraFlight2b2t.disable()
+        Speed.disable()
         ViewLock.disable()
+        AutoWalk.disable()
     }
 
-    private fun toggleWalkOn() {
-        mc.player.sendChatMessage(".toggle elytrafly on")
-        mc.player.sendChatMessage(".toggle speed on")
-        mc.player.sendChatMessage(".toggle autowalk on")
+    private fun toggleAllOn() {
+        Speed.enable()
+        AutoWalk.enable()
         ViewLock.enable()
-    }
-
-    private fun toggleFlightOn() {
-        ElytraFlight.enable()
-    }
-
-    private fun toggleFlightOff() {
-        ElytraFlight.disable()
+        ElytraFlight2b2t.enable()
     }
 }
