@@ -15,7 +15,7 @@ Download latest 5cmc lambda build [here](https://github.com/5cmc/lambda/actions)
 
 ## Installation
 1. Install Minecraft 1.12.2
-2. Install Forge
+2. Install the latest Forge for 1.12.2 [(download)](https://files.minecraftforge.net/net/minecraftforge/forge/index_1.12.2.html)
 3. Download the mod file [here](https://github.com/5cmc/lambda/actions)
 4. Put the file in your `.minecraft/mods` folder
 
@@ -50,6 +50,7 @@ How do I...
   <summary>... export KAMI blue config to lambda?</summary>
 
 > Rename `.minecraft/kamiblue` to `.minecraft/lambda`
+> Note that this might cause stability issues.
 
 </details>
 
@@ -58,7 +59,15 @@ How do I...
   <summary>... fix most crashes on startup?</summary>
 
 > Possibly you have multiple mods loaded. Forge loads mods in alphabetical order, so you can change the name of the Mod jar to make it load earlier or later. Add for example an exclamation mark to lambda jar to make it load first.
-> If you got `Error: java.lang.IllegalAccessError: tried to access field net.minecraft.util.math.Vec3i.field_177962_a from class baritone.k` remove the noverify tag from your arguments.
+> If you got `Error: java.lang.IllegalAccessError: tried to access field net.minecraft.util.math.Vec3i.field_177962_a from class baritone.k` remove the `-noverify` tag from your arguments.
+
+</details>
+
+<details>
+  <summary>... fix problems with Gradle?</summary>
+
+> Make sure you have a Java 8 JDK installed and in your PATH.
+We recommend using the [Temurin](https://adoptium.net/?variant=openjdk8&jvmVariant=hotspot/) distribution of OpenJDK 
 
 </details>
 
@@ -99,8 +108,8 @@ In this guide we will use [IntelliJ IDEA](https://www.jetbrains.com/idea/) as ID
 ### Gradle build
 
 Test if the environment is set up correctly by building the client and run it inside IDE using the Gradle tab on the right side of the IDE.
-1. Go to `lambda > Tasks > build > runClient` in the Gradle tab and run the client or create a native run using `lambda > Tasks > fg_runs > genIntelliJRuns`.
-2. To build the client as a jar run `lambda > Tasks > build > build`. IntelliJ will create a new directory called `build`. The final built jar will be in `build/libs`
+1. Go to `lambda > Tasks > build > runClient` in the Gradle tab and run the client.
+2. To build the client as a jar run `lambda > Tasks > build > build`. Gradle will create a new directory called `build`. The final built jar will be in `build/libs`
 
 ## Thanks to
 
@@ -115,4 +124,4 @@ Test if the environment is set up correctly by building the client and run it in
 Our [contributors](https://github.com/lambda-client/lambda/graphs/contributors)
 
 > ### Disclaimer
-> This software does not contain any copyrighted Minecraft code. This is a Forge utility mod. Only meant for use in anarchy environments. Do not use without permission of server administration.
+> This software does not contain any copyrighted Minecraft code. This is a Forge utility mod, Only meant for use in anarchy environments. Do not use without permission of server administration.

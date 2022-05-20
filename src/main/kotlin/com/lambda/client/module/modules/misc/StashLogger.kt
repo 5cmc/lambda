@@ -25,8 +25,8 @@ import kotlin.math.roundToInt
 
 object StashLogger : Module(
     name = "StashLogger",
-    category = Category.MISC,
-    description = "Logs storage units in render distance."
+    description = "Logs storage units in render distance",
+    category = Category.MISC
 ) {
     private val saveToWaypoints by setting("Save To Waypoints", true)
     private val logToChat by setting("Log To Chat", true)
@@ -85,10 +85,10 @@ object StashLogger : Module(
 
             if (logToChat) {
                 val positionString = center.asString()
-                MessageSendHelper.sendChatMessage("$chatName $positionString $string")
+                MessageSendHelper.sendChatMessage("$chatName Found $string at ($positionString) ")
             }
 
-            found = found || true
+            found = true
         }
 
         if (found) {
@@ -166,7 +166,13 @@ object StashLogger : Module(
         }
 
         override fun toString(): String {
-            return "($chests chests, $shulkers shulkers, $droppers droppers, $dispensers dispensers, $hoppers hoppers)"
+            val statList = mutableListOf<String>()
+            if (chests > 0 && logChests) statList.add("$chests chest${if (chests == 1) "" else "s"}")
+            if (shulkers > 0 && logShulkers) statList.add("$shulkers shulker${if (shulkers == 1) "" else "s"}")
+            if (droppers > 0 && logDroppers) statList.add("$droppers dropper${if (droppers == 1) "" else "s"}")
+            if (dispensers > 0 && logDispensers) statList.add("$dispensers dispenser${if (dispensers == 1) "" else "s"}")
+            if (hoppers > 0 && logHoppers) statList.add("$hoppers hopper${if (hoppers == 1) "" else "s"}")
+            return statList.joinToString()
         }
     }
 }

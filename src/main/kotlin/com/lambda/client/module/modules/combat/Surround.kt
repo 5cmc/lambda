@@ -34,8 +34,8 @@ import net.minecraftforge.fml.common.gameevent.TickEvent
 @CombatManager.CombatModule
 object Surround : Module(
     name = "Surround",
-    category = Category.COMBAT,
     description = "Surrounds you with obsidian to take less damage",
+    category = Category.COMBAT,
     modulePriority = 200
 ) {
     private val placeSpeed by setting("Places Per Tick", 4f, 0.25f..5f, 0.25f)
@@ -130,7 +130,7 @@ object Surround : Module(
         }
     }
 
-    private fun SafeClientEvent.inHoleCheck() = player.onGround && player.speed < 0.15 && checkHole(player) == SurroundUtils.HoleType.OBBY
+    fun SafeClientEvent.inHoleCheck() = player.onGround && player.speed < 0.15 && checkHole(player) == SurroundUtils.HoleType.OBSIDIAN
 
     private fun outOfHoleCheck() {
         if (autoDisable == AutoDisableMode.OUT_OF_HOLE) {

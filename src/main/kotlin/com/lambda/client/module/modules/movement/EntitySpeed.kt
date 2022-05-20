@@ -5,16 +5,14 @@ import com.lambda.client.module.Category
 import com.lambda.client.module.Module
 import com.lambda.client.util.EntityUtils.steerEntity
 import com.lambda.client.util.threads.safeListener
-import net.minecraft.entity.Entity
 import net.minecraft.entity.item.EntityBoat
 import net.minecraft.entity.passive.AbstractHorse
-import net.minecraft.entity.passive.EntityHorse
 import net.minecraft.entity.passive.EntityPig
 
 object EntitySpeed : Module(
     name = "EntitySpeed",
-    category = Category.MOVEMENT,
-    description = "Abuse client-sided movement to shape sound barrier breaking rideables"
+    description = "Abuse client-sided movement to shape sound barrier breaking rideables",
+    category = Category.MOVEMENT
 ) {
     private val boatSpeed by setting("Boat Speed", 4.4f, 0.1f..10.0f, 0.05f)
     private val abstractHorseSpeed by setting("Horse Types Speed", 4.1f, 0.1f..10.0f, 0.05f)
