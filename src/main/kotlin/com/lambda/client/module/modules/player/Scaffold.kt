@@ -1,8 +1,7 @@
 package com.lambda.client.module.modules.player
 
-import baritone.api.schematic.ISchematic
-import baritone.api.schematic.IStaticSchematic
-import baritone.utils.schematic.schematica.SchematicaHelper
+import com.lambda.schematic.LambdaSchematicaHelper
+import com.lambda.schematic.Schematic
 import com.lambda.client.event.Phase
 import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.event.events.OnUpdateWalkingPlayerEvent
@@ -64,7 +63,7 @@ object Scaffold : Module(
     private var lastHitVec: Vec3d? = null
     private var placeInfo: PlaceInfo? = null
     private var inactiveTicks = 69
-    private var loadedSchematic: ISchematic? = null
+    private var loadedSchematic: Schematic? = null
     private var loadedSchematicOrigin: BlockPos? = null
 
     private val placeTimer = TickTimer(TimeUnit.TICKS)
@@ -214,17 +213,17 @@ object Scaffold : Module(
         return player.hotbarSlots.firstItem<ItemBlock, HotbarSlot>()
     }
 
-    private fun loadSchematic(): Optional<Tuple<IStaticSchematic, BlockPos>> {
-        return if (SchematicaHelper.isSchematicaPresent()) {
-            SchematicaHelper.getOpenSchematic()
+    private fun loadSchematic(): Optional<Tuple<Schematic, BlockPos>> {
+        return if (LambdaSchematicaHelper.isSchematicaPresent()) {
+            LambdaSchematicaHelper.getOpenSchematic()
         } else {
             Optional.empty()
         }
     }
 
-    private fun getBlockTypeForSchematicBlockPos(schematic: ISchematic, origin: BlockPos, blockPos: BlockPos): Block? {
-        return if (schematic.inSchematic(blockPos.x - origin.x, blockPos.y - origin.y, blockPos.z - origin.z, null)) {
-            val desiredState: IBlockState = schematic.desiredState(blockPos.x - origin.x, blockPos.y - origin.y, blockPos.z - origin.z, null, null)
+    private fun getBlockTypeForSchematicBlockPos(schematic: Schematic, origin: BlockPos, blockPos: BlockPos): Block? {
+        return if (schematic.inSchematic(blockPos.x - origin.x, blockPos.y - origin.y, blockPos.z - origin.z)) {
+            val desiredState: IBlockState = schematic.desiredState(blockPos.x - origin.x, blockPos.y - origin.y, blockPos.z - origin.z)
             return desiredState.block
         } else null
     }
