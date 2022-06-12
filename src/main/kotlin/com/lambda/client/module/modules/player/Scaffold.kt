@@ -1,5 +1,8 @@
 package com.lambda.client.module.modules.player
 
+import baritone.api.schematic.ISchematic
+import baritone.api.schematic.IStaticSchematic
+import baritone.utils.schematic.schematica.SchematicaHelper
 import com.lambda.client.event.Phase
 import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.event.events.OnUpdateWalkingPlayerEvent
@@ -16,10 +19,6 @@ import com.lambda.client.module.Module
 import com.lambda.client.util.EntityUtils.prevPosVector
 import com.lambda.client.util.TickTimer
 import com.lambda.client.util.TimeUnit
-import com.lambda.client.util.items.HotbarSlot
-import com.lambda.client.util.items.firstItem
-import com.lambda.client.util.items.hotbarSlots
-import com.lambda.client.util.items.swapToSlot
 import com.lambda.client.util.math.RotationUtils.getRotationTo
 import com.lambda.client.util.math.VectorUtils.toBlockPos
 import com.lambda.client.util.threads.safeListener
@@ -27,13 +26,19 @@ import com.lambda.client.util.world.PlaceInfo
 import com.lambda.client.util.world.getNeighbour
 import com.lambda.client.util.world.placeBlock
 import com.lambda.client.event.listener.listener
+import com.lambda.client.util.items.*
+import com.lambda.client.util.text.MessageSendHelper
+import net.minecraft.block.Block
+import net.minecraft.block.state.IBlockState
 import net.minecraft.item.ItemBlock
 import net.minecraft.network.play.client.CPacketEntityAction
 import net.minecraft.network.play.server.SPacketPlayerPosLook
 import net.minecraft.util.EnumFacing
+import net.minecraft.util.Tuple
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.RayTraceResult
 import net.minecraft.util.math.Vec3d
+import java.util.*
 import kotlin.math.floor
 import kotlin.math.roundToInt
 
@@ -54,10 +59,13 @@ object Scaffold : Module(
     private val strictDirection by setting("Strict Direction", false)
     private val delay by setting("Delay", 2, 1..10, 1)
     private val maxRange by setting("Max Range", 1, 0..3, 1)
+    private val schematicaBuild by setting("Schematic", true, consumer = this::schematicToggle)
 
     private var lastHitVec: Vec3d? = null
     private var placeInfo: PlaceInfo? = null
     private var inactiveTicks = 69
+    private var loadedSchematic: ISchematic? = null
+    private var loadedSchematicOrigin: BlockPos? = null
 
     private val placeTimer = TickTimer(TimeUnit.TICKS)
     private val rubberBandTimer = TickTimer(TimeUnit.TICKS)
@@ -70,6 +78,11 @@ object Scaffold : Module(
         onDisable {
             placeInfo = null
             inactiveTicks = 69
+        }
+
+        onEnable {
+            // todo: check if this is necessary
+            schematicToggle(false, schematicaBuild)
         }
 
         listener<PacketEvent.Receive> {
@@ -85,6 +98,23 @@ object Scaffold : Module(
                 player.motionY = -0.169
             }
         }
+    }
+
+    private fun schematicToggle(prev: Boolean, input: Boolean): Boolean {
+        if (input) {
+            val schematic = loadSchematic()
+            if (schematic.isPresent) {
+                this.loadedSchematic = schematic.get().first
+                this.loadedSchematicOrigin = schematic.get().second
+            } else {
+                MessageSendHelper.sendChatMessage("No loaded schematic found")
+                return false
+            }
+        } else {
+            this.loadedSchematic = null
+            this.loadedSchematicOrigin = null
+        }
+        return input
     }
 
     private val SafeClientEvent.isHoldingBlock: Boolean
@@ -148,17 +178,33 @@ object Scaffold : Module(
         (value * 2.5 * maxRange).roundToInt().coerceAtMost(maxRange)
 
     private fun SafeClientEvent.swapAndPlace(placeInfo: PlaceInfo) {
-        getBlockSlot()?.let { slot ->
-            if (spoofHotbar) spoofHotbar(slot)
-            else swapToSlot(slot)
+        if (schematicaBuild && loadedSchematic != null && loadedSchematicOrigin != null) {
+            val blockTypeForSchematicBlockPos = getBlockTypeForSchematicBlockPos(loadedSchematic!!, loadedSchematicOrigin!!, placeInfo.placedPos)
+            if (blockTypeForSchematicBlockPos != null) {
+                swapToBlockOrMove(blockTypeForSchematicBlockPos)
+                // todo: remove duplicated logic
+                inactiveTicks = 0
 
-            inactiveTicks = 0
+                if (placeTimer.tick(delay.toLong())) {
+                    val shouldSneak = sneak && !player.isSneaking
+                    if (shouldSneak) connection.sendPacket(CPacketEntityAction(player, CPacketEntityAction.Action.START_SNEAKING))
+                    placeBlock(placeInfo)
+                    if (shouldSneak) connection.sendPacket(CPacketEntityAction(player, CPacketEntityAction.Action.STOP_SNEAKING))
+                }
+            }
+        } else {
+            getBlockSlot()?.let { slot ->
+                if (spoofHotbar) spoofHotbar(slot)
+                else swapToSlot(slot)
 
-            if (placeTimer.tick(delay.toLong())) {
-                val shouldSneak = sneak && !player.isSneaking
-                if (shouldSneak) connection.sendPacket(CPacketEntityAction(player, CPacketEntityAction.Action.START_SNEAKING))
-                placeBlock(placeInfo)
-                if (shouldSneak) connection.sendPacket(CPacketEntityAction(player, CPacketEntityAction.Action.STOP_SNEAKING))
+                inactiveTicks = 0
+
+                if (placeTimer.tick(delay.toLong())) {
+                    val shouldSneak = sneak && !player.isSneaking
+                    if (shouldSneak) connection.sendPacket(CPacketEntityAction(player, CPacketEntityAction.Action.START_SNEAKING))
+                    placeBlock(placeInfo)
+                    if (shouldSneak) connection.sendPacket(CPacketEntityAction(player, CPacketEntityAction.Action.STOP_SNEAKING))
+                }
             }
         }
     }
@@ -168,4 +214,18 @@ object Scaffold : Module(
         return player.hotbarSlots.firstItem<ItemBlock, HotbarSlot>()
     }
 
+    private fun loadSchematic(): Optional<Tuple<IStaticSchematic, BlockPos>> {
+        return if (SchematicaHelper.isSchematicaPresent()) {
+            SchematicaHelper.getOpenSchematic()
+        } else {
+            Optional.empty()
+        }
+    }
+
+    private fun getBlockTypeForSchematicBlockPos(schematic: ISchematic, origin: BlockPos, blockPos: BlockPos): Block? {
+        return if (schematic.inSchematic(blockPos.x - origin.x, blockPos.y - origin.y, blockPos.z - origin.z, null)) {
+            val desiredState: IBlockState = schematic.desiredState(blockPos.x - origin.x, blockPos.y - origin.y, blockPos.z - origin.z, null, null)
+            return desiredState.block
+        } else null
+    }
 }
