@@ -1,34 +1,34 @@
 package com.lambda.client.module.modules.player
 
-import com.lambda.schematic.LambdaSchematicaHelper
-import com.lambda.schematic.Schematic
 import com.lambda.client.event.Phase
 import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.event.events.OnUpdateWalkingPlayerEvent
 import com.lambda.client.event.events.PacketEvent
 import com.lambda.client.event.events.PlayerTravelEvent
+import com.lambda.client.event.listener.listener
 import com.lambda.client.manager.managers.HotbarManager.resetHotbar
 import com.lambda.client.manager.managers.HotbarManager.serverSideItem
 import com.lambda.client.manager.managers.HotbarManager.spoofHotbar
 import com.lambda.client.manager.managers.PlayerPacketManager.sendPlayerPacket
-import com.lambda.mixin.entity.MixinEntity
 import com.lambda.client.mixin.extension.syncCurrentPlayItem
 import com.lambda.client.module.Category
 import com.lambda.client.module.Module
 import com.lambda.client.util.EntityUtils.prevPosVector
 import com.lambda.client.util.TickTimer
 import com.lambda.client.util.TimeUnit
+import com.lambda.client.util.items.*
 import com.lambda.client.util.math.RotationUtils.getRotationTo
 import com.lambda.client.util.math.VectorUtils.toBlockPos
+import com.lambda.client.util.text.MessageSendHelper
 import com.lambda.client.util.threads.safeListener
 import com.lambda.client.util.world.PlaceInfo
 import com.lambda.client.util.world.getNeighbour
 import com.lambda.client.util.world.placeBlock
-import com.lambda.client.event.listener.listener
-import com.lambda.client.util.items.*
-import com.lambda.client.util.text.MessageSendHelper
-import net.minecraft.block.Block
+import com.lambda.mixin.entity.MixinEntity
+import com.lambda.schematic.LambdaSchematicaHelper
+import com.lambda.schematic.Schematic
 import net.minecraft.block.state.IBlockState
+import net.minecraft.init.Blocks.AIR
 import net.minecraft.item.ItemBlock
 import net.minecraft.network.play.client.CPacketEntityAction
 import net.minecraft.network.play.server.SPacketPlayerPosLook
@@ -178,15 +178,19 @@ object Scaffold : Module(
 
     private fun SafeClientEvent.swapAndPlace(placeInfo: PlaceInfo) {
         if (schematicaBuild && loadedSchematic != null && loadedSchematicOrigin != null) {
-            val blockTypeForSchematicBlockPos = getBlockTypeForSchematicBlockPos(loadedSchematic!!, loadedSchematicOrigin!!, placeInfo.placedPos)
+            val blockTypeForSchematicBlockPos: IBlockState? = getSchematicBlockState(loadedSchematic!!, loadedSchematicOrigin!!, placeInfo.placedPos)
             if (blockTypeForSchematicBlockPos != null) {
-                swapToBlockOrMove(blockTypeForSchematicBlockPos)
+                if (blockTypeForSchematicBlockPos == AIR) return
+                if (!swapToBlockOrMove(blockTypeForSchematicBlockPos.block, predicateItem = { it.item.block.getStateFromMeta(it.metadata).equals(blockTypeForSchematicBlockPos)})) {
+                    return
+                }
                 // todo: remove duplicated logic
                 inactiveTicks = 0
 
                 if (placeTimer.tick(delay.toLong())) {
                     val shouldSneak = sneak && !player.isSneaking
                     if (shouldSneak) connection.sendPacket(CPacketEntityAction(player, CPacketEntityAction.Action.START_SNEAKING))
+                    playerController.syncCurrentPlayItem()
                     placeBlock(placeInfo)
                     if (shouldSneak) connection.sendPacket(CPacketEntityAction(player, CPacketEntityAction.Action.STOP_SNEAKING))
                 }
@@ -221,10 +225,9 @@ object Scaffold : Module(
         }
     }
 
-    private fun getBlockTypeForSchematicBlockPos(schematic: Schematic, origin: BlockPos, blockPos: BlockPos): Block? {
+    private fun getSchematicBlockState(schematic: Schematic, origin: BlockPos, blockPos: BlockPos): IBlockState? {
         return if (schematic.inSchematic(blockPos.x - origin.x, blockPos.y - origin.y, blockPos.z - origin.z)) {
-            val desiredState: IBlockState = schematic.desiredState(blockPos.x - origin.x, blockPos.y - origin.y, blockPos.z - origin.z)
-            return desiredState.block
+            return schematic.desiredState(blockPos.x - origin.x, blockPos.y - origin.y, blockPos.z - origin.z)
         } else null
     }
 }
