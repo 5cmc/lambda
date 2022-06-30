@@ -17,9 +17,9 @@ import com.lambda.client.util.graphics.GlStateUtils
 import com.lambda.client.util.graphics.LambdaTessellator
 import com.lambda.client.util.graphics.RenderUtils2D
 import com.lambda.client.util.math.Vec2d
+import com.lambda.client.util.math.VectorUtils.distanceTo
 import com.lambda.client.util.text.MessageSendHelper
 import com.lambda.client.util.threads.safeListener
-import com.lambda.client.util.math.VectorUtils.distanceTo
 import net.minecraft.client.Minecraft
 import net.minecraft.client.renderer.vertex.DefaultVertexFormats
 import net.minecraft.network.play.server.SPacketChunkData
@@ -29,15 +29,11 @@ import net.minecraftforge.fml.common.gameevent.TickEvent
 import org.apache.commons.lang3.SystemUtils
 import org.lwjgl.opengl.GL11.GL_LINE_LOOP
 import org.lwjgl.opengl.GL11.glLineWidth
-import java.io.BufferedWriter
-import java.io.FileWriter
-import java.io.IOException
-import java.io.PrintWriter
+import java.io.*
 import java.nio.file.Files
-import java.io.File
 import java.nio.file.Path
 import java.text.SimpleDateFormat
-import java.util.Date
+import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 
 object NewChunks : Module(
@@ -60,7 +56,7 @@ object NewChunks : Module(
     private val thickness by setting("Thickness", 1.5f, 0.1f..4.0f, 0.1f, description = "Thickness of the highlighting square")
     private val range by setting("Render Range", 512, 64..2048, 32, description = "Maximum range for chunks to be highlighted")
     private val removeMode by setting("Remove Mode", RemoveMode.AGE, description = "Mode to use for removing chunks")
-    private val maxAge by setting("Max age in minutes", 10, 1..600, 1, { removeMode == RemoveMode.AGE }, description = "Maximum age of chunks since recording")
+    private val maxAge by setting("Max age", 10, 1..600, 1, { removeMode == RemoveMode.AGE }, description = "Maximum age of chunks since recording", unit = "m")
 
     private var lastSetting = LastSetting()
     private var logWriter: PrintWriter? = null
@@ -336,6 +332,22 @@ object NewChunks : Module(
 
     private fun getChunkPos(x: Int, z: Int, playerOffset: Vec2d, scale: Float): Vec2d {
         return Vec2d((x shl 4).toDouble(), (z shl 4).toDouble()).minus(playerOffset).div(scale.toDouble())
+    }
+
+    fun getChunks(): ConcurrentHashMap<ChunkPos, Long> {
+        return chunks
+    }
+
+    fun addChunk(chunk: ChunkPos) {
+        chunks[chunk] = System.currentTimeMillis()
+    }
+
+    fun addChunk(chunk: ChunkPos, time: Long) {
+        chunks[chunk] = time
+    }
+
+    fun removeChunk(chunk: ChunkPos) {
+        chunks.remove(chunk)
     }
 
     private fun saveNewChunk(log: PrintWriter?, data: String) {

@@ -1,5 +1,7 @@
 package com.lambda.client.gui.hudgui.elements.client
 
+import com.lambda.client.commons.extension.sumByFloat
+import com.lambda.client.commons.interfaces.DisplayEnum
 import com.lambda.client.gui.hudgui.HudElement
 import com.lambda.client.module.AbstractModule
 import com.lambda.client.module.ModuleManager
@@ -15,8 +17,6 @@ import com.lambda.client.util.graphics.font.HAlign
 import com.lambda.client.util.graphics.font.TextComponent
 import com.lambda.client.util.graphics.font.VAlign
 import com.lambda.client.util.threads.safeAsyncListener
-import com.lambda.client.commons.extension.sumByFloat
-import com.lambda.client.commons.interfaces.DisplayEnum
 import net.minecraft.client.renderer.GlStateManager
 import net.minecraftforge.fml.common.gameevent.TickEvent
 import java.awt.Color
@@ -34,6 +34,8 @@ internal object ModuleList : HudElement(
     private val rainbow by setting("Rainbow", true)
     private val rainbowLength by setting("Rainbow Length", 10.0f, 1.0f..20.0f, 0.5f, { rainbow })
     private val indexedHue by setting("Indexed Hue", 0.5f, 0.0f..1.0f, 0.05f, { rainbow })
+    private val saturation by setting("Saturation", 1.0f, 0.0f..1.0f, 0.05f, { rainbow })
+    private val brightness by setting("Brightness", 1.0f, 0.0f..1.0f, 0.05f, { rainbow })
     private val primary by setting("Primary Color", ColorHolder(155, 144, 255), false)
     private val secondary by setting("Secondary Color", ColorHolder(255, 255, 255), false)
 
@@ -103,7 +105,6 @@ internal object ModuleList : HudElement(
     }
 
     private fun drawModuleList() {
-        val primaryHsb = Color.RGBtoHSB(primary.r, primary.g, primary.b, null)
         val lengthMs = rainbowLength * 1000.0f
         val timedHue = System.currentTimeMillis() % lengthMs.toLong() / lengthMs
 
@@ -127,7 +128,7 @@ internal object ModuleList : HudElement(
 
             if (rainbow) {
                 val hue = timedHue + indexedHue * 0.05f * index++
-                val color = ColorConverter.hexToRgb(Color.HSBtoRGB(hue, primaryHsb[1], primaryHsb[2]))
+                val color = ColorConverter.hexToRgb(Color.HSBtoRGB(hue, saturation, brightness))
                 module.newTextLine(color).drawLine(progress, true, HAlign.LEFT, FontRenderAdapter.useCustomFont)
             } else {
                 textLine.drawLine(progress, true, HAlign.LEFT, FontRenderAdapter.useCustomFont)
