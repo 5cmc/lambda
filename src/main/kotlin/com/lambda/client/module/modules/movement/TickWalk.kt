@@ -35,7 +35,7 @@ object TickWalk : Module(
         }
 
         listener<InputUpdateEvent>(9999) {
-            if (LagNotifier.paused && LagNotifier.pauseAutoWalk) return@listener
+            if (LagNotifier.pauseAutoWalk) return@listener
 
             if (it.movementInput !is MovementInputFromOptions) return@listener
 
@@ -43,6 +43,9 @@ object TickWalk : Module(
                 CurrentState.WALKING -> {
                     it.movementInput.forwardKeyDown = true
                     it.movementInput.moveForward = 1.0f
+                }
+                CurrentState.WAITING -> {
+
                 }
             }
         }

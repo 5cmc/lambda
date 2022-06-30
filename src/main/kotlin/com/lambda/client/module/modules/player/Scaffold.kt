@@ -27,8 +27,11 @@ import com.lambda.client.util.world.placeBlock
 import com.lambda.mixin.entity.MixinEntity
 import com.lambda.schematic.LambdaSchematicaHelper
 import com.lambda.schematic.Schematic
+import net.minecraft.block.BlockStainedGlass.COLOR
 import net.minecraft.block.state.IBlockState
 import net.minecraft.init.Blocks.AIR
+import net.minecraft.init.Blocks.STAINED_GLASS
+import net.minecraft.item.EnumDyeColor
 import net.minecraft.item.ItemBlock
 import net.minecraft.network.play.client.CPacketEntityAction
 import net.minecraft.network.play.server.SPacketPlayerPosLook
@@ -81,7 +84,7 @@ object Scaffold : Module(
 
         onEnable {
             // todo: check if this is necessary
-            schematicToggle(false, schematicaBuild)
+            schematicToggle(true, schematicaBuild)
         }
 
         listener<PacketEvent.Receive> {
@@ -180,8 +183,14 @@ object Scaffold : Module(
         if (schematicaBuild && loadedSchematic != null && loadedSchematicOrigin != null) {
             val blockTypeForSchematicBlockPos: IBlockState? = getSchematicBlockState(loadedSchematic!!, loadedSchematicOrigin!!, placeInfo.placedPos)
             if (blockTypeForSchematicBlockPos != null) {
-                if (blockTypeForSchematicBlockPos == AIR) return
-                if (!swapToBlockOrMove(blockTypeForSchematicBlockPos.block, predicateItem = { it.item.block.getStateFromMeta(it.metadata).equals(blockTypeForSchematicBlockPos)})) {
+                if (blockTypeForSchematicBlockPos.block == AIR) return
+                if (!swapToBlockOrMove(this@Scaffold, blockTypeForSchematicBlockPos.block, predicateItem = { it.item.block.getStateFromMeta(it.metadata).equals(blockTypeForSchematicBlockPos)})) {
+                    if (blockTypeForSchematicBlockPos.block == STAINED_GLASS) {
+                        val color: EnumDyeColor = blockTypeForSchematicBlockPos.properties.get(COLOR) as EnumDyeColor
+                        MessageSendHelper.sendChatMessage("$chatName No ${color.dyeColorName} ${blockTypeForSchematicBlockPos.block.localizedName} was found in inventory.")
+                    } else {
+                        MessageSendHelper.sendChatMessage("$chatName No ${blockTypeForSchematicBlockPos.block.localizedName} was found in inventory.")
+                    }
                     return
                 }
                 // todo: remove duplicated logic
@@ -190,7 +199,6 @@ object Scaffold : Module(
                 if (placeTimer.tick(delay.toLong())) {
                     val shouldSneak = sneak && !player.isSneaking
                     if (shouldSneak) connection.sendPacket(CPacketEntityAction(player, CPacketEntityAction.Action.START_SNEAKING))
-                    playerController.syncCurrentPlayItem()
                     placeBlock(placeInfo)
                     if (shouldSneak) connection.sendPacket(CPacketEntityAction(player, CPacketEntityAction.Action.STOP_SNEAKING))
                 }

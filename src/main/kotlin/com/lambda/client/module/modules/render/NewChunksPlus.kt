@@ -117,7 +117,7 @@ object NewChunksPlus : Module(
 
         safeAsyncListener<PacketEvent.PostReceive> { event ->
             if (event.packet !is SPacketChunkData) return@safeAsyncListener
-            val packet = event.packet as SPacketChunkData
+            val packet = event.packet
             if ((mode == DetectionMode.TIMER || mode == DetectionMode.BOTH) && packet.isFullChunk) {
                 val receivedTime = Instant.now().toEpochMilli()
                 val chunkPos = ChunkPos(packet.chunkX, packet.chunkZ)
@@ -135,7 +135,7 @@ object NewChunksPlus : Module(
             }
 
             if ((mode == DetectionMode.PACKET || mode == DetectionMode.BOTH) && !packet.isFullChunk) {
-                val chunk = world.getChunk((event.packet as SPacketChunkData).chunkX, (event.packet as SPacketChunkData).chunkZ)
+                val chunk = world.getChunk(event.packet.chunkX, event.packet.chunkZ)
                 onMainThread {
                     if (packetChunks.add(chunk.pos)) {
                         if (packetChunks.size > maxNumber) {
