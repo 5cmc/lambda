@@ -46,6 +46,7 @@ object ElytraFlight2b2t : Module(
     private val enableHoverRedeploy by setting("Elytra Swap Redeploy", false,
         description = "Attempt takeoff from midair using an elytra swap redeploy. " +
             "If this fails, try mid-air glide takeoff with this setting disabled.")
+    private val elytraReplaceModuleSwap by setting ("ElytraReplace Swap", false, visibility = { enableHoverRedeploy })
     private val equipDelay by setting("Elytra Swap equip delay", 5, 1..10, 1, visibility = { enableHoverRedeploy })
     private val hoverDelay by setting("Hover Pause", 40, 0..120, 1, visibility = { enableHoverRedeploy })
     private val minHoverTakeoffHeight by setting("Min Elytra Swap Takeoff Height", 0.5, 0.0..1.0, 0.01,
@@ -99,6 +100,10 @@ object ElytraFlight2b2t : Module(
 
     enum class State {
         FLYING, PRETAKEOFF, PAUSED, HOVER
+    }
+
+    override fun getHudInfo(): String {
+        return currentState.name
     }
 
     init {
@@ -159,7 +164,7 @@ object ElytraFlight2b2t : Module(
                     } else if (!unequipedElytra && (mc.player.isElytraFlying || notCloseToGround) && enableHoverRedeploy) {
                         shouldHover = true
                         lastEquipTask = addInventoryTask(
-                            PlayerInventoryManager.ClickInfo(0, 6, type = ClickType.PICKUP)
+                            PlayerInventoryManager.ClickInfo(0, 6, type = ClickType.QUICK_MOVE)
                         )
                         equipTimer.reset()
                         hoverTimer.reset()
@@ -190,14 +195,17 @@ object ElytraFlight2b2t : Module(
                     } else {
                         shouldHover = true
                     }
-                    lastEquipTask = if (player.inventory.itemStack.isEmpty && !elytraIsEquipped) {
-                        addInventoryTask(
-                            PlayerInventoryManager.ClickInfo(0, getSlotOfNextElytra(), type = ClickType.QUICK_MOVE)
-                        )
-                    } else {
-                        addInventoryTask(
-                            PlayerInventoryManager.ClickInfo(0, 6, type = ClickType.PICKUP)
-                        )
+
+                    if (!elytraReplaceModuleSwap) {
+                        lastEquipTask = if (player.inventory.itemStack.isEmpty && !elytraIsEquipped) {
+                            addInventoryTask(
+                                PlayerInventoryManager.ClickInfo(0, getSlotOfNextElytra(), type = ClickType.QUICK_MOVE)
+                            )
+                        } else {
+                            addInventoryTask(
+                                PlayerInventoryManager.ClickInfo(0, 6, type = ClickType.PICKUP)
+                            )
+                        }
                     }
                 }
                 State.FLYING -> {

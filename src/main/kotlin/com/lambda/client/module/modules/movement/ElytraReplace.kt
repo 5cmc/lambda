@@ -3,6 +3,8 @@ package com.lambda.client.module.modules.movement
 import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.module.Category
 import com.lambda.client.module.Module
+import com.lambda.client.util.TickTimer
+import com.lambda.client.util.TimeUnit
 import com.lambda.client.util.text.MessageSendHelper
 import com.lambda.client.util.threads.safeListener
 import net.minecraft.client.audio.PositionedSoundRecord
@@ -22,15 +24,19 @@ object ElytraReplace : Module(
 ) {
     private val inventoryMode by setting("Inventory", false)
     private val autoChest by setting("Auto Chest", false)
-    private val elytraFlightCheck by setting("ElytraFlight Check", true)
+    private val elytraFlightCheck by setting("ElytraFlight Check", false)
     private val logToChat by setting("Missing Warning", false)
     private val playSound by setting("Play Sound", false, { logToChat })
     private val logThreshold by setting("Warning Threshold", 2, 1..10, 1, { logToChat })
     private val threshold by setting("Damage Threshold", 7, 1..50, 1)
+    private val delay by setting("Delay", 20, 1..400, 1)
+    private val force by setting("Force Equip Elytra", true)
 
     private var elytraCount = 0
     private var chestPlateCount = 0
     private var shouldSendFinalWarning = true
+    private var delayTimer: TickTimer = TickTimer(TimeUnit.TICKS)
+    private var isInDelay: Boolean = false
 
     init {
         safeListener<TickEvent.ClientTickEvent> {
@@ -47,7 +53,7 @@ object ElytraReplace : Module(
             if (player.onGround && autoChest) {
                 swapToChest()
             } else if (shouldAttemptElytraSwap()) {
-                var shouldSwap = isCurrentElytraBroken()
+                var shouldSwap = true
                 if (autoChest) {
                     shouldSwap = shouldSwap || player.inventory.armorInventory[2].item != Items.ELYTRA // if current elytra broken or no elytra found in chest area
                 }
@@ -58,6 +64,8 @@ object ElytraReplace : Module(
                         sendEquipNotification()
                     }
                 }
+            } else {
+                delayTimer.reset()
             }
         }
     }
@@ -82,10 +90,18 @@ object ElytraReplace : Module(
         }
     }
 
+    private fun isElytraEquipped(): Boolean {
+        return mc.player.inventory.armorInventory[2].item == Items.ELYTRA
+    }
+
     // if we should check elytraflight, then we will swap if it is enabled
     // if we don't need to check for elytraflight, then just swap
     private fun shouldAttemptElytraSwap(): Boolean {
-        return !elytraFlightCheck || ElytraFlight.isEnabled
+        return if (force) {
+            !isElytraEquipped() || isCurrentElytraBroken()
+        } else {
+            (!elytraFlightCheck || ElytraFlight.isEnabled) && isCurrentElytraBroken()
+        }
     }
 
 
@@ -130,7 +146,12 @@ object ElytraReplace : Module(
         if (slot == -1) { // this shouldn't happen as we check elytra count earlier, but the check is here for peace of mind.
             return false
         }
-
+        if (!isInDelay) {
+            isInDelay = true;
+            delayTimer.reset()
+        }
+        if (!delayTimer.tick(delay.toLong(), resetIfTick = true)) return false
+        isInDelay = false
         if (slot < 9) slot += 36 // hotbar is slots 0 to 8, convert the slot if it's hotbar
 
         return if (mc.player.inventory.armorInventory[2].isEmpty) { // place new elytra in empty chest slot
@@ -188,17 +209,22 @@ object ElytraReplace : Module(
 
 
     private fun getSlotOfNextElytra(): Int {
+        val elytraSlotList = HashMap<Int, ItemStack>()
         (0..44).forEach { slot ->
-            val stack = mc.player.inventory.getStackInSlot(slot)
+            val stack: ItemStack = mc.player.inventory.getStackInSlot(slot)
             if (stack.item !is ItemElytra) return@forEach
 
             if (stack.count > 1) return@forEach
 
             if (!isItemBroken(stack)) {
-                return slot
+                elytraSlotList[slot] = stack
             }
         }
-        return -1
+        val maxElytraDuraSlot: MutableMap.MutableEntry<Int, ItemStack>? = elytraSlotList.entries.maxByOrNull { entry ->
+            val itemStack = entry.value
+            return@maxByOrNull (itemStack.maxDamage - itemStack.itemDamage)
+        }
+        return maxElytraDuraSlot?.key ?: -1
     }
 
     private fun isItemBroken(itemStack: ItemStack): Boolean { // (100 * damage / max damage) >= (100 - 70)
