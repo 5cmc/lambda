@@ -103,7 +103,7 @@ object ElytraFlight2b2t : Module(
     private val hoverTimer = TickTimer(TimeUnit.TICKS)
     private var hasHoverPaused = false
     private var elytraLockFallOriginalHeight: Int = 256
-    private var lastRubberband: Long = Instant.now().toEpochMilli()
+    private var lastRubberband: Long = Instant.EPOCH.toEpochMilli()
 
     enum class State {
         FLYING, PRETAKEOFF, PAUSED, HOVER, FALLING
@@ -119,6 +119,7 @@ object ElytraFlight2b2t : Module(
             currentState = State.PAUSED
             timer.reset()
             shouldStartBoosting = false
+            lastRubberband = Instant.EPOCH.toEpochMilli()
         }
 
         onDisable {
@@ -255,7 +256,7 @@ object ElytraFlight2b2t : Module(
                         reEquipedElytra = false
 
                         if ((Instant.now().toEpochMilli() - lastRubberband < elytraLockFallDetectionTime.toLong()) && enableHoverRedeploy && elytraLockFallRedeploy) {
-                            if (mc.player.posY.toInt() - elytraLockFallOriginalHeight < 2) {
+                            if (mc.player.posY.toInt() - elytraLockFallRedeployFallHeight < 2) {
                                 MessageSendHelper.sendChatMessage("Not high enough for fall")
                                 currentState = State.PRETAKEOFF
                             } else {
