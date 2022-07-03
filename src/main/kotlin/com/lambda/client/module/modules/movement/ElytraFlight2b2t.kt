@@ -147,6 +147,9 @@ object ElytraFlight2b2t : Module(
                         MessageSendHelper.sendChatMessage("Equipped Elytra broken or almost broken")
                         disable()
                     }
+                    if (elytraReplaceModuleSwap && ElytraReplace.isDisabled) {
+                        ElytraReplace.enable()
+                    }
                     currentState = State.PRETAKEOFF
                 }
                 State.PRETAKEOFF -> {
