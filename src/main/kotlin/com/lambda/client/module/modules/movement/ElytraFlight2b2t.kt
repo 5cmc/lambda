@@ -47,13 +47,16 @@ object ElytraFlight2b2t : Module(
         description = "Attempt takeoff from midair using an elytra swap redeploy. " +
             "If this fails, try mid-air glide takeoff with this setting disabled.")
     private val elytraReplaceModuleSwap by setting ("ElytraReplace Swap", false, visibility = { enableHoverRedeploy })
-    private val equipDelay by setting("Elytra Swap equip delay", 5, 1..10, 1, visibility = { enableHoverRedeploy })
+    private val equipDelay by setting("Elytra Swap equip delay", 5, 1..10, 1, visibility = { enableHoverRedeploy && !elytraReplaceModuleSwap })
     private val hoverDelay by setting("Hover Pause", 40, 0..120, 1, visibility = { enableHoverRedeploy })
     private val minHoverTakeoffHeight by setting("Min Elytra Swap Takeoff Height", 0.5, 0.0..1.0, 0.01,
         visibility = { enableHoverRedeploy },
         description = "Minimum height from ground (m) to attempt an ElytraSwap hover deploy")
     private val rubberBandDetectionTime by setting("Rubberband Detection Time", 1320, 0..2000, 10,
         description = "Time period (ms) between which to detect rubberband teleports. Lower period = more sensitive.")
+    private val elytraLockFallRedeploy by setting("ElytraLock Escape Fall", false, visibility = { enableHoverRedeploy })
+    private val elytraLockFallRedeployFallHeight by setting("ElytraLock Fall Y", 10, 1..150, 1, visibility = { elytraLockFallRedeploy })
+    private val elytraLockFallDetectionTime by setting("ElytraLock Detection Time", 4100, 0..5000, 10, visibility = { elytraLockFallRedeploy })
     private val enablePauseOnSneak by setting("Pause Flight on Sneak", false,
         description = "Pause ongoing flight speed on pressing sneak keybind")
     private val enableBoost by setting("Enable boost", true,
@@ -69,8 +72,9 @@ object ElytraFlight2b2t : Module(
         description = "How much to multiply current speed by to calculate boost")
     private val pitch by setting("Pitch", -2.52, -5.0..-1.0, 0.0001,
         description = "Pitch to spoof during pretakeoff and flight. Default: -2.52.")
-    private val takeOffYVelocity by setting("Takeoff Y Velocity", -0.16976, -0.5..0.0, 0.0001,
-        description = "Y velocity (+- 0.05) required to trigger deploy. Edit this with caution. Default: -0.16976 aligns near to apex of a jump")
+    // moving this down to static var as its not rly changed and there's so many configs already
+//    private val takeOffYVelocity by setting("Takeoff Y Velocity", -0.16976, -0.5..0.0, 0.0001,
+//        description = "Y velocity (+- 0.05) required to trigger deploy. Edit this with caution. Default: -0.16976 aligns near to apex of a jump")
     private val initialFlightSpeed by setting("Initial Flight Speed", 40.2, 35.0..80.0, 0.01,
         description = "Speed to start at for first successful deployment (blocks per second / 2). Edit this with caution. Default: 40.2")
     private val redeploySpeedIncrease by setting("Redeploy Speed increase", 1.0, 0.0..5.0, 0.1,
@@ -78,6 +82,7 @@ object ElytraFlight2b2t : Module(
     private val redeploySpeedMax by setting("Redeploy Speed Max", 75.0, 40.0..200.0, 0.1,
         description = "Max redeploy speed (blocks per second / 2). Once this speed is reached redeploys will not increment speed.")
 
+    private const val takeOffYVelocity: Double = -0.16976
     private var currentState = State.PAUSED
     private var timer = TickTimer(TimeUnit.TICKS)
     private var currentFlightSpeed: Double = 40.2
@@ -97,9 +102,11 @@ object ElytraFlight2b2t : Module(
     private val equipTimer = TickTimer(TimeUnit.TICKS)
     private val hoverTimer = TickTimer(TimeUnit.TICKS)
     private var hasHoverPaused = false
+    private var elytraLockFallOriginalHeight: Int = 256
+    private var lastRubberband: Long = Instant.now().toEpochMilli()
 
     enum class State {
-        FLYING, PRETAKEOFF, PAUSED, HOVER
+        FLYING, PRETAKEOFF, PAUSED, HOVER, FALLING
     }
 
     override fun getHudInfo(): String {
@@ -211,6 +218,11 @@ object ElytraFlight2b2t : Module(
                         }
                     }
                 }
+                State.FALLING -> {
+                    if (mc.player.posY.toInt() <= elytraLockFallOriginalHeight - elytraLockFallRedeployFallHeight || mc.player.isElytraFlying) {
+                        currentState = State.PRETAKEOFF
+                    }
+                }
                 State.FLYING -> {
                     if (enableBoost) {
                         if (shouldStartBoosting) {
@@ -233,7 +245,27 @@ object ElytraFlight2b2t : Module(
                     timer.reset()
                     if (Instant.now().toEpochMilli() - lastSPacketPlayerPosLook < rubberBandDetectionTime.toLong()) {
                         LambdaMod.LOG.info("Rubberband detected")
-                        currentState = State.PRETAKEOFF
+                        resetFlightSpeed()
+                        shouldStartBoosting = false
+                        Companion.mc.timer.tickLength = 50.0f
+                        wasInLiquid = false
+                        isFlying = false
+                        shouldHover = false
+                        unequipedElytra = false
+                        reEquipedElytra = false
+
+                        if ((Instant.now().toEpochMilli() - lastRubberband < elytraLockFallDetectionTime.toLong()) && enableHoverRedeploy && elytraLockFallRedeploy) {
+                            if (mc.player.posY.toInt() - elytraLockFallOriginalHeight < 2) {
+                                MessageSendHelper.sendChatMessage("Not high enough for fall")
+                                currentState = State.PRETAKEOFF
+                            } else {
+                                elytraLockFallOriginalHeight = mc.player.posY.toInt()
+                                currentState = State.FALLING
+                            }
+                        } else {
+                            currentState = State.PRETAKEOFF
+                        }
+                        lastRubberband = Instant.now().toEpochMilli()
                     }
                     lastSPacketPlayerPosLook = Instant.now().toEpochMilli()
                 }
