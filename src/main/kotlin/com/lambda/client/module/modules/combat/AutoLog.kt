@@ -42,6 +42,8 @@ object AutoLog : Module(
     private val players by setting("Players", false)
     private val playerDistance by setting("Player Distance", 64, 32..128, 4, { players })
     private val friends by setting("Friends", false, { players })
+    private val yLevelEnable by setting("Y Disconnect", false)
+    private val yLevel by setting("Y Disconnect Level", 5, 1..256, 1, visibility = { yLevelEnable })
 
     @Suppress("UNUSED")
     private enum class DisableMode {
@@ -62,8 +64,13 @@ object AutoLog : Module(
                 players && checkPlayers() -> {
                     /* checkPlayer() does log() */
                 }
+                yLevelEnable && checkY() -> log(YLEVEL)
             }
         }
+    }
+
+    private fun checkY(): Boolean {
+        return mc.player.posY.toInt() <= yLevel
     }
 
     private fun SafeClientEvent.checkTotems(): Boolean {
@@ -124,10 +131,11 @@ object AutoLog : Module(
         END_CRYSTAL -> arrayOf("An end crystal was placed too close to you!",
             "It would have done more than ${MathUtils.round(num - healthAmount, 1)} damage!"
         )
+        YLEVEL -> arrayOf("Y Level went below ${yLevel}!")
     }
 
     private enum class Reasons {
-        HEALTH, TOTEM, CREEPER, PLAYER, END_CRYSTAL
+        HEALTH, TOTEM, CREEPER, PLAYER, END_CRYSTAL, YLEVEL
     }
 
     private fun totemMessage(amount: Int) = if (amount == 1) "one totem" else "$amount totems"
