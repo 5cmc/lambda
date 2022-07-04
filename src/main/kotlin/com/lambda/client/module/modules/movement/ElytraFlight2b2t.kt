@@ -94,7 +94,7 @@ object ElytraFlight2b2t : Module(
     private var isFlying: Boolean = false
     private var isStandingStill = false
     private var isStandingStillH: Boolean = false
-    private var lastSPacketPlayerPosLook: Long = Instant.now().toEpochMilli()
+    private var lastSPacketPlayerPosLook: Long = Long.MIN_VALUE
     private var unequipedElytra: Boolean = false
     private var shouldHover: Boolean = false
     private var reEquipedElytra: Boolean = false
@@ -103,7 +103,7 @@ object ElytraFlight2b2t : Module(
     private val hoverTimer = TickTimer(TimeUnit.TICKS)
     private var hasHoverPaused = false
     private var elytraLockFallOriginalHeight: Int = 256
-    private var lastRubberband: Long = Instant.EPOCH.toEpochMilli()
+    private var lastRubberband: Long = Long.MIN_VALUE
 
     enum class State {
         FLYING, PRETAKEOFF, PAUSED, HOVER, FALLING
@@ -119,7 +119,7 @@ object ElytraFlight2b2t : Module(
             currentState = State.PAUSED
             timer.reset()
             shouldStartBoosting = false
-            lastRubberband = Instant.EPOCH.toEpochMilli()
+            lastRubberband = Long.MIN_VALUE
         }
 
         onDisable {
@@ -156,7 +156,7 @@ object ElytraFlight2b2t : Module(
                         disable()
                     }
                     if (elytraReplaceModuleSwap && ElytraReplace.isDisabled) {
-                        ElytraReplace.enable()
+                        MessageSendHelper.sendChatMessage("ElytraReplace module is disabled but you have the setting enabled! Proceed with caution unless you have an alternate module like Future AutoArmor enabled!")
                     }
                     currentState = State.PRETAKEOFF
                 }
