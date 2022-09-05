@@ -3,7 +3,7 @@ package com.lambda.client.command.commands
 import com.lambda.client.command.ClientCommand
 import com.lambda.client.util.NetherPathFinderRenderer
 import com.lambda.client.util.text.MessageSendHelper
-import com.lambda.pathfinder.PathFinder
+import com.babbaj.pathfinder.PathFinder
 import net.minecraft.util.math.BlockPos
 import net.minecraftforge.common.MinecraftForge
 import java.util.*
@@ -42,7 +42,13 @@ object NetherPathfindCommand : ClientCommand(
         resetRenderer()
         pathFuture = executor.submit {
             val t1 = System.currentTimeMillis()
-            val longs: LongArray = PathFinder.pathFind(seed, false, true, mc.player.posX.toInt(), mc.player.posY.toInt(), mc.player.posZ.toInt(), x, 64, z)
+            var longs: LongArray = LongArray(0)
+            try {
+                longs = PathFinder.pathFind(seed, false, true, mc.player.posX.toInt(), mc.player.posY.toInt(), mc.player.posZ.toInt(), x, 64, z)
+            } catch (e: Throwable) {
+                MessageSendHelper.sendChatMessage("path find failed")
+            }
+
             // TODO: native code should check the interrupt flag and throw InterruptedException
             if (Thread.currentThread().isInterrupted) {
                 return@submit

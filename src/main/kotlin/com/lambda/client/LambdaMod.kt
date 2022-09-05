@@ -5,7 +5,7 @@ import com.lambda.client.gui.clickgui.LambdaClickGui
 import com.lambda.client.util.ConfigUtils
 import com.lambda.client.util.KamiCheck
 import com.lambda.client.util.threads.BackgroundScope
-import com.lambda.pathfinder.PathFinder
+import com.babbaj.pathfinder.PathFinder
 import net.minecraftforge.common.MinecraftForge
 import net.minecraftforge.fml.common.Mod
 import net.minecraftforge.fml.common.event.FMLInitializationEvent
@@ -90,7 +90,7 @@ class LambdaMod {
             val lol = System.mapLibraryName("uwu")
             val extension = lol.substring(lol.lastIndexOf('.'))
             val library = "native/libnether_pathfinder$extension"
-            val libraryStream: InputStream = PathFinder::class.java.getClassLoader().getResourceAsStream(library)!!
+            val libraryStream: InputStream = PathFinder::class.java.classLoader.getResourceAsStream(library)!!
             Objects.requireNonNull(libraryStream, "Failed to find pathfinder library ($library)")
             val tempName = System.mapLibraryName("nether_pathfinder_temp")
             val split = tempName.split("\\.".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
