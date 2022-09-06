@@ -52,55 +52,6 @@ object NetherPathfindCommand : ClientCommand(
         }
     }
 
-    private fun setSeed(newSeed: Long) {
-        this.seed = newSeed
-    }
-
-    private fun thisWay(dist: Int) {
-        resetAll()
-        val theta: Float = Math.toRadians(mc.player.rotationYawHead.toDouble()).toFloat()
-        val destX = (mc.player.posX - MathHelper.sin(theta) * dist).toInt()
-        val destZ = (mc.player.posZ + MathHelper.cos(theta) * dist).toInt()
-
-        val seed: Long = 146008555100680L
-        resetAll()
-        pathFuture = executor.submit {
-            val t1 = System.currentTimeMillis()
-            var longs: LongArray = LongArray(0)
-            try {
-                longs = PathFinder.pathFind(seed, false, true, mc.player.posX.toInt(), mc.player.posY.toInt(), mc.player.posZ.toInt(), destX, 64, destZ)
-            } catch (e: Throwable) {
-                MessageSendHelper.sendChatMessage("path find failed")
-            }
-
-            // TODO: native code should check the interrupt flag and throw InterruptedException
-            if (Thread.currentThread().isInterrupted) {
-                return@submit
-            }
-            val t2 = System.currentTimeMillis()
-            val path: MutableList<BlockPos> = Arrays.stream(longs).mapToObj { serialized: Long -> BlockPos.fromLong(serialized) }.collect(Collectors.toList())
-            mc.addScheduledTask {
-                registerRenderer(path)
-                pathFuture = null
-                scheduledFuture?.cancel(true)
-                scheduledFuture = scheduledExecutor.scheduleAtFixedRate({ scheduledGotoRepathCheck(path, destX, destZ) }, 5000, 5000, TimeUnit.MILLISECONDS)
-                MessageSendHelper.sendChatMessage(String.format("Found path in %.2f seconds", (t2 - t1) / 1000.0))
-            }
-        }
-
-    }
-
-    private fun cancel() {
-        resetAll()
-        MessageSendHelper.sendChatMessage("Cancelled pathing")
-    }
-
-    private fun resetAll() {
-        pathFuture?.cancel(true)
-        scheduledFuture?.cancel(true)
-        resetRenderer()
-    }
-
     private fun goto(x: Int, z: Int) {
         val seed: Long = 146008555100680L
         resetAll()
@@ -127,6 +78,53 @@ object NetherPathfindCommand : ClientCommand(
                 MessageSendHelper.sendChatMessage(String.format("Found path in %.2f seconds", (t2 - t1) / 1000.0))
             }
         }
+    }
+
+    private fun cancel() {
+        resetAll()
+        MessageSendHelper.sendChatMessage("Cancelled pathing")
+    }
+
+    private fun thisWay(dist: Int) {
+        resetAll()
+        val theta: Float = Math.toRadians(mc.player.rotationYawHead.toDouble()).toFloat()
+        val destX = (mc.player.posX - MathHelper.sin(theta) * dist).toInt()
+        val destZ = (mc.player.posZ + MathHelper.cos(theta) * dist).toInt()
+
+        val seed: Long = 146008555100680L
+        pathFuture = executor.submit {
+            val t1 = System.currentTimeMillis()
+            var longs: LongArray = LongArray(0)
+            try {
+                longs = PathFinder.pathFind(seed, false, true, mc.player.posX.toInt(), mc.player.posY.toInt(), mc.player.posZ.toInt(), destX, 64, destZ)
+            } catch (e: Throwable) {
+                MessageSendHelper.sendChatMessage("path find failed")
+            }
+
+            // TODO: native code should check the interrupt flag and throw InterruptedException
+            if (Thread.currentThread().isInterrupted) {
+                return@submit
+            }
+            val t2 = System.currentTimeMillis()
+            val path: MutableList<BlockPos> = Arrays.stream(longs).mapToObj { serialized: Long -> BlockPos.fromLong(serialized) }.collect(Collectors.toList())
+            mc.addScheduledTask {
+                registerRenderer(path)
+                pathFuture = null
+                scheduledFuture?.cancel(true)
+                scheduledFuture = scheduledExecutor.scheduleAtFixedRate({ scheduledGotoRepathCheck(path, destX, destZ) }, 5000, 5000, TimeUnit.MILLISECONDS)
+                MessageSendHelper.sendChatMessage(String.format("Found path in %.2f seconds", (t2 - t1) / 1000.0))
+            }
+        }
+    }
+
+    private fun setSeed(newSeed: Long) {
+        this.seed = newSeed
+    }
+
+    private fun resetAll() {
+        pathFuture?.cancel(true)
+        scheduledFuture?.cancel(true)
+        resetRenderer()
     }
 
     private fun scheduledGotoRepathCheck(path: MutableList<BlockPos>, destX: Int, destZ: Int) {
