@@ -7,7 +7,7 @@ buildscript {
         maven { url "https://plugins.gradle.org/m2/" }
     }
     dependencies {
-        classpath 'net.minecraftforge.gradle:ForgeGradle:5.+'
+        classpath 'net.minecraftforge.gradle:ForgeGradle:4.+'
         classpath 'org.spongepowered:mixingradle:0.7-SNAPSHOT'
         classpath 'com.github.jengelman.gradle.plugins:shadow:6.1.0'
         classpath "de.undercouch:gradle-download-task:5.1.0"
@@ -334,4 +334,5 @@ reobf {
 artifacts {
     shadowJar
 }
+jar.finalizedBy('reobfJar')
 
