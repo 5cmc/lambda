@@ -85,7 +85,7 @@ class LambdaMod {
         ready = true
     }
 
-    fun pathFinderInit() {
+    private fun pathFinderInit() {
         try {
             val lol = System.mapLibraryName("uwu")
             val extension = lol.substring(lol.lastIndexOf('.'))
@@ -110,7 +110,7 @@ class LambdaMod {
             }
             println("Loaded shared library")
         } catch (ex: Exception) {
-            throw RuntimeException(ex)
+            LOG.error("Failed linking nether pathfinder library, command will not function")
         }
     }
 }
