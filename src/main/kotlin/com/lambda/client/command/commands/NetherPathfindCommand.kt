@@ -60,7 +60,7 @@ object NetherPathfindCommand : ClientCommand(
         resetAll()
         val theta: Float = Math.toRadians(mc.player.rotationYawHead.toDouble()).toFloat()
         val destX = (mc.player.posX - MathHelper.sin(theta) * dist).toInt()
-        val destZ = (mc.player.posZ - MathHelper.cos(theta) * dist).toInt()
+        val destZ = (mc.player.posZ + MathHelper.cos(theta) * dist).toInt()
 
         val seed: Long = 146008555100680L
         resetAll()
