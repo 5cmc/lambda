@@ -89,8 +89,8 @@ class LambdaMod {
         try {
             val lol = System.mapLibraryName("uwu")
             val extension = lol.substring(lol.lastIndexOf('.'))
-            val library = "native/libnether_pathfinder$extension"
-            val libraryStream: InputStream = PathFinder::class.java.classLoader.getResourceAsStream(library)!!
+            val library = "libnether_pathfinder$extension"
+            val libraryStream: InputStream? = LambdaMod::class.java.classLoader.getResourceAsStream(library)
             Objects.requireNonNull(libraryStream, "Failed to find pathfinder library ($library)")
             val tempName = System.mapLibraryName("nether_pathfinder_temp")
             val split = tempName.split("\\.".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
