@@ -162,4 +162,9 @@ internal object ForgeEventProcessor {
     fun onRenderFogColors(event: EntityViewRenderEvent.FogColors) {
         LambdaEventBus.post(event)
     }
+
+    @SubscribeEvent
+    fun onCameraSetupEvent(event: EntityViewRenderEvent.CameraSetup) {
+        LambdaEventBus.post(event)
+    }
 }
