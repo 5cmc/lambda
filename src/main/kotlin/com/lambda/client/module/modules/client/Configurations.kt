@@ -45,6 +45,8 @@ internal object Configurations : AbstractModule(
     val serverPreset by setting("Server Preset", false)
     private val guiPresetSetting = setting("Gui Preset", defaultPreset)
     private val modulePresetSetting = setting("Module Preset", defaultPreset)
+    // todo: save hook on program quit or setting change
+    private val configSaveIntervalMs: Long = 10000L
 
     val guiPreset by guiPresetSetting
     val modulePreset by modulePresetSetting
@@ -53,7 +55,7 @@ internal object Configurations : AbstractModule(
     private var connected = false
 
     init {
-        BackgroundScope.launchLooping("Config Auto Saving", 60000L) {
+        BackgroundScope.launchLooping("Config Auto Saving", configSaveIntervalMs) {
             if (autoSaving && mc.currentScreen !is AbstractLambdaGui<*, *> && timer.tick(savingInterval.toLong())) {
                 if (savingFeedBack) MessageSendHelper.sendChatMessage("Auto saving settings...")
                 else LambdaMod.LOG.info("Auto saving settings...")
