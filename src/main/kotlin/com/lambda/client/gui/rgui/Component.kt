@@ -32,7 +32,7 @@ open class Component(
     protected val dockingVSetting = setting("Docking V", VAlign.TOP)
 
     private var widthSetting = setting("Width", widthIn, 0.0f..69420.911f, 0.1f, { false }, { _, it -> it.coerceIn(minWidth, max(scaledDisplayWidth, minWidth)) })
-    private var heightSetting = setting("Height", heightIn, 0.0f..69420.911f, 0.1f, { false }, { _, it -> it.coerceIn(minHeight, max(scaledDisplayHeight, minHeight)) })
+    private var heightSetting = setting("Height", heightIn, 0.0f..69420.911f, 0.1f, { false })
 
     private var relativePosXSetting = setting("Pos X", posXIn, -69420.911f..69420.911f, 0.1f, { false },
         { _, it -> if (this is WindowComponent && LambdaMod.ready) absToRelativeX(relativeToAbsX(it).coerceIn(1.0f, max(scaledDisplayWidth - width - 1.0f, 1.0f))) else it })

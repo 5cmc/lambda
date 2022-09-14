@@ -1,11 +1,9 @@
 package com.lambda.client
 
 import com.lambda.client.event.ForgeEventProcessor
-import com.lambda.client.gui.clickgui.LambdaClickGui
 import com.lambda.client.util.ConfigUtils
 import com.lambda.client.util.KamiCheck
 import com.lambda.client.util.threads.BackgroundScope
-import com.babbaj.pathfinder.PathFinder
 import net.minecraftforge.common.MinecraftForge
 import net.minecraftforge.fml.common.Mod
 import net.minecraftforge.fml.common.event.FMLInitializationEvent
@@ -73,7 +71,7 @@ class LambdaMod {
 
         BackgroundScope.start()
 
-        LambdaClickGui.populateRemotePlugins()
+//        LambdaClickGui.populateRemotePlugins()
 
         KamiCheck.runCheck()
 
