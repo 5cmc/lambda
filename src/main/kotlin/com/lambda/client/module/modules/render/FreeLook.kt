@@ -19,6 +19,8 @@ object FreeLook : Module(
 
     init {
         onEnable {
+            dYaw = 0.0f
+            dPitch = 0.0f
             thirdPersonBefore = mc.gameSettings.thirdPersonView
             mc.gameSettings.thirdPersonView = 1;
         }
@@ -42,7 +44,7 @@ object FreeLook : Module(
         return if (entity == player) {
             this.dYaw += (yaw * 0.15).toFloat()
             this.dPitch -= (pitch * 0.15).toFloat()
-            this.dPitch = MathHelper.clamp(this.dPitch, -90.0f, 90.0f)
+            this.dPitch = MathHelper.clamp(this.dPitch, -180.0f, 180.0f)
             ci.cancel()
             true
         } else {
