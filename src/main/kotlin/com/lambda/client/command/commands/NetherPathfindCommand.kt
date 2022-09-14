@@ -128,6 +128,9 @@ object NetherPathfindCommand : ClientCommand(
     }
 
     private fun scheduledGotoRepathCheck(path: MutableList<BlockPos>, destX: Int, destZ: Int) {
+        if (!isInNether()) {
+            return
+        }
         val playerCurPos: BlockPos = mc.player.position
         val anyClose: Boolean = path.any { it.distanceTo(playerCurPos) < 100.0 }
         if (!anyClose) {
@@ -162,5 +165,9 @@ object NetherPathfindCommand : ClientCommand(
         if (renderer != null) {
             MinecraftForge.EVENT_BUS.unregister(renderer)
         }
+    }
+
+    private fun isInNether(): Boolean {
+        return mc.world != null && mc.player.dimension == -1
     }
 }
