@@ -28,7 +28,9 @@ import net.minecraft.inventory.ClickType
 import net.minecraft.item.ItemElytra
 import net.minecraft.item.ItemStack
 import net.minecraft.network.play.client.CPacketEntityAction
+import net.minecraft.network.play.client.CPacketPlayer
 import net.minecraft.network.play.server.SPacketPlayerPosLook
+import net.minecraft.util.math.BlockPos
 import net.minecraftforge.client.event.InputUpdateEvent
 import net.minecraftforge.fml.common.gameevent.TickEvent
 import java.time.Instant
@@ -78,6 +80,7 @@ object ElytraFlight2b2t : Module(
         description = "Max flight speed (blocks per second / 2).")
     private val redeploySpeedDecreaseFactor by setting("Redeploy Speed Dec Factor", 1.1, 1.0..5.0, 0.01,
         description = "Decreases speed by a set factor during redeploys. Value is a divisor on current speed.")
+    private val avoidUnloaded by setting("Avoid Unloaded", true, description = "Preserves speed while flying into unloaded chunks")
 
     private const val takeOffYVelocity: Double = -0.16976
     private var currentState = State.PAUSED
@@ -102,6 +105,8 @@ object ElytraFlight2b2t : Module(
     private var lastRubberband: Long = Long.MIN_VALUE
     private var startedFlying: Boolean = false
     private var stoppedFlying: Boolean = false
+    private var nextBlockMoveLoaded: Boolean = true
+    private var motionPrev: Vec2f = Vec2f(0.0f, 0.0f)
 
     enum class State {
         FLYING, PRETAKEOFF, PAUSED, HOVER, FALLING
@@ -222,7 +227,7 @@ object ElytraFlight2b2t : Module(
                     if (enableBoost) {
                         if (shouldStartBoosting) {
                             if (timer.tick(ticksBetweenBoosts, true)) {
-                                setFlightSpeed(currentFlightSpeed * boostAcceleration)
+                                if (avoidUnloaded && nextBlockMoveLoaded) setFlightSpeed(currentFlightSpeed * boostAcceleration)
                             }
                         } else {
                             if (timer.tick(boostDelayTicks, true)) {
@@ -267,6 +272,12 @@ object ElytraFlight2b2t : Module(
             }
         }
 
+        safeAsyncListener<PacketEvent.Send> {
+            if (avoidUnloaded && !nextBlockMoveLoaded && it.packet is CPacketPlayer) {
+                it.cancel()
+            }
+        }
+
         safeListener<PlayerTravelEvent> {
             stateUpdate()
             if (currentState == State.FLYING) {
@@ -294,12 +305,28 @@ object ElytraFlight2b2t : Module(
             }
 
             if (currentState == State.FLYING) {
+                if (avoidUnloaded) {
+                    if (nextBlockMoveLoaded && !mc.world.isBlockLoaded(BlockPos(mc.player.posX + it.x, 1.0, mc.player.posZ + it.z), false)) {
+                        nextBlockMoveLoaded = false
+                        motionPrev = Vec2f(it.x, it.z)
+                        setSpeed(0.0)
+                        player.motionY = 0.0
+                        return@safeListener
+                    } else if (!nextBlockMoveLoaded) {
+                        if (!mc.world.isBlockLoaded(BlockPos(mc.player.posX + motionPrev.x, 1.0, mc.player.posZ + motionPrev.y), false)) {
+                            setSpeed(0.0)
+                            player.motionY = 0.0
+                            return@safeListener
+                        }
+                    }
+                }
                 setSpeed(currentFlightSpeed / 10.0)
                 player.motionY = 0.0
             } else if (shouldHover) {
                 setSpeed(0.0)
                 player.motionY = 0.0
             }
+            nextBlockMoveLoaded = true
         }
 
         safeListener<InputUpdateEvent> {
