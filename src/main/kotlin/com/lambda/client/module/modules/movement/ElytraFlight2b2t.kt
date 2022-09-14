@@ -72,21 +72,17 @@ object ElytraFlight2b2t : Module(
         description = "How much to multiply current speed by to calculate boost")
     private val pitch by setting("Pitch", -2.52, -5.0..-1.0, 0.0001,
         description = "Pitch to spoof during pretakeoff and flight. Default: -2.52.")
-    // moving this down to static var as its not rly changed and there's so many configs already
-//    private val takeOffYVelocity by setting("Takeoff Y Velocity", -0.16976, -0.5..0.0, 0.0001,
-//        description = "Y velocity (+- 0.05) required to trigger deploy. Edit this with caution. Default: -0.16976 aligns near to apex of a jump")
     private val initialFlightSpeed by setting("Initial Flight Speed", 40.2, 35.0..80.0, 0.01,
         description = "Speed to start at for first successful deployment (blocks per second / 2). Edit this with caution. Default: 40.2")
-    private val redeploySpeedIncrease by setting("Redeploy Speed increase", 1.0, 0.0..5.0, 0.1,
-        description = "How much speed to increment during redeploys (blocks per second / 2).")
-    private val redeploySpeedMax by setting("Redeploy Speed Max", 75.0, 40.0..200.0, 0.1,
-        description = "Max redeploy speed (blocks per second / 2). Once this speed is reached redeploys will not increment speed.")
+    private val speedMax by setting("Speed Max", 75.0, 40.0..200.0, 0.1,
+        description = "Max flight speed (blocks per second / 2).")
+    private val redeploySpeedDecreaseFactor by setting("Redeploy Speed Dec Factor", 1.1, 1.0..5.0, 0.01,
+        description = "Decreases speed by a set factor during redeploys. Value is a divisor on current speed.")
 
     private const val takeOffYVelocity: Double = -0.16976
     private var currentState = State.PAUSED
     private var timer = TickTimer(TimeUnit.TICKS)
     private var currentFlightSpeed: Double = 40.2
-    private var currentBaseFlightSpeed: Double = 40.2
     private var shouldStartBoosting: Boolean = false;
     private var elytraIsEquipped = false
     private var elytraDurability = 0
@@ -104,6 +100,8 @@ object ElytraFlight2b2t : Module(
     private var hasHoverPaused = false
     private var elytraLockFallOriginalHeight: Int = 256
     private var lastRubberband: Long = Long.MIN_VALUE
+    private var startedFlying: Boolean = false
+    private var stoppedFlying: Boolean = false
 
     enum class State {
         FLYING, PRETAKEOFF, PAUSED, HOVER, FALLING
@@ -151,20 +149,16 @@ object ElytraFlight2b2t : Module(
                         MessageSendHelper.sendChatMessage("No Elytra equipped")
                         disable()
                     }
-                    if (armorSlot.maxDamage <= 5) {
+                    if (armorSlot.maxDamage <= 1) {
                         MessageSendHelper.sendChatMessage("Equipped Elytra broken or almost broken")
                         disable()
-                    }
-                    if (elytraReplaceModuleSwap && ElytraReplace.isDisabled) {
-                        MessageSendHelper.sendChatMessage("ElytraReplace module is disabled but you have the setting enabled! Proceed with caution unless you have an alternate module like Future AutoArmor enabled!")
                     }
                     currentState = State.PRETAKEOFF
                 }
                 State.PRETAKEOFF -> {
                     mc.timer.tickLength = 50.0f
                     shouldStartBoosting = false
-                    setFlightSpeed(initialFlightSpeed)
-                    currentBaseFlightSpeed = initialFlightSpeed - redeploySpeedIncrease // we will increment this backup during takeoff
+                    resetFlightSpeed()
                     val notCloseToGround = player.posY >= world.getGroundPos(player).y + minHoverTakeoffHeight && !wasInLiquid
 
                     if ((withinRange(mc.player.motionY, takeOffYVelocity, 0.05)) && !mc.player.isElytraFlying) {
@@ -277,10 +271,11 @@ object ElytraFlight2b2t : Module(
             stateUpdate()
             if (currentState == State.FLYING) {
                 if (elytraIsEquipped && elytraDurability > 1) {
+                    if (stoppedFlying) {
+                        setFlightSpeed(currentFlightSpeed / redeploySpeedDecreaseFactor)
+                    }
                     if (!isFlying) {
                         takeoff(it)
-                        currentBaseFlightSpeed += redeploySpeedIncrease
-                        setFlightSpeed(min(currentBaseFlightSpeed, redeploySpeedMax))
                     } else {
                         mc.timer.tickLength = 50.0f
                         player.isSprinting = false
@@ -352,7 +347,7 @@ object ElytraFlight2b2t : Module(
     }
 
     private fun setFlightSpeed(speed: Double) {
-        currentFlightSpeed = speed
+        currentFlightSpeed = min(speed, speedMax)
     }
 
     private fun SafeClientEvent.stateUpdate() {
@@ -373,6 +368,8 @@ object ElytraFlight2b2t : Module(
         }
 
         /* Elytra flying status check */
+        startedFlying = !isFlying && player.isElytraFlying
+        stoppedFlying = isFlying && !player.isElytraFlying
         isFlying = player.isElytraFlying
 
         /* Movement input check */
