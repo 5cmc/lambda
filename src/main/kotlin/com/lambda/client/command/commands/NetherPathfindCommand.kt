@@ -93,6 +93,7 @@ object NetherPathfindCommand : ClientCommand(
 
     private fun setSeed(newSeed: Long) {
         this.seed = newSeed
+        MessageSendHelper.sendChatMessage(String.format("Seed set: %s", newSeed))
     }
 
     private fun resetAll() {
