@@ -233,7 +233,7 @@ object ElytraFlight2b2t : Module(
                     if (enableBoost) {
                         if (shouldStartBoosting) {
                             if (timer.tick(ticksBetweenBoosts, true)) {
-                                if (avoidUnloaded && nextBlockMoveLoaded) setFlightSpeed(currentFlightSpeed + boostSpeedIncrease)
+                                if (avoidUnloaded && nextBlockMoveLoaded && isFlying) setFlightSpeed(currentFlightSpeed + boostSpeedIncrease)
                             }
                         } else {
                             if (timer.tick(boostDelayTicks, true)) {
