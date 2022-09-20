@@ -6,6 +6,7 @@ import com.lambda.client.util.threads.safeListener
 import net.minecraft.entity.Entity
 import net.minecraft.util.math.MathHelper
 import net.minecraftforge.client.event.EntityViewRenderEvent
+import net.minecraftforge.client.event.InputUpdateEvent
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo
 
 object FreeLook : Module(
@@ -13,6 +14,10 @@ object FreeLook : Module(
     description = "Look Freely",
     category = Category.RENDER
 ) {
+    private val arrowKeyYawAdjust by setting("Arrow Key Yaw Adjust", false)
+    private val arrowKeyYawAdjustIncrement by setting("Yaw Adjust Increment", 1.0f, 0.001f..10.0f, 0.001f,
+        visibility = { arrowKeyYawAdjust });
+
     private var cameraYaw: Float = 0f
     private var cameraPitch: Float = 0f
     private var thirdPersonBefore: Int = 0
@@ -35,6 +40,27 @@ object FreeLook : Module(
                 it.pitch = cameraPitch
             }
         }
+
+        safeListener<InputUpdateEvent>(priority = 99999) {
+            if (arrowKeyYawAdjust) {
+                if (it.movementInput.leftKeyDown) {
+                    // shift cam and player rot left by x degrees
+                    updateYaw(-arrowKeyYawAdjustIncrement)
+                    it.movementInput.leftKeyDown = false
+                }
+                if (it.movementInput.rightKeyDown) {
+                    // shift cam and player rot right by x degrees
+                    updateYaw(arrowKeyYawAdjustIncrement)
+                    it.movementInput.rightKeyDown = false
+                }
+                it.movementInput.moveStrafe = 0.0f
+            }
+        }
+    }
+
+    private fun updateYaw(dYaw: Float) {
+        this.cameraYaw += dYaw
+        mc.player.rotationYaw += dYaw
     }
 
     @JvmStatic

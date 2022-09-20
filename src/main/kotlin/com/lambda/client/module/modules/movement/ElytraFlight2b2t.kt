@@ -344,6 +344,7 @@ object ElytraFlight2b2t : Module(
                 if (enablePauseOnSneak && mc.gameSettings.keyBindSneak.isKeyDown) {
                     return@safeListener
                 }
+                it.movementInput.moveStrafe = 0.0f
                 it.movementInput.moveForward = 1.0f
             }
         }
