@@ -13,16 +13,16 @@ object FreeLook : Module(
     description = "Look Freely",
     category = Category.RENDER
 ) {
-    private var dYaw: Float = 0f
-    private var dPitch: Float = 0f
+    private var cameraYaw: Float = 0f
+    private var cameraPitch: Float = 0f
     private var thirdPersonBefore: Int = 0
 
     init {
         onEnable {
-            dYaw = 0.0f
-            dPitch = 0.0f
             thirdPersonBefore = mc.gameSettings.thirdPersonView
             mc.gameSettings.thirdPersonView = 1;
+            cameraYaw = mc.player.rotationYaw + 180.0f
+            cameraPitch = mc.player.rotationPitch
         }
 
         onDisable {
@@ -31,8 +31,8 @@ object FreeLook : Module(
 
         safeListener<EntityViewRenderEvent.CameraSetup> {
             if (mc.gameSettings.thirdPersonView > 0) {
-                it.yaw += dYaw
-                it.pitch += dPitch
+                it.yaw = cameraYaw
+                it.pitch = cameraPitch
             }
         }
     }
@@ -42,9 +42,9 @@ object FreeLook : Module(
         if (isDisabled) return false
         val player = mc.player ?: return false
         return if (entity == player) {
-            this.dYaw += (yaw * 0.15).toFloat()
-            this.dPitch -= (pitch * 0.15).toFloat()
-            this.dPitch = MathHelper.clamp(this.dPitch, -180.0f, 180.0f)
+            this.cameraYaw += (yaw * 0.15).toFloat()
+            this.cameraPitch -= (pitch * 0.15).toFloat()
+            this.cameraPitch = MathHelper.clamp(this.cameraPitch, -180.0f, 180.0f)
             ci.cancel()
             true
         } else {
