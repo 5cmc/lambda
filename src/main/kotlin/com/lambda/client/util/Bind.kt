@@ -21,7 +21,7 @@ class Bind(
 
     private var cachedName = getName()
 
-    val isEmpty get() = key !in 1..255 && mouseKey == null
+    val isEmpty get() = key !in 1..255 && compareValues(mouseKey, 1) >= 0
 
     fun isDown(eventKey: Int): Boolean {
         return eventKey != 0
@@ -31,7 +31,7 @@ class Bind(
     }
 
     fun isMouseDown(eventKey: Int): Boolean {
-        return eventKey > 2
+        return eventKey > 1
             && !isEmpty
             && mouseKey == eventKey
     }
@@ -85,7 +85,7 @@ class Bind(
             modifierKeys.clear()
             modifierKeys.addAll(modifierKeysIn)
             key = keyIn
-            mouseKey = 0
+            mouseKey = null
             cachedName = getName()
         }
     }
