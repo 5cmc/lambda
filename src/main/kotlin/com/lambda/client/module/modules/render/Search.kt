@@ -2,6 +2,7 @@ package com.lambda.client.module.modules.render
 
 import com.lambda.client.command.CommandManager
 import com.lambda.client.event.SafeClientEvent
+import com.lambda.client.event.events.PacketEvent
 import com.lambda.client.event.events.RenderWorldEvent
 import com.lambda.client.module.Category
 import com.lambda.client.module.Module
@@ -15,19 +16,24 @@ import com.lambda.client.util.math.VectorUtils.distanceTo
 import com.lambda.client.util.text.MessageSendHelper
 import com.lambda.client.util.text.formatValue
 import com.lambda.client.util.threads.defaultScope
+import com.lambda.client.util.threads.safeAsyncListener
 import com.lambda.client.util.threads.safeListener
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import net.minecraft.block.state.IBlockState
 import net.minecraft.init.Blocks
+import net.minecraft.network.play.server.SPacketBlockChange
+import net.minecraft.network.play.server.SPacketMultiBlockChange
 import net.minecraft.util.math.AxisAlignedBB
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.ChunkPos
-import net.minecraft.util.math.Vec3d
 import net.minecraft.world.chunk.Chunk
-import java.util.*
+import net.minecraftforge.event.world.ChunkEvent
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ConcurrentMap
 import kotlin.collections.set
+import kotlin.math.max
 
 object Search : Module(
     name = "Search",
@@ -37,7 +43,7 @@ object Search : Module(
     private val defaultSearchList = linkedSetOf("minecraft:portal", "minecraft:end_portal_frame", "minecraft:bed")
 
     private val updateDelay by setting("Update Delay", 1000, 500..3000, 50)
-    private val range by setting("Search Range", 128, 0..256, 8)
+    private val range by setting("Search Range", 1000, 0..4096, 8)
     private val yRangeBottom by setting("Top Y", 256, 0..256, 1)
     private val yRangeTop by setting("Bottom Y", 0, 0..256, 1)
     private val maximumBlocks by setting("Maximum Blocks", 256, 16..4096, 128)
@@ -56,6 +62,7 @@ object Search : Module(
 
     private val renderer = ESPRenderer()
     private val updateTimer = TickTimer()
+    private val foundBlockMap: ConcurrentMap<BlockPos, IBlockState> = ConcurrentHashMap()
 
     override fun getHudInfo(): String {
         return renderer.size.toString()
@@ -69,6 +76,12 @@ object Search : Module(
                 disable()
                 return@onEnable
             }
+            searchAllLoadedChunks()
+        }
+
+        onDisable {
+            renderer.clear()
+            foundBlockMap.clear()
         }
 
         safeListener<RenderWorldEvent> {
@@ -78,29 +91,72 @@ object Search : Module(
                 updateRenderer()
             }
         }
+
+        safeAsyncListener<ChunkEvent.Load> {
+            val foundBlocksInChunk = findBlocksInChunk(it.chunk)
+            foundBlocksInChunk.forEach { block -> foundBlockMap[block.first] = block.second }
+        }
+
+        safeAsyncListener<PacketEvent.Receive> {
+            if (it.packet is SPacketMultiBlockChange) {
+                it.packet.changedBlocks.forEach { changedBlock -> handleBlockChange(changedBlock.pos, changedBlock.blockState) }
+            }
+            if (it.packet is SPacketBlockChange) {
+                handleBlockChange(it.packet.blockPosition, it.packet.getBlockState())
+            }
+        }
+    }
+
+    private fun searchAllLoadedChunks() {
+        val renderDist = mc.gameSettings.renderDistanceChunks
+        val playerChunkPos = ChunkPos(mc.player.position)
+        val chunkPos1 = ChunkPos(playerChunkPos.x - renderDist, playerChunkPos.z - renderDist)
+        val chunkPos2 = ChunkPos(playerChunkPos.x + renderDist, playerChunkPos.z + renderDist)
+
+        defaultScope.launch {
+            coroutineScope {
+                for (x in chunkPos1.x..chunkPos2.x) for (z in chunkPos1.z..chunkPos2.z) {
+                    val chunk = mc.world.getChunk(x, z)
+                    if (!chunk.isLoaded) continue
+
+                    launch {
+                        findBlocksInChunk(chunk).forEach { pair -> foundBlockMap[pair.first] = pair.second }
+                    }
+                    delay(1L)
+                }
+            }
+        }
+    }
+
+    private fun handleBlockChange(pos: BlockPos, state: IBlockState) {
+        if (searchQuery(state)) {
+            foundBlockMap[pos] = state
+        }
     }
 
     private fun SafeClientEvent.updateRenderer() {
         defaultScope.launch {
-            val posMap = TreeMap<Double, Pair<BlockPos, IBlockState>>()
+            val playerPos = mc.player.position
+            // unload rendering on block pos > range
+            foundBlockMap
+                .filter { entry -> playerPos.distanceTo(entry.key) > max(mc.gameSettings.renderDistanceChunks * 16, range) }
+                .map { entry -> entry.key }
+                .forEach { pos -> foundBlockMap.remove(pos) }
+            val eyePos = player.getPositionEyes(1f)
+            val sortedFoundBlocks = foundBlockMap
+                .map { entry -> (eyePos.distanceTo(entry.key) to entry.key) }
+                .filter { pair -> pair.first < range }
+                .toList()
 
-            coroutineScope {
-                launch {
-                    updateAlpha()
-                }
-                launch {
-                    val eyePos = player.getPositionEyes(1f)
-                    getBlockPosList(eyePos, posMap)
-                }
-            }
+            updateAlpha()
 
             val renderList = ArrayList<Triple<AxisAlignedBB, ColorHolder, Int>>()
             val sides = GeometryMasks.Quad.ALL
 
-            for ((index, pair) in posMap.values.withIndex()) {
-                if (index >= maximumBlocks) break
-                val bb = pair.second.getSelectedBoundingBox(world, pair.first)
-                val color = getBlockColor(pair.first, pair.second)
+            sortedFoundBlocks.forEachIndexed { index, pair ->
+                if (index >= maximumBlocks) return@forEachIndexed
+                val bb = foundBlockMap[pair.second]!!.getSelectedBoundingBox(world, pair.second)
+                val color = getBlockColor(pair.second, foundBlockMap[pair.second]!!)
 
                 renderList.add(Triple(bb, color, sides))
             }
@@ -116,49 +172,24 @@ object Search : Module(
         renderer.thickness = thickness
     }
 
-    private suspend fun SafeClientEvent.getBlockPosList(
-        eyePos: Vec3d,
-        map: MutableMap<Double, Pair<BlockPos, IBlockState>>
-    ) {
-        val renderDist = mc.gameSettings.renderDistanceChunks
-        val playerChunkPos = ChunkPos(player.position)
-        val chunkPos1 = ChunkPos(playerChunkPos.x - renderDist, playerChunkPos.z - renderDist)
-        val chunkPos2 = ChunkPos(playerChunkPos.x + renderDist, playerChunkPos.z + renderDist)
-
-        coroutineScope {
-            for (x in chunkPos1.x..chunkPos2.x) for (z in chunkPos1.z..chunkPos2.z) {
-                val chunk = world.getChunk(x, z)
-                if (!chunk.isLoaded) continue
-                if (player.distanceTo(chunk.pos) > range + 16) continue
-
-                launch {
-                    findBlocksInChunk(chunk, eyePos, map)
-                }
-                delay(1L)
-            }
-        }
-    }
-
-    private fun findBlocksInChunk(chunk: Chunk, eyePos: Vec3d, map: MutableMap<Double, Pair<BlockPos, IBlockState>>) {
+    private fun findBlocksInChunk(chunk: Chunk): ArrayList<Pair<BlockPos, IBlockState>> {
         val yRange = yRangeTop..yRangeBottom
         val xRange = (chunk.x shl 4)..(chunk.x shl 4) + 15
         val zRange = (chunk.z shl 4)..(chunk.z shl 4) + 15
 
+        val blocks: ArrayList<Pair<BlockPos, IBlockState>> = ArrayList()
         for (y in yRange) for (x in xRange) for (z in zRange) {
             val pos = BlockPos(x, y, z)
             val blockState = chunk.getBlockState(pos)
-            val block = blockState.block
-
-            if (block == Blocks.AIR) continue
-            if (!searchList.contains(block.registryName.toString())) continue
-
-            val dist = eyePos.distanceTo(pos)
-            if (dist > range) continue
-
-            synchronized(map) {
-                map[dist] = (pos to blockState)
-            }
+            if (searchQuery(blockState)) blocks.add((pos to blockState))
         }
+        return blocks
+    }
+
+    private fun searchQuery(state: IBlockState): Boolean {
+        val block = state.block
+        if (block == Blocks.AIR) return false
+        return searchList.contains(block.registryName.toString())
     }
 
     private fun SafeClientEvent.getBlockColor(pos: BlockPos, blockState: IBlockState): ColorHolder {
