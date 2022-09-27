@@ -69,6 +69,13 @@ object Search : Module(
     }
 
     init {
+        searchList.editListeners.add {
+            foundBlockMap.entries
+                .filterNot { searchList.contains(it.value.block.registryName.toString()) }
+                .forEach { foundBlockMap.remove(it.key) }
+            if (isEnabled) searchAllLoadedChunks()
+        }
+
         onEnable {
             if (!overrideWarning && ShaderHelper.isIntegratedGraphics) {
                 MessageSendHelper.sendErrorMessage("$chatName Warning: Running Search with an Intel Integrated GPU is not recommended, as it has a &llarge&r impact on performance.")

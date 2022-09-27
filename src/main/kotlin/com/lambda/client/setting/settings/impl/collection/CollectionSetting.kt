@@ -32,6 +32,7 @@ class CollectionSetting<E : Any, T : MutableCollection<E>>(
         synchronized(lockObject) {
             value.clear()
             value.addAll(defaultValue)
+            editListeners.forEach { it.invoke() }
         }
     }
 

@@ -42,9 +42,10 @@ object SearchCommand : ClientCommand(
                 execute("Remove a block from search list") {
                     val blockName = blockArg.value.registryName.toString()
 
-                    if (!Search.searchList.remove(blockName)) {
+                    if (!Search.searchList.contains(blockName)) {
                         MessageSendHelper.sendErrorMessage("You do not have ${formatValue(blockName)} added to search block list")
                     } else {
+                        Search.searchList.editValue { it.remove(blockName) }
                         MessageSendHelper.sendChatMessage("Removed ${formatValue(blockName)} from search block list")
                     }
                 }
@@ -56,8 +57,10 @@ object SearchCommand : ClientCommand(
                 execute("Set the search list to one block") {
                     val blockName = blockArg.value.registryName.toString()
 
-                    Search.searchList.clear()
-                    Search.searchList.add(blockName)
+                    Search.searchList.editValue {
+                        it.clear()
+                        it.add(blockName)
+                    }
                     MessageSendHelper.sendChatMessage("Set the search block list to ${formatValue(blockName)}")
                 }
             }
@@ -78,7 +81,7 @@ object SearchCommand : ClientCommand(
 
         literal("clear") {
             execute("Set the search list to nothing") {
-                Search.searchList.clear()
+                Search.searchList.editValue { it.clear() }
                 MessageSendHelper.sendChatMessage("Cleared the search block list")
             }
         }
@@ -97,9 +100,10 @@ object SearchCommand : ClientCommand(
             return
         }
 
-        if (!Search.searchList.add(blockName)) {
+        if (Search.searchList.contains(blockName)) {
             MessageSendHelper.sendErrorMessage("${formatValue(blockName)} is already added to the search block list")
         } else {
+            Search.searchList.editValue { it.add(blockName) }
             MessageSendHelper.sendChatMessage("${formatValue(blockName)} has been added to the search block list")
         }
     }
