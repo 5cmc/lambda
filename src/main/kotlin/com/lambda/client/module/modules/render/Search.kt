@@ -2,6 +2,8 @@ package com.lambda.client.module.modules.render
 
 import com.lambda.client.command.CommandManager
 import com.lambda.client.event.SafeClientEvent
+import com.lambda.client.event.events.ChunkDataEvent
+import com.lambda.client.event.events.ConnectionEvent
 import com.lambda.client.event.events.PacketEvent
 import com.lambda.client.event.events.RenderWorldEvent
 import com.lambda.client.module.Category
@@ -29,7 +31,6 @@ import net.minecraft.util.math.AxisAlignedBB
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.ChunkPos
 import net.minecraft.world.chunk.Chunk
-import net.minecraftforge.event.world.ChunkEvent
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentMap
 import kotlin.collections.set
@@ -99,7 +100,7 @@ object Search : Module(
             }
         }
 
-        safeAsyncListener<ChunkEvent.Load> {
+        safeAsyncListener<ChunkDataEvent> {
             val foundBlocksInChunk = findBlocksInChunk(it.chunk)
             foundBlocksInChunk.forEach { block -> foundBlockMap[block.first] = block.second }
         }
@@ -110,6 +111,13 @@ object Search : Module(
             }
             if (it.packet is SPacketBlockChange) {
                 handleBlockChange(it.packet.blockPosition, it.packet.getBlockState())
+            }
+        }
+
+        safeAsyncListener<ConnectionEvent.Disconnect> {
+            if (isEnabled) {
+                renderer.clear()
+                foundBlockMap.clear()
             }
         }
     }
@@ -138,6 +146,8 @@ object Search : Module(
     private fun handleBlockChange(pos: BlockPos, state: IBlockState) {
         if (searchQuery(state)) {
             foundBlockMap[pos] = state
+        } else {
+            foundBlockMap.remove(pos)
         }
     }
 
