@@ -35,6 +35,17 @@ object SearchCommand : ClientCommand(
                     }
                 }
             }
+            entity("entity") { entityArg ->
+                execute("Add an entity to search list") {
+                    val entityName = entityArg.value
+                    if (Search.entitySearchList.contains(entityName)) {
+                        MessageSendHelper.sendChatMessage("$entityName is already added to search list")
+                        return@execute
+                    }
+                    Search.entitySearchList.editValue { it.add(entityName) }
+                    MessageSendHelper.sendChatMessage("$entityName has been added to search list")
+                }
+            }
         }
 
         literal("remove", "-") {
@@ -42,12 +53,19 @@ object SearchCommand : ClientCommand(
                 execute("Remove a block from search list") {
                     val blockName = blockArg.value.registryName.toString()
 
-                    if (!Search.searchList.contains(blockName)) {
+                    if (!Search.blockSearchList.contains(blockName)) {
                         MessageSendHelper.sendErrorMessage("You do not have ${formatValue(blockName)} added to search block list")
                     } else {
-                        Search.searchList.editValue { it.remove(blockName) }
+                        Search.blockSearchList.editValue { it.remove(blockName) }
                         MessageSendHelper.sendChatMessage("Removed ${formatValue(blockName)} from search block list")
                     }
+                }
+            }
+            entity("entity") { entityArg ->
+                execute("Remove an entity from search list") {
+                    val entityName = entityArg.value
+                    Search.entitySearchList.editValue { it.remove(entityName) }
+                    MessageSendHelper.sendChatMessage("Removed $entityName from search list")
                 }
             }
         }
@@ -57,31 +75,44 @@ object SearchCommand : ClientCommand(
                 execute("Set the search list to one block") {
                     val blockName = blockArg.value.registryName.toString()
 
-                    Search.searchList.editValue {
+                    Search.blockSearchList.editValue {
                         it.clear()
                         it.add(blockName)
                     }
                     MessageSendHelper.sendChatMessage("Set the search block list to ${formatValue(blockName)}")
                 }
             }
+            entity("entity") { entityArg ->
+                execute("Sets the search list to one entity") {
+                    val entityName = entityArg.value
+                    Search.entitySearchList.editValue {
+                        it.clear()
+                        it.add(entityName)
+                    }
+                    MessageSendHelper.sendChatMessage("Set the entity search list to $entityName")
+                }
+            }
         }
 
         literal("reset", "default") {
             execute("Reset the search list to defaults") {
-                Search.searchList.resetValue()
-                MessageSendHelper.sendChatMessage("Reset the search block list to defaults")
+                Search.blockSearchList.resetValue()
+                Search.entitySearchList.resetValue()
+                MessageSendHelper.sendChatMessage("Reset the search list to defaults")
             }
         }
 
         literal("list") {
             execute("Print search list") {
-                MessageSendHelper.sendChatMessage(Search.searchList.joinToString())
+                MessageSendHelper.sendChatMessage("Blocks: ${Search.blockSearchList.joinToString()}")
+                MessageSendHelper.sendChatMessage("Entities ${Search.entitySearchList.joinToString()}")
             }
         }
 
         literal("clear") {
             execute("Set the search list to nothing") {
-                Search.searchList.editValue { it.clear() }
+                Search.blockSearchList.editValue { it.clear() }
+                Search.entitySearchList.editValue { it.clear() }
                 MessageSendHelper.sendChatMessage("Cleared the search block list")
             }
         }
@@ -100,10 +131,10 @@ object SearchCommand : ClientCommand(
             return
         }
 
-        if (Search.searchList.contains(blockName)) {
+        if (Search.blockSearchList.contains(blockName)) {
             MessageSendHelper.sendErrorMessage("${formatValue(blockName)} is already added to the search block list")
         } else {
-            Search.searchList.editValue { it.add(blockName) }
+            Search.blockSearchList.editValue { it.add(blockName) }
             MessageSendHelper.sendChatMessage("${formatValue(blockName)} has been added to the search block list")
         }
     }

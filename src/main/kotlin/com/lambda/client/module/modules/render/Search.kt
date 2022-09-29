@@ -9,7 +9,6 @@ import com.lambda.client.event.events.RenderWorldEvent
 import com.lambda.client.module.Category
 import com.lambda.client.module.Module
 import com.lambda.client.setting.settings.impl.collection.CollectionSetting
-import com.lambda.client.util.TickTimer
 import com.lambda.client.util.color.ColorHolder
 import com.lambda.client.util.graphics.ESPRenderer
 import com.lambda.client.util.graphics.GeometryMasks
@@ -24,10 +23,11 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import net.minecraft.block.state.IBlockState
+import net.minecraft.entity.EntityList
+import net.minecraft.entity.item.EntityItemFrame
 import net.minecraft.init.Blocks
 import net.minecraft.network.play.server.SPacketBlockChange
 import net.minecraft.network.play.server.SPacketMultiBlockChange
-import net.minecraft.util.math.AxisAlignedBB
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.ChunkPos
 import net.minecraft.world.chunk.Chunk
@@ -43,36 +43,40 @@ object Search : Module(
 ) {
     private val defaultSearchList = linkedSetOf("minecraft:portal", "minecraft:end_portal_frame", "minecraft:bed")
 
-    private val updateDelay by setting("Update Delay", 1000, 500..3000, 50)
+    private val entitySearch by setting("Entity Search", true)
+    private val blockSearch by setting("Block Search", true)
     private val range by setting("Search Range", 1000, 0..4096, 8)
     private val yRangeBottom by setting("Top Y", 256, 0..256, 1)
     private val yRangeTop by setting("Bottom Y", 0, 0..256, 1)
-    private val maximumBlocks by setting("Maximum Blocks", 256, 16..4096, 128)
+    private val maximumBlocks by setting("Maximum Blocks", 256, 1..4096, 128, visibility = { blockSearch })
+    private val maximumEntities by setting("Maximum Entities", 256, 1..4096, 128, visibility = { entitySearch })
     private val filled by setting("Filled", true)
     private val outline by setting("Outline", true)
     private val tracer by setting("Tracer", true)
-    private val customColors by setting("Custom Colors", false)
-    private val customColor by setting("Custom Color", ColorHolder(155, 144, 255), visibility = { customColors })
+    private val entitySearchColor by setting("Entity Search Color", ColorHolder(155, 144, 255), visibility = { entitySearch })
+    private val autoBlockColor by setting("Block Search Auto Color", true)
+    private val customBlockColor by setting("Block Search Custom Color", ColorHolder(155, 144, 255), visibility = { !autoBlockColor })
     private val aFilled by setting("Filled Alpha", 31, 0..255, 1, { filled })
     private val aOutline by setting("Outline Alpha", 127, 0..255, 1, { outline })
     private val aTracer by setting("Tracer Alpha", 200, 0..255, 1, { tracer })
     private val thickness by setting("Line Thickness", 2.0f, 0.25f..5.0f, 0.25f)
 
     var overrideWarning by setting("Override Warning", false, { false })
-    val searchList = setting(CollectionSetting("Search List", defaultSearchList, { false }))
+    val blockSearchList = setting(CollectionSetting("Search List", defaultSearchList, { false }))
+    val entitySearchList = setting(CollectionSetting("Entity Search List", linkedSetOf(EntityList.getKey((EntityItemFrame::class.java))!!.path), { false }))
 
-    private val renderer = ESPRenderer()
-    private val updateTimer = TickTimer()
+    private val blockRenderer = ESPRenderer()
+    private val entityRenderer = ESPRenderer()
     private val foundBlockMap: ConcurrentMap<BlockPos, IBlockState> = ConcurrentHashMap()
 
     override fun getHudInfo(): String {
-        return renderer.size.toString()
+        return blockRenderer.size.toString()
     }
 
     init {
-        searchList.editListeners.add {
+        blockSearchList.editListeners.add {
             foundBlockMap.entries
-                .filterNot { searchList.contains(it.value.block.registryName.toString()) }
+                .filterNot { blockSearchList.contains(it.value.block.registryName.toString()) }
                 .forEach { foundBlockMap.remove(it.key) }
             if (isEnabled) searchAllLoadedChunks()
         }
@@ -82,21 +86,24 @@ object Search : Module(
                 MessageSendHelper.sendErrorMessage("$chatName Warning: Running Search with an Intel Integrated GPU is not recommended, as it has a &llarge&r impact on performance.")
                 MessageSendHelper.sendWarningMessage("$chatName If you're sure you want to try, run the ${formatValue("${CommandManager.prefix}search override")} command")
                 disable()
-                return@onEnable
+            } else {
+                searchAllLoadedChunks()
             }
-            searchAllLoadedChunks()
         }
 
         onDisable {
-            renderer.clear()
+            blockRenderer.clear()
             foundBlockMap.clear()
         }
 
         safeListener<RenderWorldEvent> {
-            renderer.render(false)
-
-            if (updateTimer.tick(updateDelay.toLong())) {
-                updateRenderer()
+            if (blockSearch) {
+                blockRenderUpdate()
+                blockRenderer.render(true)
+            }
+            if (entitySearch) {
+                searchLoadedEntities()
+                entityRenderer.render(true)
             }
         }
 
@@ -116,10 +123,23 @@ object Search : Module(
 
         safeAsyncListener<ConnectionEvent.Disconnect> {
             if (isEnabled) {
-                renderer.clear()
+                blockRenderer.clear()
+                entityRenderer.clear()
                 foundBlockMap.clear()
             }
         }
+    }
+
+    private fun searchLoadedEntities() {
+        mc.world.getLoadedEntityList()
+            .filter {
+                val entityName: String? = EntityList.getKey(it)?.path
+                return@filter if (entityName != null) entitySearchList.contains(entityName) else false
+            }
+            .sortedBy { it.distanceTo(mc.player.getPositionEyes(1f)) }
+            .take(maximumEntities)
+            .filter { it.distanceTo(mc.player.getPositionEyes(1f)) < range }
+            .forEach { entityRenderer.add(it, entitySearchColor) }
     }
 
     private fun searchAllLoadedChunks() {
@@ -151,42 +171,39 @@ object Search : Module(
         }
     }
 
-    private fun SafeClientEvent.updateRenderer() {
-        defaultScope.launch {
-            val playerPos = mc.player.position
-            // unload rendering on block pos > range
-            foundBlockMap
-                .filter { entry -> playerPos.distanceTo(entry.key) > max(mc.gameSettings.renderDistanceChunks * 16, range) }
-                .map { entry -> entry.key }
-                .forEach { pos -> foundBlockMap.remove(pos) }
-            val eyePos = player.getPositionEyes(1f)
-            val sortedFoundBlocks = foundBlockMap
-                .map { entry -> (eyePos.distanceTo(entry.key) to entry.key) }
-                .filter { pair -> pair.first < range }
-                .toList()
+    private fun SafeClientEvent.blockRenderUpdate() {
+        val playerPos = mc.player.position
+        // unload rendering on block pos > range
+        foundBlockMap
+            .filter { entry -> playerPos.distanceTo(entry.key) > max(mc.gameSettings.renderDistanceChunks * 16, range) }
+            .map { entry -> entry.key }
+            .forEach { pos -> foundBlockMap.remove(pos) }
+        val eyePos = player.getPositionEyes(1f)
+        val sortedFoundBlocks = foundBlockMap
+            .map { entry -> (eyePos.distanceTo(entry.key) to entry.key) }
+            .filter { pair -> pair.first < range }
+            .toList()
 
-            updateAlpha()
+        updateAlpha()
 
-            val renderList = ArrayList<Triple<AxisAlignedBB, ColorHolder, Int>>()
-            val sides = GeometryMasks.Quad.ALL
+        sortedFoundBlocks.forEachIndexed { index, pair ->
+            if (index >= maximumBlocks) return@forEachIndexed
+            val bb = foundBlockMap[pair.second]!!.getSelectedBoundingBox(world, pair.second)
+            val color = getBlockColor(pair.second, foundBlockMap[pair.second]!!)
 
-            sortedFoundBlocks.forEachIndexed { index, pair ->
-                if (index >= maximumBlocks) return@forEachIndexed
-                val bb = foundBlockMap[pair.second]!!.getSelectedBoundingBox(world, pair.second)
-                val color = getBlockColor(pair.second, foundBlockMap[pair.second]!!)
-
-                renderList.add(Triple(bb, color, sides))
-            }
-
-            renderer.replaceAll(renderList)
+            blockRenderer.add(Triple(bb, color, GeometryMasks.Quad.ALL))
         }
     }
 
     private fun updateAlpha() {
-        renderer.aFilled = if (filled) aFilled else 0
-        renderer.aOutline = if (outline) aOutline else 0
-        renderer.aTracer = if (tracer) aTracer else 0
-        renderer.thickness = thickness
+        blockRenderer.aFilled = if (filled) aFilled else 0
+        blockRenderer.aOutline = if (outline) aOutline else 0
+        blockRenderer.aTracer = if (tracer) aTracer else 0
+        blockRenderer.thickness = thickness
+        entityRenderer.aFilled = if (filled) aFilled else 0
+        entityRenderer.aOutline = if (outline) aOutline else 0
+        entityRenderer.aTracer = if (tracer) aTracer else 0
+        entityRenderer.thickness = thickness
     }
 
     private fun findBlocksInChunk(chunk: Chunk): ArrayList<Pair<BlockPos, IBlockState>> {
@@ -206,13 +223,13 @@ object Search : Module(
     private fun searchQuery(state: IBlockState): Boolean {
         val block = state.block
         if (block == Blocks.AIR) return false
-        return searchList.contains(block.registryName.toString())
+        return blockSearchList.contains(block.registryName.toString())
     }
 
     private fun SafeClientEvent.getBlockColor(pos: BlockPos, blockState: IBlockState): ColorHolder {
         val block = blockState.block
 
-        return if (!customColors) {
+        return if (autoBlockColor) {
             if (block == Blocks.PORTAL) {
                 ColorHolder(82, 49, 153)
             } else {
@@ -220,7 +237,7 @@ object Search : Module(
                 ColorHolder((colorInt shr 16), (colorInt shr 8 and 255), (colorInt and 255))
             }
         } else {
-            customColor
+            customBlockColor
         }
     }
 

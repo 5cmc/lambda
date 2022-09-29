@@ -1,5 +1,6 @@
 package com.lambda.client.command
 
+import com.lambda.client.LambdaMod
 import com.lambda.client.capeapi.PlayerProfile
 import com.lambda.client.command.args.AbstractArg
 import com.lambda.client.command.args.AutoComplete
@@ -14,6 +15,8 @@ import com.lambda.client.util.*
 import com.lambda.client.util.threads.runSafeR
 import kotlinx.coroutines.Dispatchers
 import net.minecraft.block.Block
+import net.minecraft.entity.Entity
+import net.minecraft.entity.EntityList
 import net.minecraft.item.Item
 import net.minecraft.util.math.BlockPos
 import java.io.File
@@ -93,6 +96,31 @@ class BlockArg(
         }
     }
 }
+
+class EntityArg(
+    override val name: String
+) : AbstractArg<String>(), AutoComplete by StaticPrefixMatch(allEntityNames) {
+    override suspend fun convertToType(string: String?): String? {
+        if (string == null) return null
+        // checks if a valid entity class is registered with this name
+        return if (EntityList.getClassFromName(string) != null) string else null
+    }
+
+    private companion object {
+        val allEntityNames = ArrayList<String>().apply {
+            EntityList.getEntityNameList().forEach {
+                try {
+                    add(it.path)
+                } catch (ex: Exception) {
+                    // do nothing
+                    // expected for certain entities like lighting bolt which don't have corresponding entity classes
+                    LambdaMod.LOG.error("Entity arg register failed for path: ${it.path}")
+                }
+            }
+        }
+    }
+}
+
 
 class BaritoneBlockArg(
     override val name: String
