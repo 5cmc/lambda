@@ -23,6 +23,7 @@ import com.lambda.client.util.threads.safeListener
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import net.minecraft.block.BlockShulkerBox
 import net.minecraft.block.state.IBlockState
 import net.minecraft.entity.EntityList
 import net.minecraft.entity.item.EntityItemFrame
@@ -32,7 +33,6 @@ import net.minecraft.network.play.server.SPacketMultiBlockChange
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.ChunkPos
 import net.minecraft.world.chunk.Chunk
-import java.util.HashSet
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentMap
 import kotlin.collections.set
@@ -246,6 +246,9 @@ object Search : Module(
         return if (autoBlockColor) {
             if (block == Blocks.PORTAL) {
                 ColorHolder(82, 49, 153)
+            } else if (block is BlockShulkerBox) {
+                val colorInt = block.color.colorValue
+                ColorHolder((colorInt shr 16), (colorInt shr 8 and 255), (colorInt and 255))
             } else {
                 val colorInt = blockState.getMapColor(world, pos).colorValue
                 ColorHolder((colorInt shr 16), (colorInt shr 8 and 255), (colorInt and 255))
