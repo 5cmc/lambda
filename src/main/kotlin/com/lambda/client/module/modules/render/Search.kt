@@ -36,6 +36,8 @@ import net.minecraft.util.math.ChunkPos
 import net.minecraft.world.chunk.Chunk
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentMap
+import java.util.concurrent.locks.Lock
+import java.util.concurrent.locks.ReentrantLock
 import kotlin.collections.set
 import kotlin.math.max
 
@@ -75,6 +77,8 @@ object Search : Module(
     private val blockRenderer = ESPRenderer()
     private val entityRenderer = ESPRenderer()
     private val foundBlockMap: ConcurrentMap<BlockPos, IBlockState> = ConcurrentHashMap()
+    private val blockSearchLock: Lock = ReentrantLock()
+    private val entitySearchLock: Lock = ReentrantLock()
 
     override fun getHudInfo(): String {
         return blockRenderer.size.toString()
@@ -106,14 +110,26 @@ object Search : Module(
         safeListener<RenderWorldEvent> {
             if (blockSearch) {
                 if (!(hideF1 && mc.gameSettings.hideGUI)) {
-                    blockRenderUpdate()
-                    blockRenderer.render(true)
+                    if (blockSearchLock.tryLock()) {
+                        try {
+                            blockRenderUpdate()
+                            blockRenderer.render(true)
+                        } finally {
+                            blockSearchLock.unlock()
+                        }
+                    }
                 }
             }
             if (entitySearch) {
                 if (!(hideF1 && mc.gameSettings.hideGUI)) {
-                    searchLoadedEntities()
-                    entityRenderer.render(true)
+                    if (entitySearchLock.tryLock()) {
+                        try {
+                            searchLoadedEntities()
+                            entityRenderer.render(true)
+                        } finally {
+                            entitySearchLock.unlock()
+                        }
+                    }
                 }
             }
         }
@@ -208,10 +224,16 @@ object Search : Module(
 
         sortedFoundBlocks.forEachIndexed { index, pair ->
             if (index >= maximumBlocks) return@forEachIndexed
-            val bb = foundBlockMap[pair.second]!!.getSelectedBoundingBox(world, pair.second)
-            val color = getBlockColor(pair.second, foundBlockMap[pair.second]!!)
+            try {
+                // concurrency could cause foundBlockMap value to no longer be in map when we get here
+                // todo: create a lock on this method?
+                val bb = foundBlockMap[pair.second]!!.getSelectedBoundingBox(world, pair.second)
+                val color = getBlockColor(pair.second, foundBlockMap[pair.second]!!)
 
-            blockRenderer.add(Triple(bb, color, GeometryMasks.Quad.ALL))
+                blockRenderer.add(Triple(bb, color, GeometryMasks.Quad.ALL))
+            } catch (ex: Exception) {
+                // fall through
+            }
         }
     }
 
