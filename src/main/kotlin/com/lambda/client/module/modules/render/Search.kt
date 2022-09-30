@@ -23,6 +23,7 @@ import com.lambda.client.util.threads.safeListener
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import net.minecraft.block.BlockEnderChest
 import net.minecraft.block.BlockShulkerBox
 import net.minecraft.block.state.IBlockState
 import net.minecraft.entity.EntityList
@@ -62,6 +63,7 @@ object Search : Module(
     private val aOutline by setting("Outline Alpha", 127, 0..255, 1, { outline })
     private val aTracer by setting("Tracer Alpha", 200, 0..255, 1, { tracer })
     private val thickness by setting("Line Thickness", 2.0f, 0.25f..5.0f, 0.25f)
+    private val hideF1 by setting("Hide on F1", true)
 
     var overrideWarning by setting("Override Warning", false, { false })
     val blockSearchList = setting(CollectionSetting("Block Search List", defaultSearchList, { false }))
@@ -103,12 +105,16 @@ object Search : Module(
 
         safeListener<RenderWorldEvent> {
             if (blockSearch) {
-                blockRenderUpdate()
-                blockRenderer.render(true)
+                if (!(hideF1 && mc.gameSettings.hideGUI)) {
+                    blockRenderUpdate()
+                    blockRenderer.render(true)
+                }
             }
             if (entitySearch) {
-                searchLoadedEntities()
-                entityRenderer.render(true)
+                if (!(hideF1 && mc.gameSettings.hideGUI)) {
+                    searchLoadedEntities()
+                    entityRenderer.render(true)
+                }
             }
         }
 
@@ -242,16 +248,22 @@ object Search : Module(
 
     private fun SafeClientEvent.getBlockColor(pos: BlockPos, blockState: IBlockState): ColorHolder {
         val block = blockState.block
-
         return if (autoBlockColor) {
-            if (block == Blocks.PORTAL) {
-                ColorHolder(82, 49, 153)
-            } else if (block is BlockShulkerBox) {
-                val colorInt = block.color.colorValue
-                ColorHolder((colorInt shr 16), (colorInt shr 8 and 255), (colorInt and 255))
-            } else {
-                val colorInt = blockState.getMapColor(world, pos).colorValue
-                ColorHolder((colorInt shr 16), (colorInt shr 8 and 255), (colorInt and 255))
+            when (block) {
+                Blocks.PORTAL -> {
+                    ColorHolder(82, 49, 153)
+                }
+                is BlockShulkerBox -> {
+                    val colorInt = block.color.colorValue
+                    ColorHolder((colorInt shr 16), (colorInt shr 8 and 255), (colorInt and 255))
+                }
+                is BlockEnderChest -> {
+                    ColorHolder(64, 49, 114)
+                }
+                else -> {
+                    val colorInt = blockState.getMapColor(world, pos).colorValue
+                    ColorHolder((colorInt shr 16), (colorInt shr 8 and 255), (colorInt and 255))
+                }
             }
         } else {
             customBlockColor
