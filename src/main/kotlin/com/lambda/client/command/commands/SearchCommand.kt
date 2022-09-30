@@ -4,6 +4,7 @@ import com.lambda.client.command.ClientCommand
 import com.lambda.client.module.modules.render.Search
 import com.lambda.client.util.text.MessageSendHelper
 import com.lambda.client.util.text.formatValue
+import net.minecraft.init.Blocks
 
 // TODO: Remove once GUI has List
 object SearchCommand : ClientCommand(
@@ -11,9 +12,22 @@ object SearchCommand : ClientCommand(
     description = "Manage search blocks"
 ) {
     private val warningBlocks = arrayOf("minecraft:grass", "minecraft:end_stone", "minecraft:lava", "minecraft:bedrock", "minecraft:netherrack", "minecraft:dirt", "minecraft:water", "minecraft:stone")
+    private val allShulkerBoxes = listOf(Blocks.WHITE_SHULKER_BOX, Blocks.ORANGE_SHULKER_BOX,
+        Blocks.MAGENTA_SHULKER_BOX, Blocks.LIGHT_BLUE_SHULKER_BOX, Blocks.YELLOW_SHULKER_BOX,
+        Blocks.LIME_SHULKER_BOX, Blocks.PINK_SHULKER_BOX, Blocks.GRAY_SHULKER_BOX, Blocks.SILVER_SHULKER_BOX,
+        Blocks.CYAN_SHULKER_BOX, Blocks.PURPLE_SHULKER_BOX, Blocks.BLUE_SHULKER_BOX, Blocks.BROWN_SHULKER_BOX,
+        Blocks.GREEN_SHULKER_BOX, Blocks.RED_SHULKER_BOX, Blocks.BLACK_SHULKER_BOX)
+        .map { it.registryName.toString() }
+        .toList()
 
     init {
         literal("add", "+") {
+            literal("shulker_box") {
+                execute("Add all shulker box types to search") {
+                    Search.blockSearchList.editValue { searchList -> allShulkerBoxes.forEach { searchList.add(it) } }
+                    MessageSendHelper.sendChatMessage("All shulker boxes have been added to block search")
+                }
+            }
             block("block") { blockArg ->
                 literal("force") {
                     execute("Force add a block to search list") {
@@ -75,6 +89,12 @@ object SearchCommand : ClientCommand(
         }
 
         literal("remove", "-") {
+            literal("shulker_box") {
+                execute("Remove all shulker boxes from search") {
+                    Search.blockSearchList.editValue { searchList -> allShulkerBoxes.forEach { searchList.remove(it) } }
+                    MessageSendHelper.sendChatMessage("Removed all shulker boxes from block search")
+                }
+            }
             block("block") { blockArg ->
                 int("dimension") {dimArg ->
                     execute("Remove a block from dimension filter") {
