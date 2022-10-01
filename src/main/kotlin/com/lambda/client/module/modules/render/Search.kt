@@ -34,6 +34,7 @@ import net.minecraft.network.play.server.SPacketMultiBlockChange
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.ChunkPos
 import net.minecraft.world.chunk.Chunk
+import net.minecraftforge.fml.common.gameevent.TickEvent
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentMap
 import java.util.concurrent.locks.Lock
@@ -70,7 +71,7 @@ object Search : Module(
     var overrideWarning by setting("Override Warning", false, { false })
     val blockSearchList = setting(CollectionSetting("Block Search List", defaultSearchList, { false }))
     val entitySearchList = setting(CollectionSetting("Entity Search List", linkedSetOf(EntityList.getKey((EntityItemFrame::class.java))!!.path), { false }))
-    // I would LOVE to use Set<Int> to hold the dimension, BUT GSON is retarded and always deserializes this to both a List AND a DOUBLE. WTF
+    // I would LOVE to use Set<Int> to hold the dimension, BUT GSON is retarded and always deserializes this to a LIST and a DOUBLE. WTF
     val blockSearchDimensionFilter = setting(MapSetting("Block Search Dimension Filter", mutableMapOf<String, MutableList<Double>>(), { false }))
     val entitySearchDimensionFilter = setting(MapSetting("Entity Search Dimension Filter", mutableMapOf<String, MutableList<Double>>(), { false }))
 
@@ -110,26 +111,29 @@ object Search : Module(
         safeListener<RenderWorldEvent> {
             if (blockSearch) {
                 if (!(hideF1 && mc.gameSettings.hideGUI)) {
-                    if (blockSearchLock.tryLock()) {
-                        try {
-                            blockRenderUpdate()
-                            blockRenderer.render(true)
-                        } finally {
-                            blockSearchLock.unlock()
-                        }
-                    }
+                    blockRenderer.render(false)
                 }
             }
             if (entitySearch) {
                 if (!(hideF1 && mc.gameSettings.hideGUI)) {
-                    if (entitySearchLock.tryLock()) {
-                        try {
-                            searchLoadedEntities()
-                            entityRenderer.render(true)
-                        } finally {
-                            entitySearchLock.unlock()
-                        }
-                    }
+                    entityRenderer.render(false)
+                }
+            }
+        }
+
+        safeAsyncListener<TickEvent.ClientTickEvent> {
+            if (blockSearchLock.tryLock()) {
+                try {
+                    blockRenderUpdate()
+                } finally {
+                    blockSearchLock.unlock()
+                }
+            }
+            if (entitySearchLock.tryLock()) {
+                try {
+                    searchLoadedEntities()
+                } finally {
+                    entitySearchLock.unlock()
                 }
             }
         }
@@ -158,7 +162,7 @@ object Search : Module(
     }
 
     private fun searchLoadedEntities() {
-        mc.world.getLoadedEntityList()
+        val renderList = mc.world.getLoadedEntityList()
             .filter {
                 val entityName: String? = EntityList.getKey(it)?.path
                 return@filter if (entityName != null) entitySearchList.contains(entityName) else false
@@ -171,7 +175,9 @@ object Search : Module(
             .sortedBy { it.distanceTo(mc.player.getPositionEyes(1f)) }
             .take(maximumEntities)
             .filter { it.distanceTo(mc.player.getPositionEyes(1f)) < range }
-            .forEach { entityRenderer.add(it, entitySearchColor) }
+            .toMutableList()
+        entityRenderer.clear()
+        renderList.forEach { entityRenderer.add(it, entitySearchColor) }
     }
 
     private fun searchAllLoadedChunks() {
@@ -222,19 +228,24 @@ object Search : Module(
 
         updateAlpha()
 
-        sortedFoundBlocks.forEachIndexed { index, pair ->
-            if (index >= maximumBlocks) return@forEachIndexed
-            try {
-                // concurrency could cause foundBlockMap value to no longer be in map when we get here
-                // todo: create a lock on this method?
-                val bb = foundBlockMap[pair.second]!!.getSelectedBoundingBox(world, pair.second)
-                val color = getBlockColor(pair.second, foundBlockMap[pair.second]!!)
+        val renderList = sortedFoundBlocks
+            .take(maximumBlocks)
+            .map { pair ->
+                try {
+                    // concurrency could cause foundBlockMap value to no longer be in map when we get here
+                    // todo: create a lock on this method?
+                    val bb = foundBlockMap[pair.second]!!.getSelectedBoundingBox(world, pair.second)
+                    val color = getBlockColor(pair.second, foundBlockMap[pair.second]!!)
 
-                blockRenderer.add(Triple(bb, color, GeometryMasks.Quad.ALL))
-            } catch (ex: Exception) {
-                // fall through
+                    return@map Triple(bb, color, GeometryMasks.Quad.ALL)
+                } catch (ex: Exception) {
+                    // fall through
+                    return@map null
+                }
             }
-        }
+            .filterNotNull()
+            .toMutableList()
+        blockRenderer.replaceAll(renderList)
     }
 
     private fun updateAlpha() {
