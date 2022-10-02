@@ -55,7 +55,7 @@ object ElytraFlight2b2t : Module(
         visibility = { enableHoverRedeploy && !elytraReplaceModuleSwap })
     private val hoverDelay by setting("Hover Pause", 36, 0..120, 1,
         visibility = { enableHoverRedeploy })
-    private val minHoverTakeoffHeight by setting("Min Elytra Swap Takeoff Height", 0.5, 0.0..1.0, 0.01,
+    private val minHoverTakeoffHeight by setting("Min Elytra Swap Takeoff Height", 10.0, 5.0..50.0, 1.0,
         visibility = { enableHoverRedeploy },
         description = "Minimum height from ground (m) to attempt an ElytraSwap hover deploy")
     private val rubberBandDetectionTime by setting("Rubberband Detection Time", 1110, 0..2000, 10,
@@ -261,8 +261,7 @@ object ElytraFlight2b2t : Module(
                         reEquipedElytra = false
 
                         if ((Instant.now().toEpochMilli() - lastRubberband < elytraLockFallDetectionTime.toLong()) && enableHoverRedeploy && elytraLockFallRedeploy) {
-                            if (mc.player.posY.toInt() - elytraLockFallRedeployFallHeight < 2) {
-                                MessageSendHelper.sendChatMessage("Not high enough for fall")
+                            if (mc.player.posY - (world.getGroundPos(player).y + 2.0) < elytraLockFallRedeployFallHeight) {
                                 currentState = State.PRETAKEOFF
                             } else {
                                 elytraLockFallOriginalHeight = mc.player.posY.toInt()
