@@ -12,7 +12,8 @@ import com.lambda.client.util.TimeUnit
 import com.lambda.client.util.threads.safeAsyncListener
 import com.lambda.client.util.threads.safeListener
 import net.minecraft.network.play.server.SPacketPlayerPosLook
-import net.minecraft.util.math.BlockPos
+import net.minecraft.util.math.Vec2f
+import net.minecraft.util.math.Vec3d
 import net.minecraftforge.fml.common.gameevent.TickEvent
 import java.time.Instant
 
@@ -23,13 +24,19 @@ object ElytraFlightHighway : Module(
     modulePriority = 1000
 ) {
     private val baritonePathForwardBlocks by setting("Rubberband Path Distance", 20, 1..50, 1)
+    private val baritoneEndDelayMs by setting("Baritone End Pathing Delay Ms", 500, 0..2000, 50)
+    private val rubberbandDetectBaritoneStartDelayMs by setting("Baritone Start Delay Ms", 500, 0..2000, 50)
 
     private var currentState = State.WALKING
     private var timer = TickTimer(TimeUnit.TICKS)
     private var lastSPacketPlayerPosLook: Long = Instant.now().toEpochMilli()
     private var flyTickCount = 0
-    private var flyPlayerLastPos: BlockPos? = null
+    private var flyPlayerLastPos: Vec3d = Vec3d.ZERO
     private var flyBlockedTickCount = 0
+    private var isBaritoning: Boolean = false
+    private var rubberBandDetectTime: Long = 0L
+    private var baritoneEndPathingTime: Long = 0L
+    private var beforePathingPlayerPitchYaw: Vec2f = Vec2f.ZERO
 
     enum class State {
         FLYING, TAKEOFF, WALKING
@@ -53,7 +60,24 @@ object ElytraFlightHighway : Module(
 
             when (currentState) {
                 State.WALKING -> {
-                    while (isPathing()) return@safeListener
+                    if (Instant.now().toEpochMilli() - rubberBandDetectTime < rubberbandDetectBaritoneStartDelayMs) {
+                        return@safeListener
+                    }
+                    while (isPathing()) {
+                        isBaritoning = true
+                        return@safeListener
+                    }
+                    // delay takeoff if we were pathing
+                    if (isBaritoning) {
+                        baritoneEndPathingTime = Instant.now().toEpochMilli()
+                        mc.player.rotationPitch = beforePathingPlayerPitchYaw.x
+                        mc.player.rotationYaw = beforePathingPlayerPitchYaw.y
+                        isBaritoning = false
+                        return@safeListener
+                    }
+                    if (Instant.now().toEpochMilli() - baritoneEndPathingTime < baritoneEndDelayMs) {
+                        return@safeListener
+                    }
                     currentState = State.TAKEOFF
                     toggleAllOn()
                 }
@@ -73,8 +97,8 @@ object ElytraFlightHighway : Module(
                     } else {
                         flyTickCount = 0
                     }
-                    val playerCurrentPos = mc.player.position
-                    if (playerCurrentPos.equals(flyPlayerLastPos)) {
+                    val playerCurrentPos = mc.player.positionVector
+                    if (playerCurrentPos.distanceTo(flyPlayerLastPos) < 2.0) {
                         if (flyBlockedTickCount++ > 20) {
                             toggleAllOff()
                             pathForward()
@@ -94,6 +118,7 @@ object ElytraFlightHighway : Module(
             val now = Instant.now().toEpochMilli()
             if (now - lastSPacketPlayerPosLook < 1000L) {
                 LambdaMod.LOG.info("Rubberband detected")
+                rubberBandDetectTime = Instant.now().toEpochMilli()
                 toggleAllOff()
                 pathForward()
                 currentState = State.WALKING
@@ -103,6 +128,7 @@ object ElytraFlightHighway : Module(
     }
 
     private fun pathForward() {
+        beforePathingPlayerPitchYaw = mc.player.pitchYaw
         val playerContext = BaritoneUtils.primary?.playerContext!!
         BaritoneUtils.primary?.customGoalProcess?.setGoalAndPath(GoalXZ.fromDirection(
             playerContext.playerFeetAsVec(),
@@ -121,13 +147,13 @@ object ElytraFlightHighway : Module(
 
     private fun toggleAllOff() {
         ElytraFlight2b2t.disable()
-        Speed.disable()
         ViewLock.disable()
         AutoWalk.disable()
+        AutoJump.disable()
     }
 
     private fun toggleAllOn() {
-        Speed.enable()
+        AutoJump.enable()
         AutoWalk.enable()
         ViewLock.enable()
         ElytraFlight2b2t.enable()
