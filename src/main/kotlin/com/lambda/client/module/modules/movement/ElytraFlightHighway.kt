@@ -2,6 +2,7 @@ package com.lambda.client.module.modules.movement
 
 import baritone.api.pathing.goals.GoalXZ
 import com.lambda.client.LambdaMod
+import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.event.events.PacketEvent
 import com.lambda.client.module.Category
 import com.lambda.client.module.Module
@@ -9,8 +10,11 @@ import com.lambda.client.module.modules.player.ViewLock
 import com.lambda.client.util.BaritoneUtils
 import com.lambda.client.util.TickTimer
 import com.lambda.client.util.TimeUnit
-import com.lambda.client.util.threads.safeAsyncListener
+import com.lambda.client.util.threads.defaultScope
 import com.lambda.client.util.threads.safeListener
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import net.minecraft.network.play.server.SPacketPlayerPosLook
 import net.minecraft.util.math.Vec2f
 import net.minecraft.util.math.Vec3d
@@ -25,7 +29,7 @@ object ElytraFlightHighway : Module(
 ) {
     private val baritonePathForwardBlocks by setting("Rubberband Path Distance", 20, 1..50, 1)
     private val baritoneEndDelayMs by setting("Baritone End Pathing Delay Ms", 500, 0..2000, 50)
-    private val rubberbandDetectBaritoneStartDelayMs by setting("Baritone Start Delay Ms", 500, 0..2000, 50)
+    private val baritoneStartDelayMs by setting("Baritone Start Delay Ms", 500, 0..2000, 50)
 
     private var currentState = State.WALKING
     private var timer = TickTimer(TimeUnit.TICKS)
@@ -34,9 +38,10 @@ object ElytraFlightHighway : Module(
     private var flyPlayerLastPos: Vec3d = Vec3d.ZERO
     private var flyBlockedTickCount = 0
     private var isBaritoning: Boolean = false
-    private var rubberBandDetectTime: Long = 0L
+    private var baritoneStartTime: Long = 0L
     private var baritoneEndPathingTime: Long = 0L
     private var beforePathingPlayerPitchYaw: Vec2f = Vec2f.ZERO
+    private var scheduleBaritoneJob: Job? = null
 
     enum class State {
         FLYING, TAKEOFF, WALKING
@@ -52,6 +57,7 @@ object ElytraFlightHighway : Module(
         onDisable {
             currentState = State.WALKING
             toggleAllOff()
+            scheduleBaritoneJob?.cancel()
             stopPathing()
         }
 
@@ -60,7 +66,7 @@ object ElytraFlightHighway : Module(
 
             when (currentState) {
                 State.WALKING -> {
-                    if (Instant.now().toEpochMilli() - rubberBandDetectTime < rubberbandDetectBaritoneStartDelayMs) {
+                    if (scheduleBaritoneJob?.isActive == true) {
                         return@safeListener
                     }
                     while (isPathing()) {
@@ -113,12 +119,11 @@ object ElytraFlightHighway : Module(
             }
         }
 
-        safeAsyncListener<PacketEvent.Receive> {
-            if ((currentState != State.FLYING && currentState != State.TAKEOFF) || it.packet !is SPacketPlayerPosLook) return@safeAsyncListener
+        safeListener<PacketEvent.Receive> {
+            if ((currentState != State.FLYING && currentState != State.TAKEOFF && !isPathing()) || it.packet !is SPacketPlayerPosLook) return@safeListener
             val now = Instant.now().toEpochMilli()
             if (now - lastSPacketPlayerPosLook < 1000L) {
                 LambdaMod.LOG.info("Rubberband detected")
-                rubberBandDetectTime = Instant.now().toEpochMilli()
                 toggleAllOff()
                 pathForward()
                 currentState = State.WALKING
@@ -127,14 +132,19 @@ object ElytraFlightHighway : Module(
         }
     }
 
-    private fun pathForward() {
+    private fun SafeClientEvent.pathForward() {
         beforePathingPlayerPitchYaw = mc.player.pitchYaw
-        val playerContext = BaritoneUtils.primary?.playerContext!!
-        BaritoneUtils.primary?.customGoalProcess?.setGoalAndPath(GoalXZ.fromDirection(
-            playerContext.playerFeetAsVec(),
-            playerContext.player().rotationYawHead,
-            baritonePathForwardBlocks.toDouble()
-        ))
+        if (scheduleBaritoneJob?.isActive == true) return
+        baritoneStartTime = Instant.now().toEpochMilli()
+        scheduleBaritoneJob = defaultScope.launch {
+            delay(baritoneStartDelayMs.toLong())
+            val playerContext = BaritoneUtils.primary?.playerContext!!
+            BaritoneUtils.primary?.customGoalProcess?.setGoalAndPath(GoalXZ.fromDirection(
+                playerContext.playerFeetAsVec(),
+                playerContext.player().rotationYawHead,
+                baritonePathForwardBlocks.toDouble()
+            ))
+        }
     }
 
     private fun stopPathing() {
