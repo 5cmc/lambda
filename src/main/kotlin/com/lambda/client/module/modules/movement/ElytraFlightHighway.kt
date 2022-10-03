@@ -6,6 +6,7 @@ import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.event.events.PacketEvent
 import com.lambda.client.module.Category
 import com.lambda.client.module.Module
+import com.lambda.client.module.modules.player.LagNotifier
 import com.lambda.client.module.modules.player.ViewLock
 import com.lambda.client.util.BaritoneUtils
 import com.lambda.client.util.TickTimer
@@ -16,8 +17,10 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import net.minecraft.network.play.server.SPacketPlayerPosLook
+import net.minecraft.util.MovementInputFromOptions
 import net.minecraft.util.math.Vec2f
 import net.minecraft.util.math.Vec3d
+import net.minecraftforge.client.event.InputUpdateEvent
 import net.minecraftforge.fml.common.gameevent.TickEvent
 import java.time.Instant
 
@@ -30,6 +33,7 @@ object ElytraFlightHighway : Module(
     private val baritonePathForwardBlocks by setting("Rubberband Path Distance", 20, 1..50, 1)
     private val baritoneEndDelayMs by setting("Baritone End Pathing Delay Ms", 500, 0..2000, 50)
     private val baritoneStartDelayMs by setting("Baritone Start Delay Ms", 500, 0..2000, 50)
+    private const val jumpDelay: Int = 10
 
     private var currentState = State.WALKING
     private var timer = TickTimer(TimeUnit.TICKS)
@@ -45,6 +49,10 @@ object ElytraFlightHighway : Module(
 
     enum class State {
         FLYING, TAKEOFF, WALKING
+    }
+
+    override fun getHudInfo(): String {
+        return currentState.name
     }
 
     init {
@@ -88,6 +96,7 @@ object ElytraFlightHighway : Module(
                     toggleAllOn()
                 }
                 State.TAKEOFF -> {
+                    if (player.onGround && timer.tick(jumpDelay.toLong())) player.jump()
                     if (mc.player.isElytraFlying) {
                         currentState = State.FLYING
                     }
@@ -97,7 +106,6 @@ object ElytraFlightHighway : Module(
                         if (flyTickCount++ > 30) {
                             toggleAllOff()
                             pathForward()
-                            timer.reset()
                             currentState = State.WALKING
                         }
                     } else {
@@ -108,7 +116,6 @@ object ElytraFlightHighway : Module(
                         if (flyBlockedTickCount++ > 20) {
                             toggleAllOff()
                             pathForward()
-                            timer.reset()
                             currentState = State.WALKING
                         }
                     } else {
@@ -129,6 +136,13 @@ object ElytraFlightHighway : Module(
                 currentState = State.WALKING
             }
             lastSPacketPlayerPosLook = now
+        }
+
+        safeListener<InputUpdateEvent>(6969) {
+            if (currentState != State.TAKEOFF) return@safeListener
+            if (LagNotifier.isBaritonePaused && LagNotifier.pauseAutoWalk) return@safeListener
+            if (it.movementInput !is MovementInputFromOptions) return@safeListener
+            it.movementInput.moveForward = 1.0f
         }
     }
 
@@ -158,13 +172,9 @@ object ElytraFlightHighway : Module(
     private fun toggleAllOff() {
         ElytraFlight2b2t.disable()
         ViewLock.disable()
-        AutoWalk.disable()
-        AutoJump.disable()
     }
 
     private fun toggleAllOn() {
-        AutoJump.enable()
-        AutoWalk.enable()
         ViewLock.enable()
         ElytraFlight2b2t.enable()
     }
