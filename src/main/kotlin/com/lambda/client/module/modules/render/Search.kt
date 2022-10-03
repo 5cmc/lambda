@@ -69,7 +69,7 @@ object Search : Module(
     private val hideF1 by setting("Hide on F1", true)
 
     var overrideWarning by setting("Override Warning", false, { false })
-    val blockSearchList = setting(CollectionSetting("Block Search List", defaultSearchList, { false }))
+    val blockSearchList = setting(CollectionSetting("Search List", defaultSearchList, { false }))
     val entitySearchList = setting(CollectionSetting("Entity Search List", linkedSetOf(EntityList.getKey((EntityItemFrame::class.java))!!.path), { false }))
     // I would LOVE to use Set<Int> to hold the dimension, BUT GSON is retarded and always deserializes this to a LIST and a DOUBLE. WTF
     val blockSearchDimensionFilter = setting(MapSetting("Block Search Dimension Filter", mutableMapOf<String, MutableList<Double>>(), { false }))
@@ -82,7 +82,7 @@ object Search : Module(
     private val entitySearchLock: Lock = ReentrantLock()
 
     override fun getHudInfo(): String {
-        return blockRenderer.size.toString()
+        return (blockRenderer.size + entityRenderer.size).toString()
     }
 
     init {
@@ -195,7 +195,6 @@ object Search : Module(
                     launch {
                         findBlocksInChunk(chunk).forEach { pair -> foundBlockMap[pair.first] = pair.second }
                     }
-                    delay(1L)
                 }
             }
         }
