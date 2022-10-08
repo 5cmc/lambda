@@ -19,6 +19,9 @@ object SearchCommand : ClientCommand(
         Blocks.GREEN_SHULKER_BOX, Blocks.RED_SHULKER_BOX, Blocks.BLACK_SHULKER_BOX)
         .map { it.registryName.toString() }
         .toList()
+    private val allSigns = listOf(Blocks.STANDING_SIGN, Blocks.WALL_SIGN)
+        .map { it.registryName.toString() }
+        .toList()
 
     init {
         literal("add", "+") {
@@ -26,6 +29,12 @@ object SearchCommand : ClientCommand(
                 execute("Add all shulker box types to search") {
                     Search.blockSearchList.editValue { searchList -> allShulkerBoxes.forEach { searchList.add(it) } }
                     MessageSendHelper.sendChatMessage("All shulker boxes have been added to block search")
+                }
+            }
+            literal("sign") {
+                execute("Add all signs to search") {
+                    Search.blockSearchList.editValue { searchList -> allSigns.forEach { searchList.add(it) } }
+                    MessageSendHelper.sendChatMessage("All signs have been added to block search")
                 }
             }
             block("block") { blockArg ->
@@ -93,6 +102,12 @@ object SearchCommand : ClientCommand(
                 execute("Remove all shulker boxes from search") {
                     Search.blockSearchList.editValue { searchList -> allShulkerBoxes.forEach { searchList.remove(it) } }
                     MessageSendHelper.sendChatMessage("Removed all shulker boxes from block search")
+                }
+            }
+            literal("sign") {
+                execute("Remove all signs from search") {
+                    Search.blockSearchList.editValue { searchList -> allSigns.forEach { searchList.remove(it) } }
+                    MessageSendHelper.sendChatMessage("Removed all signs from block search")
                 }
             }
             block("block") { blockArg ->
