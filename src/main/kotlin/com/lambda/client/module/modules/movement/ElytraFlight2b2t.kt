@@ -80,7 +80,7 @@ object ElytraFlight2b2t : Module(
         description = "Boost speed increase per interval (blocks per second / 2)")
     private val pitch by setting("Pitch", -2.52, -5.0..-1.0, 0.0001,
         description = "Pitch to spoof during pretakeoff and flight. Default: -2.52.")
-    private val initialFlightSpeed by setting("Initial Flight Speed", 40.2, 35.0..80.0, 0.01,
+    private val initialFlightSpeed by setting("Initial Flight Speed", 39.5, 35.0..80.0, 0.01,
         description = "Speed to start at for first successful deployment (blocks per second / 2). Edit this with caution. Default: 40.2")
     private val speedMax by setting("Speed Max", 100.0, 40.0..100.0, 0.1,
         description = "Max flight speed (blocks per second / 2).")
