@@ -5,26 +5,37 @@ import com.lambda.client.command.ClientCommand
 import com.lambda.client.util.NetherPathFinderRenderer
 import com.lambda.client.util.math.VectorUtils.distanceTo
 import com.lambda.client.util.text.MessageSendHelper
+import com.lambda.client.util.threads.defaultScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.MathHelper
 import net.minecraftforge.common.MinecraftForge
 import java.util.*
-import java.util.concurrent.*
+import java.util.Objects.isNull
+import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledExecutorService
+import java.util.concurrent.ScheduledFuture
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.locks.Lock
+import java.util.concurrent.locks.ReentrantLock
 import java.util.stream.Collectors
 import kotlin.math.abs
 import kotlin.math.hypot
 import kotlin.math.min
 
+
 object NetherPathfindCommand : ClientCommand(
     name = "npath",
     alias = arrayOf("p")
 ) {
-    private var pathFuture: Future<*>? = null
-    private val executor = Executors.newCachedThreadPool()
+    private var pathJob: Job? = null
     private var renderer: NetherPathFinderRenderer? = null
     private var scheduledExecutor: ScheduledExecutorService = Executors.newScheduledThreadPool(1)
     private var scheduledFuture: ScheduledFuture<*>? = null
     private var seed: Long = 146008555100680L // 2b2t nether seed
+    private val pathLock: Lock = ReentrantLock()
 
     init {
         literal("goto") {
@@ -56,26 +67,35 @@ object NetherPathfindCommand : ClientCommand(
     }
 
     private fun goto(x: Int, z: Int) {
-        pathFuture = executor.submit {
-            val t1 = System.currentTimeMillis()
-            var longs: LongArray
-            try {
-                longs = PathFinder.pathFind(this.seed, false, true, mc.player.posX.toInt(), mc.player.posY.toInt(), mc.player.posZ.toInt(), x, 64, z)
-            } catch (e: Throwable) {
-                MessageSendHelper.sendChatMessage("path find failed")
-                return@submit
-            }
+        if (pathLock.tryLock() && isNull(pathJob)) {
+            pathJob = defaultScope.launch {
+                MessageSendHelper.sendChatMessage("Calculating path...")
+                val t1 = System.currentTimeMillis()
+                val longs: LongArray
+                try {
+                    longs = PathFinder.pathFind(seed, false, true, mc.player.posX.toInt(), mc.player.posY.toInt(), mc.player.posZ.toInt(), x, 64, z)
+                } catch (e: Throwable) {
+                    MessageSendHelper.sendChatMessage("path find failed")
+                    pathLock.unlock()
+                    return@launch
+                }
 
-            val t2 = System.currentTimeMillis()
-            val path: MutableList<BlockPos> = Arrays.stream(longs).mapToObj { serialized: Long -> BlockPos.fromLong(serialized) }.collect(Collectors.toList())
-            mc.addScheduledTask {
-                resetRenderer()
-                registerRenderer(path)
-                pathFuture = null
-                scheduledFuture?.cancel(true)
-                scheduledFuture = scheduledExecutor.scheduleAtFixedRate({ scheduledGotoRepathCheck(path, x, z) }, 5000, 5000, TimeUnit.MILLISECONDS)
-                MessageSendHelper.sendChatMessage(String.format("Found path in %.2f seconds", (t2 - t1) / 1000.0))
+                val t2 = System.currentTimeMillis()
+                val path: MutableList<BlockPos> = Arrays.stream(longs).mapToObj { serialized: Long -> BlockPos.fromLong(serialized) }.collect(Collectors.toList())
+                if (isActive) { // allow us to "cancel" pathfind
+                    mc.addScheduledTask {
+                        resetRenderer()
+                        registerRenderer(path)
+                        scheduledFuture?.cancel(true)
+                        scheduledFuture = scheduledExecutor.scheduleAtFixedRate({ scheduledGotoRepathCheck(path, x, z) }, 5000, 5000, TimeUnit.MILLISECONDS)
+                        MessageSendHelper.sendChatMessage(String.format("Found path in %.2f seconds", (t2 - t1) / 1000.0))
+                        pathJob = null
+                        pathLock.unlock()
+                    }
+                }
             }
+        } else {
+            MessageSendHelper.sendChatMessage("Already pathing")
         }
     }
 
@@ -97,24 +117,34 @@ object NetherPathfindCommand : ClientCommand(
     }
 
     private fun resetAll() {
-        pathFuture?.cancel(true)
+        pathJob?.cancel()
+        pathJob = null
         scheduledFuture?.cancel(true)
         mc.addScheduledTask { resetRenderer() }.get(1, TimeUnit.SECONDS)
+        pathLock.unlock()
     }
 
     private fun scheduledGotoRepathCheck(path: MutableList<BlockPos>, destX: Int, destZ: Int) {
-        if (!isInNether()) {
+        try {
+            if (!isInNether()) {
+                return
+            }
+            val dist = minPlayerDistanceToPath(path)
+            val playerFarFromPath: Boolean = dist > 100.0
+            if (playerFarFromPath) {
+                if (Thread.interrupted()) {
+                    throw InterruptedException()
+                }
+                MessageSendHelper.sendChatMessage("Moved too far from path, repathing...")
+                MessageSendHelper.sendLambdaCommand("npath goto $destX $destZ")
+                scheduledFuture?.cancel(true)
+            } else if (path.last().distanceTo(mc.player.position) < 50.0) {
+                MessageSendHelper.sendChatMessage("Pathing goal completed, stopping..")
+                mc.addScheduledTask { resetAll() }
+            }
+        } catch (e: InterruptedException) {
+            Thread.currentThread().interrupt()
             return
-        }
-        val dist = minPlayerDistanceToPath(path)
-        val playerFarFromPath: Boolean = dist > 100.0
-        if (playerFarFromPath) {
-            MessageSendHelper.sendChatMessage("Moved too far from path, repathing...")
-            MessageSendHelper.sendLambdaCommand("npath goto $destX $destZ")
-            scheduledFuture?.cancel(true)
-        } else if (path.last().distanceTo(mc.player.position) < 25.0) {
-            MessageSendHelper.sendChatMessage("Pathing goal completed, stopping..")
-            mc.addScheduledTask { resetAll() }
         }
     }
 
