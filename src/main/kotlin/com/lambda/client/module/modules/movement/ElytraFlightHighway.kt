@@ -23,6 +23,7 @@ import net.minecraft.util.math.Vec3d
 import net.minecraftforge.client.event.InputUpdateEvent
 import net.minecraftforge.fml.common.gameevent.TickEvent
 import java.time.Instant
+import com.lambda.client.util.MovementUtils.centerPlayer
 
 object ElytraFlightHighway : Module(
     name = "ElytraFlightHighway",
@@ -33,6 +34,7 @@ object ElytraFlightHighway : Module(
     private val baritonePathForwardBlocks by setting("Rubberband Path Distance", 20, 1..50, 1)
     private val baritoneEndDelayMs by setting("Baritone End Pathing Delay Ms", 500, 0..2000, 50)
     private val baritoneStartDelayMs by setting("Baritone Start Delay Ms", 500, 0..2000, 50)
+    private val centerPlayer by setting("Center", true)
     private const val jumpDelay: Int = 10
 
     private var currentState = State.WALKING
@@ -83,6 +85,7 @@ object ElytraFlightHighway : Module(
                     }
                     // delay takeoff if we were pathing
                     if (isBaritoning) {
+                        if (centerPlayer) if (!player.centerPlayer()) return@safeListener
                         baritoneEndPathingTime = Instant.now().toEpochMilli()
                         mc.player.rotationPitch = beforePathingPlayerPitchYaw.x
                         mc.player.rotationYaw = beforePathingPlayerPitchYaw.y
