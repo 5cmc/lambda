@@ -47,12 +47,12 @@ object SearchCommand : ClientCommand(
                 int("dimension") {dimArg ->
                     execute("Add a block to dimension filter") {
                         val blockName = blockArg.value.registryName.toString()
-                        val dim = dimArg.value.toDouble()
-                        val dims: MutableList<Double>? = Search.blockSearchDimensionFilter.value[blockName]
+                        val dim = dimArg.value
+                        val dims = Search.blockSearchDimensionFilter.value.find { dimFilter -> dimFilter.searchKey == blockName }?.dim
                         if (dims != null && !dims.contains(dim)) {
                             dims.add(dim)
                         } else {
-                            Search.blockSearchDimensionFilter.value[blockName] = mutableListOf(dim)
+                            Search.blockSearchDimensionFilter.value.add(Search.DimensionFilter(blockName, linkedSetOf(dim)))
                         }
                         MessageSendHelper.sendChatMessage("Block search filter added for $blockName in dimension ${dimArg.value}")
                     }
@@ -74,12 +74,12 @@ object SearchCommand : ClientCommand(
                 int("dimension") {dimArg ->
                     execute("Add an entity to dimension filter") {
                         val entityName = entityArg.value
-                        val dim = dimArg.value.toDouble()
-                        val dims: MutableList<Double>? = Search.entitySearchDimensionFilter.value[entityName]
+                        val dim = dimArg.value
+                        val dims = Search.entitySearchDimensionFilter.value.find { dimFilter -> dimFilter.searchKey == entityName }?.dim
                         if (dims != null && !dims.contains(dim)) {
                             dims.add(dim)
                         } else {
-                            Search.entitySearchDimensionFilter.value[entityName] = mutableListOf(dim)
+                            Search.entitySearchDimensionFilter.value.add(Search.DimensionFilter(entityName, linkedSetOf(dim)))
                         }
                         MessageSendHelper.sendChatMessage("Entity search filter added for $entityName in dimension ${dimArg.value}")
                     }
@@ -114,12 +114,12 @@ object SearchCommand : ClientCommand(
                 int("dimension") {dimArg ->
                     execute("Remove a block from dimension filter") {
                         val blockName = blockArg.value.registryName.toString()
-                        val dim = dimArg.value.toDouble()
-                        val dims: MutableList<Double>? = Search.blockSearchDimensionFilter.value[blockName]
+                        val dim = dimArg.value
+                        val dims = Search.blockSearchDimensionFilter.value.find { dimFilter -> dimFilter.searchKey == blockName }?.dim
                         if (dims != null) {
                             dims.remove(dim)
                             if (dims.isEmpty()) {
-                                Search.blockSearchDimensionFilter.value.remove(blockName)
+                                Search.blockSearchDimensionFilter.value.removeIf { it.searchKey == blockName }
                             }
                         }
                         MessageSendHelper.sendChatMessage("Block search filter removed for $blockName in dimension ${dimArg.value}")
@@ -140,12 +140,12 @@ object SearchCommand : ClientCommand(
                 int("dimension") {dimArg ->
                     execute("Remove an entity from dimension filter") {
                         val entityName = entityArg.value
-                        val dim = dimArg.value.toDouble()
-                        val dims: MutableList<Double>? = Search.entitySearchDimensionFilter.value[entityName]
+                        val dim = dimArg.value
+                        val dims = Search.entitySearchDimensionFilter.value.find { dimFilter -> dimFilter.searchKey == entityName }?.dim
                         if (dims != null) {
                             dims.remove(dim)
                             if (dims.isEmpty()) {
-                                Search.entitySearchDimensionFilter.value.remove(entityName)
+                                Search.entitySearchDimensionFilter.value.removeIf { it.searchKey == entityName }
                             }
                         }
                         MessageSendHelper.sendChatMessage("Entity search filter removed for $entityName in dimension ${dimArg.value}")
@@ -187,6 +187,8 @@ object SearchCommand : ClientCommand(
             execute("Reset the search list to defaults") {
                 Search.blockSearchList.resetValue()
                 Search.entitySearchList.resetValue()
+                Search.blockSearchDimensionFilter.resetValue()
+                Search.entitySearchDimensionFilter.resetValue()
                 MessageSendHelper.sendChatMessage("Reset the search list to defaults")
             }
         }
@@ -208,6 +210,8 @@ object SearchCommand : ClientCommand(
             execute("Set the search list to nothing") {
                 Search.blockSearchList.editValue { it.clear() }
                 Search.entitySearchList.editValue { it.clear() }
+                Search.blockSearchDimensionFilter.editValue { it.clear() }
+                Search.entitySearchDimensionFilter.editValue { it.clear() }
                 MessageSendHelper.sendChatMessage("Cleared the search block list")
             }
         }

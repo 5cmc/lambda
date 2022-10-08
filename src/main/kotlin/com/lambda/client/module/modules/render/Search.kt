@@ -9,7 +9,6 @@ import com.lambda.client.event.events.RenderWorldEvent
 import com.lambda.client.module.Category
 import com.lambda.client.module.Module
 import com.lambda.client.setting.settings.impl.collection.CollectionSetting
-import com.lambda.client.setting.settings.impl.collection.MapSetting
 import com.lambda.client.util.color.ColorHolder
 import com.lambda.client.util.graphics.ESPRenderer
 import com.lambda.client.util.graphics.GeometryMasks
@@ -27,6 +26,7 @@ import net.minecraft.block.BlockEnderChest
 import net.minecraft.block.BlockShulkerBox
 import net.minecraft.block.state.IBlockState
 import net.minecraft.entity.EntityList
+import net.minecraft.entity.item.EntityItem
 import net.minecraft.entity.item.EntityItemFrame
 import net.minecraft.init.Blocks
 import net.minecraft.network.play.server.SPacketBlockChange
@@ -53,7 +53,7 @@ object Search : Module(
     private val blockSearch by setting("Block Search", true)
     private val illegalBedrock = setting("Illegal Bedrock", false)
     private val illegalNetherWater = setting("Illegal Nether Water", false)
-    private val range by setting("Search Range", 1000, 0..4096, 8)
+    private val range by setting("Search Range", 512, 0..4096, 8)
     private val yRangeBottom by setting("Top Y", 256, 0..256, 1)
     private val yRangeTop by setting("Bottom Y", 0, 0..256, 1)
     private val maximumBlocks by setting("Maximum Blocks", 256, 1..4096, 128, visibility = { blockSearch })
@@ -73,15 +73,15 @@ object Search : Module(
     var overrideWarning by setting("Override Warning", false, { false })
     val blockSearchList = setting(CollectionSetting("Search List", defaultSearchList, { false }))
     val entitySearchList = setting(CollectionSetting("Entity Search List", linkedSetOf(EntityList.getKey((EntityItemFrame::class.java))!!.path), { false }))
-    // I would LOVE to use Set<Int> to hold the dimension, BUT GSON is retarded and always deserializes this to a LIST and a DOUBLE. WTF
-    val blockSearchDimensionFilter = setting(MapSetting("Block Search Dimension Filter", mutableMapOf<String, MutableList<Double>>(), { false }))
-    val entitySearchDimensionFilter = setting(MapSetting("Entity Search Dimension Filter", mutableMapOf<String, MutableList<Double>>(), { false }))
+    val blockSearchDimensionFilter = setting(CollectionSetting("Block Dimension Filter", linkedSetOf(DimensionFilter(Blocks.OBSIDIAN.registryName.toString(), linkedSetOf(-1))), { false }))
+    val entitySearchDimensionFilter = setting(CollectionSetting("Entity Dimension Filter", linkedSetOf(DimensionFilter(EntityList.getKey((EntityItem::class.java))!!.path, linkedSetOf(-1))), { false }))
 
     private val blockRenderer = ESPRenderer()
     private val entityRenderer = ESPRenderer()
     private val foundBlockMap: ConcurrentMap<BlockPos, IBlockState> = ConcurrentHashMap()
     private val blockSearchLock: Lock = ReentrantLock()
     private val entitySearchLock: Lock = ReentrantLock()
+    private var prevDimension = -2
 
     override fun getHudInfo(): String {
         return (blockRenderer.size + entityRenderer.size).toString()
@@ -108,6 +108,10 @@ object Search : Module(
         }
 
         safeListener<RenderWorldEvent> {
+            if (player.dimension != prevDimension) {
+                prevDimension = player.dimension
+                foundBlockMap.clear()
+            }
             if (blockSearch) {
                 if (!(hideF1 && mc.gameSettings.hideGUI)) {
                     blockRenderer.render(false)
@@ -142,7 +146,7 @@ object Search : Module(
             foundBlocksInChunk.forEach { block -> foundBlockMap[block.first] = block.second }
         }
 
-        safeAsyncListener<PacketEvent.Receive> {
+        safeListener<PacketEvent.Receive> {
             if (it.packet is SPacketMultiBlockChange) {
                 it.packet.changedBlocks.forEach { changedBlock -> handleBlockChange(changedBlock.pos, changedBlock.blockState) }
             }
@@ -175,8 +179,8 @@ object Search : Module(
             }
             .filter {
                 val entityName: String = EntityList.getKey(it)?.path!!
-                val dims: List<Double>? = entitySearchDimensionFilter.value[entityName]
-                return@filter dims?.contains(mc.player.dimension.toDouble()) ?: true
+                val dims = entitySearchDimensionFilter.value.find { dimFilter -> dimFilter.searchKey == entityName }?.dim
+                return@filter dims?.contains(mc.player.dimension) ?: true
             }
             .sortedBy { it.distanceTo(mc.player.getPositionEyes(1f)) }
             .take(maximumEntities)
@@ -224,8 +228,9 @@ object Search : Module(
         val eyePos = player.getPositionEyes(1f)
         val sortedFoundBlocks = foundBlockMap
             .filter {
-                val filterEntry: List<Double>? = blockSearchDimensionFilter.value[it.value.block.registryName.toString()]
-                return@filter filterEntry?.contains(mc.player.dimension.toDouble()) ?: true
+                val filterEntry = blockSearchDimensionFilter.value
+                    .find { dimFilter -> dimFilter.searchKey == it.value.block.registryName.toString() }?.dim
+                return@filter filterEntry?.contains(mc.player.dimension) ?: true
             }
             .map { entry -> (eyePos.distanceTo(entry.key) to entry.key) }
             .filter { pair -> pair.first < range }
@@ -329,6 +334,12 @@ object Search : Module(
             }
         } else {
             customBlockColor
+        }
+    }
+
+    data class DimensionFilter(val searchKey: String, val dim: LinkedHashSet<Int>) {
+        override fun toString(): String {
+            return "$searchKey -> $dim"
         }
     }
 
