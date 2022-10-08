@@ -20,8 +20,8 @@ import com.lambda.client.util.text.formatValue
 import com.lambda.client.util.threads.defaultScope
 import com.lambda.client.util.threads.safeAsyncListener
 import com.lambda.client.util.threads.safeListener
+import com.lambda.client.util.world.isWater
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import net.minecraft.block.BlockEnderChest
 import net.minecraft.block.BlockShulkerBox
@@ -51,6 +51,8 @@ object Search : Module(
 
     private val entitySearch by setting("Entity Search", true)
     private val blockSearch by setting("Block Search", true)
+    private val illegalBedrock = setting("Illegal Bedrock", false)
+    private val illegalNetherWater = setting("Illegal Nether Water", false)
     private val range by setting("Search Range", 1000, 0..4096, 8)
     private val yRangeBottom by setting("Top Y", 256, 0..256, 1)
     private val yRangeTop by setting("Bottom Y", 0, 0..256, 1)
@@ -86,12 +88,9 @@ object Search : Module(
     }
 
     init {
-        blockSearchList.editListeners.add {
-            foundBlockMap.entries
-                .filterNot { blockSearchList.contains(it.value.block.registryName.toString()) }
-                .forEach { foundBlockMap.remove(it.key) }
-            if (isEnabled) searchAllLoadedChunks()
-        }
+        blockSearchList.editListeners.add { blockSearchListUpdateListener(isEnabled) }
+        illegalBedrock.listeners.add { blockSearchListUpdateListener(illegalBedrock.value) }
+        illegalNetherWater.listeners.add { blockSearchListUpdateListener(illegalNetherWater.value) }
 
         onEnable {
             if (!overrideWarning && ShaderHelper.isIntegratedGraphics) {
@@ -161,6 +160,13 @@ object Search : Module(
         }
     }
 
+    private fun blockSearchListUpdateListener(newBool: Boolean) {
+        foundBlockMap.entries
+            .filterNot { blockSearchList.contains(it.value.block.registryName.toString()) }
+            .forEach { foundBlockMap.remove(it.key) }
+        if (newBool) searchAllLoadedChunks()
+    }
+
     private fun searchLoadedEntities() {
         val renderList = mc.world.getLoadedEntityList()
             .filter {
@@ -201,7 +207,7 @@ object Search : Module(
     }
 
     private fun handleBlockChange(pos: BlockPos, state: IBlockState) {
-        if (searchQuery(state)) {
+        if (searchQuery(state, pos)) {
             foundBlockMap[pos] = state
         } else {
             foundBlockMap.remove(pos)
@@ -267,15 +273,39 @@ object Search : Module(
         for (y in yRange) for (x in xRange) for (z in zRange) {
             val pos = BlockPos(x, y, z)
             val blockState = chunk.getBlockState(pos)
-            if (searchQuery(blockState)) blocks.add((pos to blockState))
+            if (searchQuery(blockState, pos)) blocks.add((pos to blockState))
         }
         return blocks
     }
 
-    private fun searchQuery(state: IBlockState): Boolean {
+    private fun searchQuery(state: IBlockState, pos: BlockPos): Boolean {
         val block = state.block
         if (block == Blocks.AIR) return false
         return blockSearchList.contains(block.registryName.toString())
+            || isIllegalBedrock(state, pos)
+            || isIllegalWater(state, pos)
+    }
+
+    private fun isIllegalBedrock(state: IBlockState, pos: BlockPos): Boolean {
+        if (!illegalBedrock.value) return false
+        val block = state.block
+        if (block != Blocks.BEDROCK) return false
+        return when (mc.player.dimension) {
+            0 -> {
+                pos.y >= 5
+            }
+            -1 -> {
+                pos.y in 5..122
+            }
+            else -> {
+                false
+            }
+        }
+    }
+
+    private fun isIllegalWater(state: IBlockState, pos: BlockPos): Boolean {
+        if (!illegalNetherWater.value) return false
+        return (mc.player.dimension == -1 && state.isWater)
     }
 
     private fun SafeClientEvent.getBlockColor(pos: BlockPos, blockState: IBlockState): ColorHolder {
