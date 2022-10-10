@@ -1,9 +1,9 @@
 {
-  "required": true,
-  "compatibilityLevel": "JAVA_8",
-  "package": "com.lambda.mixin",
-  "refmap": "mixins.lambda.refmap.json",
-  "client": [
+  "required" : true,
+  "compatibilityLevel" : "JAVA_8",
+  "package" : "com.lambda.mixin",
+  "refmap" : "mixins.lambda.refmap.json",
+  "client" : [
     "MixinElytraSound",
     "MixinMinecraft",
     "MixinStateImplementation",
@@ -22,6 +22,7 @@
     "accessor.network.AccessorCPacketCloseWindow",
     "accessor.network.AccessorCPacketPlayer",
     "accessor.network.AccessorCPacketUseEntity",
+    "accessor.network.AccessorNetHandlerPlayClient",
     "accessor.network.AccessorSPacketChat",
     "accessor.network.AccessorSPacketEntityVelocity",
     "accessor.network.AccessorSPacketExplosion",
