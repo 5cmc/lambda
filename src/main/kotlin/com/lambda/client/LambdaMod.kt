@@ -1,6 +1,8 @@
 package com.lambda.client
 
 import com.lambda.client.event.ForgeEventProcessor
+import com.lambda.client.event.LambdaEventBus
+import com.lambda.client.event.events.RealWorldTickEvent
 import com.lambda.client.util.ConfigUtils
 import com.lambda.client.util.KamiCheck
 import com.lambda.client.util.threads.BackgroundScope
@@ -70,7 +72,9 @@ class LambdaMod {
         ConfigUtils.loadAll()
 
         BackgroundScope.start()
-
+        BackgroundScope.launchLooping("RealWorldTick", 50L) {
+            LambdaEventBus.post(RealWorldTickEvent())
+        }
 //        LambdaClickGui.populateRemotePlugins()
 
         KamiCheck.runCheck()

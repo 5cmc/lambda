@@ -1,5 +1,6 @@
 package com.lambda.client.gui
 
+import com.lambda.client.event.events.RealWorldTickEvent
 import com.lambda.client.event.events.RenderOverlayEvent
 import com.lambda.client.gui.rgui.WindowComponent
 import com.lambda.client.gui.rgui.windows.ColorPicker
@@ -85,9 +86,7 @@ abstract class AbstractLambdaGui<S : SettingWindow<*>, E : Any> : GuiScreen() {
         mc = Wrapper.minecraft
         windowList.add(ColorPicker)
 
-        safeListener<TickEvent.ClientTickEvent> { event ->
-            if (event.phase != TickEvent.Phase.START) return@safeListener
-
+        safeListener<RealWorldTickEvent> {
             blurShader.shader?.let {
                 val multiplier = ClickGUI.blur * fadeMultiplier
                 for (shader in it.listShaders) {

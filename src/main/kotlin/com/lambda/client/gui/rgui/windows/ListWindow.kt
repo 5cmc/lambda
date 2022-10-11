@@ -7,7 +7,6 @@ import com.lambda.client.gui.AbstractLambdaGui
 import com.lambda.client.gui.rgui.Component
 import com.lambda.client.gui.rgui.InteractiveComponent
 import com.lambda.client.module.modules.client.ClickGUI
-import com.lambda.client.util.TickTimer
 import com.lambda.client.util.graphics.GlStateUtils
 import com.lambda.client.util.graphics.VertexHelper
 import com.lambda.client.util.math.Vec2f
@@ -45,17 +44,9 @@ open class ListWindow(
             field = value
         }
 
-    private val scrollTimer = TickTimer()
-    private var scrollSpeed = 0.0f
+    private var scrollSpeed = 0.1f
 
     private var scrollProgress = 0.0f
-        set(value) {
-            prevScrollProgress = field
-            field = value
-        }
-    private var prevScrollProgress = 0.0f
-    private val renderScrollProgress
-        get() = prevScrollProgress + (scrollProgress - prevScrollProgress) * mc.renderPartialTicks
 
     private var doubleClickTime = -1L
 
@@ -135,20 +126,6 @@ open class ListWindow(
     override fun onTick() {
         super.onTick()
         if (children.isEmpty()) return
-        val lastVisible = children.lastOrNull { it.visible }
-        val maxScrollProgress = lastVisible?.let { max(it.posY + it.height + ClickGUI.entryMargin - height, 0.01f) }
-            ?: draggableHeight
-
-        scrollProgress = (scrollProgress + scrollSpeed)
-        scrollSpeed *= 0.5f
-        if (scrollTimer.tick(100L, false)) {
-            if (scrollProgress < 0.0) {
-                scrollSpeed = scrollProgress * -0.25f
-            } else if (scrollProgress > maxScrollProgress) {
-                scrollSpeed = (scrollProgress - maxScrollProgress) * -0.25f
-            }
-        }
-
         updateChild()
         for (child in children) child.onTick()
     }
@@ -159,7 +136,7 @@ open class ListWindow(
         runBlocking {
             contentMutex.withLock {
                 renderChildren {
-                    it.onRender(vertexHelper, absolutePos.plus(it.renderPosX, it.renderPosY - renderScrollProgress))
+                    it.onRender(vertexHelper, absolutePos.plus(it.renderPosX, it.renderPosY - this@ListWindow.scrollProgress))
                 }
             }
         }
@@ -171,7 +148,7 @@ open class ListWindow(
         runBlocking {
             contentMutex.withLock {
                 renderChildren {
-                    it.onPostRender(vertexHelper, absolutePos.plus(it.renderPosX, it.renderPosY - renderScrollProgress))
+                    it.onPostRender(vertexHelper, absolutePos.plus(it.renderPosX, it.renderPosY - this@ListWindow.scrollProgress))
                 }
             }
         }
@@ -190,12 +167,12 @@ open class ListWindow(
             ((renderHeight - draggableHeight) * ClickGUI.getScaleFactor() + 1.0f).ceilToInt()
         )
         glEnable(GL_SCISSOR_TEST)
-        glTranslatef(0.0f, -renderScrollProgress, 0.0f)
+        glTranslatef(0.0f, -this.scrollProgress, 0.0f)
 
         for (child in children) {
             if (!child.visible) continue
-            if (child.renderPosY + child.renderHeight - renderScrollProgress < draggableHeight) continue
-            if (child.renderPosY - renderScrollProgress > renderHeight) continue
+            if (child.renderPosY + child.renderHeight - this.scrollProgress < draggableHeight) continue
+            if (child.renderPosY - this.scrollProgress > renderHeight) continue
             glPushMatrix()
             glTranslatef(child.renderPosX, child.renderPosY, 0.0f)
             renderBlock(child)
@@ -207,10 +184,18 @@ open class ListWindow(
 
     override fun onMouseInput(mousePos: Vec2f) {
         super.onMouseInput(mousePos)
-        val relativeMousePos = mousePos.minus(posX, posY - renderScrollProgress)
+        val relativeMousePos = mousePos.minus(posX, posY - this.scrollProgress)
         if (Mouse.getEventDWheel() != 0) {
-            scrollTimer.reset()
-            scrollSpeed -= Mouse.getEventDWheel() * 0.1f
+            val lastVisible = children.lastOrNull { it.visible }
+            val maxScrollProgress = lastVisible?.let { max(it.posY + it.height + ClickGUI.entryMargin - height, 0.01f) }
+                ?: draggableHeight
+            this.scrollProgress -= Mouse.getEventDWheel() * scrollSpeed
+            if (this.scrollProgress > maxScrollProgress) {
+                this.scrollProgress = maxScrollProgress
+            }
+            if (this.scrollProgress < 0.0f) {
+                this.scrollProgress = 0.0f
+            }
             updateHovered(relativeMousePos)
         }
         if (mouseState != MouseState.DRAG) {
@@ -283,5 +268,5 @@ open class ListWindow(
     }
 
     private fun getRelativeMousePos(mousePos: Vec2f, component: InteractiveComponent) =
-        mousePos.minus(posX, posY - renderScrollProgress).minus(component.posX, component.posY)
+        mousePos.minus(posX, posY - this.scrollProgress).minus(component.posX, component.posY)
 }
