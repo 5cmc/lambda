@@ -60,7 +60,7 @@ object ElytraFlightHighway : Module(
     init {
 
         onEnable {
-            currentState = State.TAKEOFF
+            currentState = State.WALKING
             toggleAllOn()
         }
 
@@ -85,7 +85,6 @@ object ElytraFlightHighway : Module(
                     }
                     // delay takeoff if we were pathing
                     if (isBaritoning) {
-                        if (centerPlayer) if (!player.centerPlayer()) return@safeListener
                         baritoneEndPathingTime = Instant.now().toEpochMilli()
                         mc.player.rotationPitch = beforePathingPlayerPitchYaw.x
                         mc.player.rotationYaw = beforePathingPlayerPitchYaw.y
@@ -95,6 +94,7 @@ object ElytraFlightHighway : Module(
                     if (Instant.now().toEpochMilli() - baritoneEndPathingTime < baritoneEndDelayMs) {
                         return@safeListener
                     }
+                    if (centerPlayer) if (!player.centerPlayer()) return@safeListener
                     currentState = State.TAKEOFF
                     toggleAllOn()
                 }
@@ -115,15 +115,18 @@ object ElytraFlightHighway : Module(
                         flyTickCount = 0
                     }
                     val playerCurrentPos = mc.player.positionVector
-                    if (playerCurrentPos.distanceTo(flyPlayerLastPos) < 2.0) {
-                        if (flyBlockedTickCount++ > 20) {
-                            toggleAllOff()
-                            pathForward()
-                            currentState = State.WALKING
+                    if (!ElytraFlight2b2t.avoidUnloaded || (ElytraFlight2b2t.avoidUnloaded && ElytraFlight2b2t.nextBlockMoveLoaded)) {
+                        if (playerCurrentPos.distanceTo(flyPlayerLastPos) < 2.0) {
+                            if (flyBlockedTickCount++ > 20) {
+                                toggleAllOff()
+                                pathForward()
+                                currentState = State.WALKING
+                            }
+                        } else {
+                            flyBlockedTickCount = 0
                         }
-                    } else {
-                        flyBlockedTickCount = 0
                     }
+
                     flyPlayerLastPos = playerCurrentPos
                 }
             }
@@ -132,8 +135,7 @@ object ElytraFlightHighway : Module(
         safeListener<PacketEvent.Receive> {
             if ((currentState != State.FLYING && currentState != State.TAKEOFF && !isPathing()) || it.packet !is SPacketPlayerPosLook) return@safeListener
             val now = Instant.now().toEpochMilli()
-            if (now - lastSPacketPlayerPosLook < 1000L) {
-                LambdaMod.LOG.info("Rubberband detected")
+            if (now - lastSPacketPlayerPosLook < ElytraFlight2b2t.rubberBandDetectionTime) {
                 toggleAllOff()
                 pathForward()
                 currentState = State.WALKING

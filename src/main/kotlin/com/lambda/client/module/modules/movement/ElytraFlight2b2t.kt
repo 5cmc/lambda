@@ -58,7 +58,7 @@ object ElytraFlight2b2t : Module(
     private val minHoverTakeoffHeight by setting("Min Elytra Swap Takeoff Height", 10.0, 5.0..50.0, 1.0,
         visibility = { enableHoverRedeploy },
         description = "Minimum height from ground (m) to attempt an ElytraSwap hover deploy")
-    private val rubberBandDetectionTime by setting("Rubberband Detection Time", 1110, 0..2000, 10,
+    val rubberBandDetectionTime by setting("Rubberband Detection Time", 1110, 0..2000, 10,
         description = "Time period (ms) between which to detect rubberband teleports. Lower period = more sensitive.")
     private val elytraLockFallRedeploy by setting("ElytraLock Escape Fall", false,
         visibility = { enableHoverRedeploy })
@@ -86,7 +86,7 @@ object ElytraFlight2b2t : Module(
         description = "Max flight speed (blocks per second / 2).")
     private val redeploySpeedDecreaseFactor by setting("Redeploy Speed Dec Factor", 1.1, 1.0..5.0, 0.01,
         description = "Decreases speed by a set factor during redeploys. Value is a divisor on current speed.")
-    private val avoidUnloaded by setting("Avoid Unloaded", true, description = "Preserves speed while flying into unloaded chunks")
+    val avoidUnloaded by setting("Avoid Unloaded", true, description = "Preserves speed while flying into unloaded chunks")
 
     private const val takeOffYVelocity: Double = -0.16976
     private var currentState = State.PAUSED
@@ -96,7 +96,8 @@ object ElytraFlight2b2t : Module(
     private var elytraIsEquipped = false
     private var elytraDurability = 0
     private var wasInLiquid: Boolean = false
-    private var isFlying: Boolean = false
+    var isFlying: Boolean = false
+        private set
     private var isStandingStill = false
     private var isStandingStillH: Boolean = false
     private var lastSPacketPlayerPosLook: Long = Long.MIN_VALUE
@@ -111,7 +112,8 @@ object ElytraFlight2b2t : Module(
     private var lastRubberband: Long = Long.MIN_VALUE
     private var startedFlying: Boolean = false
     private var stoppedFlying: Boolean = false
-    private var nextBlockMoveLoaded: Boolean = true
+    var nextBlockMoveLoaded: Boolean = true
+        private set
     private var motionPrev: Vec2f = Vec2f(0.0f, 0.0f)
 
     enum class State {
