@@ -2,6 +2,7 @@ package com.lambda.client.module.modules.render
 
 import com.google.common.collect.EvictingQueue
 import com.lambda.client.event.events.PacketEvent
+import com.lambda.client.event.events.RenderRadarEvent
 import com.lambda.client.event.events.RenderWorldEvent
 import com.lambda.client.manager.managers.TimerManager
 import com.lambda.client.mixin.extension.renderPosX
@@ -9,11 +10,14 @@ import com.lambda.client.mixin.extension.renderPosY
 import com.lambda.client.mixin.extension.renderPosZ
 import com.lambda.client.module.Category
 import com.lambda.client.module.Module
+import com.lambda.client.util.BaritoneUtils
 import com.lambda.client.util.InfoCalculator
 import com.lambda.client.util.Wrapper
 import com.lambda.client.util.color.ColorHolder
 import com.lambda.client.util.graphics.GlStateUtils
 import com.lambda.client.util.graphics.LambdaTessellator
+import com.lambda.client.util.graphics.RenderUtils2D
+import com.lambda.client.util.math.Vec2d
 import com.lambda.client.util.math.VectorUtils.distanceTo
 import com.lambda.client.util.threads.onMainThread
 import com.lambda.client.util.threads.safeAsyncListener
@@ -157,6 +161,62 @@ object NewChunksPlus : Module(
                 }
             }
         }
+
+        safeListener<RenderRadarEvent> {
+            val playerOffset = Vec2d((player.posX - (player.chunkCoordX shl 4)), (player.posZ - (player.chunkCoordZ shl 4)))
+            val chunkDist = (it.radius * it.scale).toInt() shr 4
+
+            for (chunkX in -chunkDist..chunkDist) {
+                for (chunkZ in -chunkDist..chunkDist) {
+                    val pos0 = getChunkPos(chunkX, chunkZ, playerOffset, it.scale)
+                    val pos1 = getChunkPos(chunkX + 1, chunkZ + 1, playerOffset, it.scale)
+
+                    if (isSquareInRadius(pos0, pos1, it.radius)) {
+                        val chunk = world.getChunk(player.chunkCoordX + chunkX, player.chunkCoordZ + chunkZ)
+                        val isCachedChunk =
+                            BaritoneUtils.primary?.worldProvider?.currentWorld?.cachedWorld?.isCached(
+                                (player.chunkCoordX + chunkX) shl 4, (player.chunkCoordZ + chunkZ) shl 4
+                            ) ?: false
+
+                        if (!chunk.isLoaded && !isCachedChunk) {
+                            RenderUtils2D.drawRectFilled(it.vertexHelper, pos0, pos1, ColorHolder(100, 100, 100, 100))
+                        }
+                        RenderUtils2D.drawRectOutline(it.vertexHelper, pos0, pos1, 0.3f, ColorHolder(255, 0, 0, 100))
+                    }
+                }
+            }
+
+            if (mode == DetectionMode.TIMER || mode == DetectionMode.BOTH) {
+                timeChunks.forEach { chunk ->
+                    val pos0 = getChunkPos(chunk.x - player.chunkCoordX, chunk.z - player.chunkCoordZ, playerOffset, it.scale)
+                    val pos1 = getChunkPos(chunk.x - player.chunkCoordX + 1, chunk.z - player.chunkCoordZ + 1, playerOffset, it.scale)
+
+                    if (isSquareInRadius(pos0, pos1, it.radius)) {
+                        RenderUtils2D.drawRectFilled(it.vertexHelper, pos0, pos1, timeChunkColor)
+                    }
+                }
+            }
+            if (mode == DetectionMode.PACKET || mode == DetectionMode.BOTH) {
+                packetChunks.forEach { chunk ->
+                    val pos0 = getChunkPos(chunk.x - player.chunkCoordX, chunk.z - player.chunkCoordZ, playerOffset, it.scale)
+                    val pos1 = getChunkPos(chunk.x - player.chunkCoordX + 1, chunk.z - player.chunkCoordZ + 1, playerOffset, it.scale)
+
+                    if (isSquareInRadius(pos0, pos1, it.radius)) {
+                        RenderUtils2D.drawRectFilled(it.vertexHelper, pos0, pos1, packetChunkColor)
+                    }
+                }
+            }
+        }
+    }
+
+
+    private fun isSquareInRadius(p1: Vec2d, p2: Vec2d, radius: Float): Boolean {
+        val x = if (p1.x + p2.x > 0) p2.x else p1.x
+        val y = if (p1.y + p2.y > 0) p2.y else p1.y
+        return Vec2d(x, y).length() < radius
+    }
+    private fun getChunkPos(x: Int, z: Int, playerOffset: Vec2d, scale: Float): Vec2d {
+        return Vec2d((x shl 4).toDouble(), (z shl 4).toDouble()).minus(playerOffset).div(scale.toDouble())
     }
 
     private fun timerCalculate(chunk: ChunkPos) : Long {
