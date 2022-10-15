@@ -208,7 +208,7 @@ open class ListWindow(
 
     private fun updateHovered(relativeMousePos: Vec2f) {
         hoveredChild = if (relativeMousePos.y < draggableHeight || relativeMousePos.x < ClickGUI.entryMargin || relativeMousePos.x > renderWidth - ClickGUI.entryMargin) null
-        else children.firstOrNull { it.visible && relativeMousePos.y in it.posY..it.posY + it.height }
+        else children.firstOrNull { it.visible && relativeMousePos.y in it.posY..it.posY + it.height && relativeMousePos.x in it.posX..it.posX + width }
     }
 
     override fun onLeave(mousePos: Vec2f) {
