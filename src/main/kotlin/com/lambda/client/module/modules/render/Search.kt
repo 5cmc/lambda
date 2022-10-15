@@ -20,7 +20,9 @@ import com.lambda.client.util.threads.defaultScope
 import com.lambda.client.util.threads.safeAsyncListener
 import com.lambda.client.util.threads.safeListener
 import com.lambda.client.util.world.isWater
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import net.minecraft.block.BlockEnderChest
 import net.minecraft.block.BlockShulkerBox
@@ -79,8 +81,8 @@ object Search : Module(
     private val blockRenderer = ESPRenderer()
     private val entityRenderer = ESPRenderer()
     private val foundBlockMap: ConcurrentMap<BlockPos, IBlockState> = ConcurrentHashMap()
-    private val blockSearchLock: Lock = ReentrantLock()
-    private val entitySearchLock: Lock = ReentrantLock()
+    private var blockSearchJob: Job? = null
+    private var entitySearchJob: Job? = null
     private var prevDimension = -2
 
     override fun getHudInfo(): String {
@@ -124,19 +126,15 @@ object Search : Module(
             }
         }
 
-        safeAsyncListener<TickEvent.ClientTickEvent> {
-            if (blockSearchLock.tryLock()) {
-                try {
+        safeListener<TickEvent.ClientTickEvent> {
+            if (blockSearchJob == null || blockSearchJob?.isCompleted == true) {
+                blockSearchJob = defaultScope.launch {
                     blockRenderUpdate()
-                } finally {
-                    blockSearchLock.unlock()
                 }
             }
-            if (entitySearchLock.tryLock()) {
-                try {
+            if (entitySearchJob == null || entitySearchJob?.isCompleted == true) {
+                entitySearchJob = defaultScope.launch {
                     searchLoadedEntities()
-                } finally {
-                    entitySearchLock.unlock()
                 }
             }
         }
@@ -205,6 +203,7 @@ object Search : Module(
                     launch {
                         findBlocksInChunk(chunk).forEach { pair -> foundBlockMap[pair.first] = pair.second }
                     }
+                    delay(500L)
                 }
             }
         }
