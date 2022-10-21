@@ -84,6 +84,11 @@ internal object ForgeEventProcessor {
     }
 
     @SubscribeEvent
+    fun onGuiKeyInput(event: GuiScreenEvent.KeyboardInputEvent.Pre) {
+        LambdaEventBus.post(event)
+    }
+
+    @SubscribeEvent
     fun onEventMouse(event: InputEvent.MouseInputEvent) {
         LambdaEventBus.post(event)
         if (!Mouse.getEventButtonState()) return
@@ -100,6 +105,21 @@ internal object ForgeEventProcessor {
             CommandManager.runCommand(event.message.removePrefix(CommandManager.prefix))
             event.isCanceled = true
         }
+    }
+
+    @SubscribeEvent
+    fun onDrawScreenEvent(event: GuiScreenEvent.DrawScreenEvent) {
+        LambdaEventBus.post(event)
+    }
+
+    @SubscribeEvent
+    fun onRenderTooltipEvent(event: RenderTooltipEvent.Pre) {
+        LambdaEventBus.post(event)
+    }
+
+    @SubscribeEvent
+    fun onGuiOpenEvent(event: GuiOpenEvent) {
+        LambdaEventBus.post(event)
     }
 
     /**

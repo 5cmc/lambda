@@ -25,8 +25,6 @@ public class MixinGuiScreen {
                 ci.cancel();
                 MapPreview.drawMap(stack, mapData, x, y);
             }
-        } else if (ContainerPreview.INSTANCE.isEnabled()) {
-            ContainerPreview.INSTANCE.renderTooltips(stack, x, y, ci);
         }
     }
 

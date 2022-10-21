@@ -1,8 +1,8 @@
 package com.lambda.client.module.modules.render
 
-import com.lambda.client.commons.extension.ceilToInt
 import com.lambda.client.module.Category
 import com.lambda.client.module.Module
+import com.lambda.client.util.Bind
 import com.lambda.client.util.color.ColorHolder
 import com.lambda.client.util.graphics.GlStateUtils
 import com.lambda.client.util.graphics.RenderUtils2D
@@ -10,109 +10,162 @@ import com.lambda.client.util.graphics.VertexHelper
 import com.lambda.client.util.graphics.font.FontRenderAdapter
 import com.lambda.client.util.items.block
 import com.lambda.client.util.math.Vec2d
+import com.lambda.client.util.threads.safeListener
+import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.inventory.GuiContainer
 import net.minecraft.client.renderer.GlStateManager
+import net.minecraft.client.renderer.RenderHelper
+import net.minecraft.entity.player.EntityPlayer
 import net.minecraft.init.Blocks
+import net.minecraft.inventory.Container
 import net.minecraft.inventory.IInventory
+import net.minecraft.inventory.ItemStackHelper
+import net.minecraft.inventory.Slot
 import net.minecraft.item.ItemShulkerBox
 import net.minecraft.item.ItemStack
-import net.minecraft.nbt.NBTTagCompound
+import net.minecraft.util.NonNullList
+import net.minecraft.util.text.ITextComponent
+import net.minecraft.util.text.TextComponentString
+import net.minecraftforge.client.event.GuiOpenEvent
+import net.minecraftforge.client.event.GuiScreenEvent
+import net.minecraftforge.client.event.RenderTooltipEvent
+import org.lwjgl.input.Keyboard
 import org.lwjgl.opengl.GL11.GL_LINE_LOOP
 import org.lwjgl.opengl.GL11.glLineWidth
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo
 
 object ContainerPreview : Module(
     name = "ContainerPreview",
     description = "Previews shulkers and ender chests in the game GUI",
     category = Category.RENDER
 ) {
+
+    /**
+     * Some inspiration for implementation taken from ForgeHax.
+     * https://github.com/fr1kin/ForgeHax/blob/master/src/main/java/com/matt/forgehax/mods/ShulkerViewer.java
+     */
+
     private val useCustomFont by setting("Use Custom Font", false)
     private val backgroundColor by setting("Background Color", ColorHolder(16, 0, 16, 255))
     private val borderTopColor by setting("Top Border Color", ColorHolder(144, 101, 237, 54))
     private val borderBottomColor by setting("Bottom Border Color", ColorHolder(40, 0, 127, 80))
-
+    private val previewLock by setting("Preview Lock Bind", Bind())
+    private const val CONTAINER_GUI_SIZE = 16 + 54 + 6
+    private const val x_offset = 8
+    private const val y_offset = 0
+    var locked = false
+    // todo: cache echest to disk
+    //  key: serverID + player UUID
+    //  value: echest contents as list of itemstacks
+    //  we don't have a great way to do this map in lambda config and need to (de)serialize itemstack with nbt
     var enderChest: IInventory? = null
+    private var isKeySet = false
+    private var isMouseInPreviewGui = false
+    private var isModGeneratedToolTip = false
+    private var lastX = -1
+    private var lastY = -1
 
-    fun renderTooltips(itemStack: ItemStack, x: Int, y: Int, ci: CallbackInfo) {
-        val item = itemStack.item
+    private var stackContainer: GuiPreview? = null
 
-        if (item is ItemShulkerBox) {
-            renderShulkerBoxTooltips(itemStack, x, y, ci)
-        } else if (item.block == Blocks.ENDER_CHEST) {
-            renderEnderChestTooltips(itemStack, x, y, ci)
+    init {
+
+        onEnable {
+            reset()
         }
-    }
 
-    private fun renderShulkerBoxTooltips(itemStack: ItemStack, x: Int, y: Int, ci: CallbackInfo) {
-        getShulkerData(itemStack)?.let {
-            val itemStacks = Array(27) { ItemStack.EMPTY }
-            val nbtTagList = it.getTagList("Items", 10)
+        onDisable {
+            reset()
+        }
 
-            for (i in 0 until nbtTagList.tagCount()) {
-                val itemStackNBTTag = nbtTagList.getCompoundTagAt(i)
-                val slot = itemStackNBTTag.getInteger("Slot") and 255
-                if (slot in itemStacks.indices) {
-                    itemStacks[slot] = ItemStack(itemStackNBTTag)
+        safeListener<GuiScreenEvent.KeyboardInputEvent.Pre> {
+            if (Keyboard.getEventKey() == previewLock.key) {
+                locked = Keyboard.getEventKeyState()
+            }
+        }
+
+
+        safeListener<GuiScreenEvent.DrawScreenEvent.Post> (priority = -5) {
+            if (mc.currentScreen !is GuiContainer) return@safeListener
+            val gui = it.gui as GuiContainer
+            if (!isLocked()) {
+                val slotUnder = gui.slotUnderMouse
+                if (slotUnder != null && slotUnder.hasStack && !slotUnder.stack.isEmpty && (slotUnder.stack.item is ItemShulkerBox || slotUnder.stack.item.block == Blocks.ENDER_CHEST)) {
+                    if (stackContainer == null || stackContainer?.parentContainer != slotUnder.stack) {
+                        stackContainer = createPreviewGui(slotUnder.stack, getContainerContents(slotUnder.stack))
+                    }
+                } else {
+                    stackContainer = null
                 }
             }
+            val renderX: Int
+            var renderY: Int
+            if (!isLocked() || lastX == -1 && (lastY == -1)) {
+                lastX = it.mouseX + x_offset
+                renderX = lastX
+                lastY = it.mouseY + y_offset
+                renderY = lastY
+            } else {
+                renderX = lastX
+                renderY = lastY
+            }
+            isMouseInPreviewGui = false // recheck
 
-            ci.cancel()
-            renderContainerAndItems(itemStack, x, y, itemStacks)
+            if (stackContainer != null) {
+                stackContainer!!.posX = renderX
+                stackContainer!!.posY = renderY
+                stackContainer!!.drawScreen(it.mouseX, it.mouseY, it.renderPartialTicks)
+            }
+
+            GlStateManager.enableLighting()
+            GlStateManager.color(1f, 1f, 1f, 1.0f)
         }
-    }
 
-    private fun getShulkerData(stack: ItemStack): NBTTagCompound? {
-        val tagCompound = if (stack.item is ItemShulkerBox) stack.tagCompound else return null
-
-        tagCompound?.let {
-            val blockEntityTag = it.getCompoundTag("BlockEntityTag")
-            if (blockEntityTag.hasKey("Items", 9)) {
-                return blockEntityTag
+        safeListener<RenderTooltipEvent.Pre> {
+            if (mc.currentScreen !is GuiContainer || isModGeneratedToolTip) return@safeListener
+            if (isMouseInPreviewGui) {
+                it.isCanceled = true
+            } else if (it.stack.item is ItemShulkerBox || it.stack.item.block == Blocks.ENDER_CHEST) {
+                it.isCanceled = true
             }
         }
-        return null
-    }
 
-    private fun renderEnderChestTooltips(itemStack: ItemStack, x: Int, y: Int, ci: CallbackInfo) {
-        val itemStacks = Array(27) { ItemStack.EMPTY }
-        enderChest?.let {
-            for (i in itemStacks.indices) {
-                itemStacks[i] = it.getStackInSlot(i)
+        safeListener<GuiOpenEvent> {
+            if (it.gui == null) {
+                reset()
             }
         }
-
-        ci.cancel()
-        renderContainerAndItems(itemStack, x, y, itemStacks)
     }
 
-    private fun renderContainerAndItems(stack: ItemStack, originalX: Int, originalY: Int, items: Array<ItemStack>) {
-        GlStateManager.pushMatrix()
-        GlStateManager.translate(0.0, 0.0, 500.0)
-
-        renderContainer(stack, originalX, originalY)
-        renderContainerItems(items, originalX, originalY)
-
-        GlStateManager.popMatrix()
+    private fun reset() {
+        isModGeneratedToolTip = false
+        isMouseInPreviewGui = false
+        isKeySet = false
+        locked = false
+        lastY = -1
+        lastX = lastY
     }
 
-    private fun renderContainer(stack: ItemStack, originalX: Int, originalY: Int) {
-        val width = 144.coerceAtLeast(FontRenderAdapter.getStringWidth(stack.displayName).ceilToInt() + 3)
-        val vertexHelper = VertexHelper(GlStateUtils.useVbo())
-
-        val x = (originalX + 12).toDouble()
-        val y = (originalY - 12).toDouble()
-        val height = FontRenderAdapter.getFontHeight(customFont = useCustomFont) + 48
-
-        RenderUtils2D.drawRoundedRectFilled(
-            vertexHelper,
-            Vec2d(x - 4, y - 4),
-            Vec2d(x + width + 4, y + height + 4),
-            1.0,
-            color = backgroundColor
+    private fun createPreviewGui(parentContainer: ItemStack, containerContents: MutableList<ItemStack>): GuiPreview? {
+        return GuiPreview(
+            PreviewContainer(PreviewInventory(containerContents), 27),
+            parentContainer
         )
+    }
 
-        drawRectOutline(vertexHelper, x, y, width, height)
-
-        FontRenderAdapter.drawString(stack.displayName, x.toFloat(), y.toFloat() - 2.0f, customFont = useCustomFont)
+    private fun getContainerContents(stack: ItemStack): MutableList<ItemStack> { // TODO: move somewhere else
+        if (stack.item.block == Blocks.ENDER_CHEST) {
+            return getEnderChestData()
+        } else {
+            val contents = NonNullList.withSize(27, ItemStack.EMPTY)
+            val compound = stack.tagCompound
+            if (compound != null && compound.hasKey("BlockEntityTag", 10)) {
+                val tags = compound.getCompoundTag("BlockEntityTag")
+                if (tags.hasKey("Items", 9)) {
+                    // load in the items
+                    ItemStackHelper.loadAllItems(tags, contents)
+                }
+            }
+            return contents
+        }
     }
 
     private fun drawRectOutline(vertexHelper: VertexHelper, x: Double, y: Double, width: Int, height: Float) {
@@ -120,21 +173,229 @@ object ContainerPreview : Module(
         glLineWidth(5.0f)
 
         vertexHelper.begin(GL_LINE_LOOP)
-        vertexHelper.put(Vec2d(x - 3, y - 3), borderTopColor)
-        vertexHelper.put(Vec2d(x - 3, y + height + 3), borderBottomColor)
-        vertexHelper.put(Vec2d(x + width + 3, y + height + 3), borderBottomColor)
-        vertexHelper.put(Vec2d(x + width + 3, y - 3), borderTopColor)
+        vertexHelper.put(Vec2d(x, y), borderTopColor)
+        vertexHelper.put(Vec2d(x, y + height), borderBottomColor)
+        vertexHelper.put(Vec2d(x + width, y + height), borderBottomColor)
+        vertexHelper.put(Vec2d(x + width, y), borderTopColor)
         vertexHelper.end()
 
         RenderUtils2D.releaseGl()
         glLineWidth(1.0f)
     }
 
-    private fun renderContainerItems(itemStacks: Array<ItemStack>, originalX: Int, originalY: Int) {
-        for (i in itemStacks.indices) {
-            val x = originalX + (i % 9) * 16 + 11
-            val y = originalY + (i / 9) * 16 - 2
-            RenderUtils2D.drawItem(itemStacks[i], x, y)
+    private fun isLocked(): Boolean {
+        return locked
+    }
+
+    private fun getEnderChestData(): MutableList<ItemStack> {
+        val itemStacks = Array(27) { ItemStack.EMPTY }
+        enderChest?.let {
+            for (i in 0..26) {
+                itemStacks[i] = it.getStackInSlot(i)
+            }
+        }
+        return itemStacks.toMutableList()
+    }
+
+    class GuiPreview(inventorySlotsIn: Container, val parentContainer: ItemStack) : GuiContainer(inventorySlotsIn) {
+        var posX: Int = 0
+        var posY: Int = 0
+        init {
+            this.ySize = CONTAINER_GUI_SIZE
+            this.mc = Minecraft.getMinecraft()
+            this.fontRenderer = this.mc.fontRenderer
+            this.width = mc.displayWidth
+            this.height = mc.displayHeight
+        }
+
+        override fun drawScreen(mouseX: Int, mouseY: Int, partialTicks: Float) {
+            drawPreview(posX, posY, parentContainer, inventorySlots.inventorySlots.map { it.stack })
+
+            var hoveringOver: Slot? = null
+            val rx = posX.toDouble() + 8
+            val ry = posY.toDouble() - 5
+
+            for (slot in inventorySlots.inventorySlots) {
+                if (slot.hasStack) {
+                    val px = rx + slot.xPos
+                    val py = ry + slot.yPos
+                    if (isPointInRegion(px.toInt(), py.toInt(), 16, 16, mouseX, mouseY)) {
+                        hoveringOver = slot
+                    }
+                }
+            }
+
+            if (hoveringOver != null) {
+                drawHoveredItem((rx + hoveringOver.xPos).toInt(), (ry + hoveringOver.yPos).toInt(), hoveringOver)
+            }
+
+            // might need some rework for nested
+            if (isPointInRegion(posX, posY, xSize, ySize, mouseX, mouseY)) {
+                isMouseInPreviewGui = true
+            }
+
+            GlStateManager.disableBlend()
+            GlStateManager.color(1f, 1f, 1f, 1.0f)
+        }
+
+        private fun drawHoveredItem(drawX: Int, drawY: Int, hoveringOver: Slot) {
+            // background of the gui
+            GlStateManager.disableLighting()
+            GlStateManager.disableDepth()
+            GlStateManager.colorMask(true, true, true, false)
+            drawGradientRect(
+                drawX,
+                drawY,
+                drawX + 16,
+                drawY + 16,
+                -2130706433,
+                -2130706433)
+            GlStateManager.colorMask(true, true, true, true)
+
+            if (hoveringOver.stack.item is ItemShulkerBox || hoveringOver.stack.item.block == Blocks.ENDER_CHEST) {
+                drawPreview(drawX + 8, drawY + 8, hoveringOver.stack, getContainerContents(hoveringOver.stack))
+            } else {
+                // tool tip
+                GlStateManager.color(1f, 1f, 1f, 1.0f)
+                GlStateManager.pushMatrix()
+                isModGeneratedToolTip = true
+                renderToolTip(hoveringOver.stack, drawX + 8, drawY + 8)
+                isModGeneratedToolTip = false
+                GlStateManager.popMatrix()
+                GlStateManager.enableDepth()
+            }
+        }
+
+        private fun drawPreview(drawX: Int, drawY: Int, container: ItemStack, containerContents: List<ItemStack>) {
+            val depth = 500
+            val x = drawX.toDouble()
+            val y = drawY.toDouble()
+            val previewWidth = 176
+            val previewHeight = 70
+            val vertexHelper = VertexHelper(GlStateUtils.useVbo())
+
+            GlStateManager.disableDepth()
+            RenderUtils2D.drawRoundedRectFilled(
+                vertexHelper,
+                Vec2d(x, y),
+                Vec2d(x + previewWidth, y + previewHeight),
+                1.0,
+                color = backgroundColor
+            )
+
+            drawRectOutline(vertexHelper, x + 1, y + 1, previewWidth - 2, previewHeight - 2.toFloat())
+
+            FontRenderAdapter.drawString(container.displayName, (x + 4).toFloat(), (y + 2).toFloat(), customFont = useCustomFont)
+            GlStateManager.enableDepth()
+
+            RenderHelper.enableGUIStandardItemLighting()
+            GlStateManager.enableRescaleNormal()
+            GlStateManager.enableColorMaterial()
+            GlStateManager.enableLighting()
+
+            val rx = x + 8
+            val ry = y - 5
+            for (slot in inventorySlots.inventorySlots) {
+                val px = rx + slot.xPos
+                val py = ry + slot.yPos
+                RenderUtils2D.drawItem(containerContents[slot.slotIndex], px.toInt(), py.toInt(), z = (depth + 1).toFloat())
+            }
+
+            GlStateManager.disableLighting()
+        }
+
+        override fun drawGuiContainerBackgroundLayer(partialTicks: Float, mouseX: Int, mouseY: Int) {
+            // do nothing
+        }
+    }
+
+    class PreviewContainer(val inventory: PreviewInventory, val size: Int) : Container() {
+        init {
+            for (i in 0 until size) {
+                val x = i % 9 * 18
+                val y = (i / 9 + 1) * 18 + 1
+                addSlotToContainer(Slot(inventory, i, x, y))
+            }
+        }
+
+        override fun canInteractWith(playerIn: EntityPlayer): Boolean {
+            return false
+        }
+    }
+
+    class PreviewInventory(val contents: MutableList<ItemStack>) : IInventory {
+        override fun getName(): String {
+            return ""
+        }
+
+        override fun hasCustomName(): Boolean {
+            return false
+        }
+
+        override fun getDisplayName(): ITextComponent {
+            return TextComponentString("")
+        }
+
+        override fun getSizeInventory(): Int {
+            return contents.size
+        }
+
+        override fun isEmpty(): Boolean {
+            return contents.isEmpty()
+        }
+
+        override fun getStackInSlot(index: Int): ItemStack {
+            return contents[index]
+        }
+
+        override fun decrStackSize(index: Int, count: Int): ItemStack {
+            throw UnsupportedOperationException("no")
+        }
+
+        override fun removeStackFromSlot(index: Int): ItemStack {
+            val itemStack = this.contents[index]
+            this.contents[index] = ItemStack.EMPTY
+            return itemStack
+        }
+
+        override fun setInventorySlotContents(index: Int, stack: ItemStack) {
+            this.contents[index] = stack
+        }
+
+        override fun getInventoryStackLimit(): Int {
+            return 27
+        }
+
+        override fun markDirty() {
+        }
+
+        override fun isUsableByPlayer(player: EntityPlayer): Boolean {
+            return false
+        }
+
+        override fun openInventory(player: EntityPlayer) {
+
+        }
+
+        override fun closeInventory(player: EntityPlayer) {
+        }
+
+        override fun isItemValidForSlot(index: Int, stack: ItemStack): Boolean {
+            return index > 0 && index < contents.size && (contents[index] == stack)
+        }
+
+        override fun getField(id: Int): Int {
+            return 0
+        }
+
+        override fun setField(id: Int, value: Int) {
+        }
+
+        override fun getFieldCount(): Int {
+            return 0
+        }
+
+        override fun clear() {
         }
     }
 }
