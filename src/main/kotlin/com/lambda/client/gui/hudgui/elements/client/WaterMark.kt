@@ -17,7 +17,7 @@ internal object WaterMark : LabelHud(
     override val hudHeight: Float get() = displayText.getHeight(2) / scale
 
     override fun SafeClientEvent.updateText() {
-        displayText.add(LambdaMod.NAME, primaryColor)
+        displayText.add("5C ${LambdaMod.NAME}", primaryColor)
         displayText.add(LambdaMod.VERSION, secondaryColor)
     }
 

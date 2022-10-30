@@ -25,7 +25,7 @@ object CommandConfig : Module(
 
     private val timer = TickTimer()
     private val prevTitle = Display.getTitle()
-    private const val title = "${LambdaMod.NAME} ${LambdaMod.LAMBDA} ${LambdaMod.VERSION}"
+    private const val title = "5C ${LambdaMod.NAME} ${LambdaMod.LAMBDA} ${LambdaMod.VERSION}"
 
     init {
         listener<ModuleToggleEvent> {
