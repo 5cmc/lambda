@@ -13,6 +13,10 @@ Find our plugins [here](https://github.com/lambda-plugins).
 
 Download latest 5cmc lambda build [here](https://github.com/5cmc/lambda/actions)
 
+<div align="center">
+  <a href="https://discord.gg/QjfBxJzE5x"><img src="https://invidget.switchblade.xyz/QjfBxJzE5x" alt="Link to the lambda discord server https://discord.gg/QjfBxJzE5x"></a>
+</div>
+
 ## Installation
 1. Install Minecraft 1.12.2
 2. Install the latest Forge for 1.12.2 [(download)](https://files.minecraftforge.net/net/minecraftforge/forge/index_1.12.2.html)
