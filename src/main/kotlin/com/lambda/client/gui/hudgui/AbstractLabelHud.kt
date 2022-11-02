@@ -23,6 +23,7 @@ abstract class AbstractLabelHud(
     override val hudHeight: Float get() = displayText.getHeight(2)
 
     protected val displayText = TextComponent()
+    protected var textShadow = true
 
     init {
         safeAsyncListener<TickEvent.ClientTickEvent> {
@@ -43,7 +44,8 @@ abstract class AbstractLabelHud(
         displayText.draw(
             Vec2d(textPosX.toDouble(), textPosY.toDouble()),
             horizontalAlign = dockingH,
-            verticalAlign = dockingV
+            verticalAlign = dockingV,
+            drawShadow = textShadow
         )
     }
 
