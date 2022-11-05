@@ -9,6 +9,7 @@ enum class Category(override val displayName: String) : DisplayEnum {
     MISC("Misc"),
     MOVEMENT("Movement"),
     PLAYER("Player"),
+    PROXY("Proxy"),
     RENDER("Render");
 
     override fun toString() = displayName
