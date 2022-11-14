@@ -1,7 +1,6 @@
 package com.lambda.client.module.modules.movement
 
 import baritone.api.pathing.goals.GoalXZ
-import com.lambda.client.LambdaMod
 import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.event.events.PacketEvent
 import com.lambda.client.module.Category
@@ -9,6 +8,7 @@ import com.lambda.client.module.Module
 import com.lambda.client.module.modules.player.LagNotifier
 import com.lambda.client.module.modules.player.ViewLock
 import com.lambda.client.util.BaritoneUtils
+import com.lambda.client.util.MovementUtils.centerPlayer
 import com.lambda.client.util.TickTimer
 import com.lambda.client.util.TimeUnit
 import com.lambda.client.util.threads.defaultScope
@@ -23,7 +23,6 @@ import net.minecraft.util.math.Vec3d
 import net.minecraftforge.client.event.InputUpdateEvent
 import net.minecraftforge.fml.common.gameevent.TickEvent
 import java.time.Instant
-import com.lambda.client.util.MovementUtils.centerPlayer
 
 object ElytraFlightHighway : Module(
     name = "ElytraFlightHighway",
@@ -31,6 +30,8 @@ object ElytraFlightHighway : Module(
     category = Category.MOVEMENT,
     modulePriority = 1000
 ) {
+    val rubberBandDetectionTime by setting("Rubberband Detection Time", 1000, 0..2000, 10,
+        description = "Time period (ms) between which to detect rubberband teleports.")
     private val baritonePathForwardBlocks by setting("Rubberband Path Distance", 20, 1..50, 1)
     private val baritoneEndDelayMs by setting("Baritone End Pathing Delay Ms", 500, 0..2000, 50)
     private val baritoneStartDelayMs by setting("Baritone Start Delay Ms", 500, 0..2000, 50)
@@ -133,14 +134,15 @@ object ElytraFlightHighway : Module(
         }
 
         safeListener<PacketEvent.Receive> {
-            if ((currentState != State.FLYING && currentState != State.TAKEOFF && !isPathing()) || it.packet !is SPacketPlayerPosLook) return@safeListener
-            val now = Instant.now().toEpochMilli()
-            if (now - lastSPacketPlayerPosLook < ElytraFlight2b2t.rubberBandDetectionTime) {
-                toggleAllOff()
-                pathForward()
-                currentState = State.WALKING
+            if (it.packet is SPacketPlayerPosLook && (currentState == State.FLYING || currentState == State.TAKEOFF) && !isPathing()) {
+                val now = Instant.now().toEpochMilli()
+                if (now - lastSPacketPlayerPosLook <= rubberBandDetectionTime.toLong()) {
+                    toggleAllOff()
+                    pathForward()
+                    currentState = State.WALKING
+                }
+                lastSPacketPlayerPosLook = now
             }
-            lastSPacketPlayerPosLook = now
         }
 
         safeListener<InputUpdateEvent>(6969) {

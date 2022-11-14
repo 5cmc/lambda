@@ -8,10 +8,8 @@ import com.lambda.client.event.SafeClientEvent
 
 object ProxyManager : Manager {
 
-//    private var isProxy = false;
     fun isProxy(): Boolean {
-    val serverBrand = mc.player.serverBrand ?: "Unknown Server Type"
-    return serverBrand == "Proxy";
+        val serverBrand = mc.player.serverBrand ?: "Unknown Server Type"
+        return serverBrand == "Proxy";
     }
-
 }
