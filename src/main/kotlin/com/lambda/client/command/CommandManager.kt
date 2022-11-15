@@ -16,6 +16,7 @@ import com.lambda.client.util.threads.onMainThread
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 
 object CommandManager : AbstractCommandManager<ClientExecuteEvent>(),
     com.lambda.client.AsyncLoader<List<Class<out ClientCommand>>> {
@@ -93,7 +94,14 @@ object CommandManager : AbstractCommandManager<ClientExecuteEvent>(),
 
         onMainThread {
             runBlocking {
-                finalArg.invoke(event)
+                withTimeout(6000L) {
+                    try {
+                        finalArg.invoke(event)
+                    } catch (e: Exception) {
+                        MessageSendHelper.sendChatMessage("Failed executing command: $command")
+                        LambdaMod.LOG.error("Failed executing command $command", e)
+                    }
+                }
             }
         }
     }

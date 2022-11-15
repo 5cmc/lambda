@@ -1,6 +1,7 @@
 package com.lambda.client.command.commands
 
 import com.babbaj.pathfinder.PathFinder
+import com.lambda.client.LambdaMod
 import com.lambda.client.command.ClientCommand
 import com.lambda.client.util.NetherPathFinderRenderer
 import com.lambda.client.util.math.VectorUtils.distanceTo
@@ -18,8 +19,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
-import java.util.concurrent.locks.Lock
-import java.util.concurrent.locks.ReentrantLock
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.stream.Collectors
 import kotlin.math.abs
 import kotlin.math.hypot
@@ -35,7 +35,7 @@ object NetherPathfindCommand : ClientCommand(
     private var scheduledExecutor: ScheduledExecutorService = Executors.newScheduledThreadPool(1)
     private var scheduledFuture: ScheduledFuture<*>? = null
     private var seed: Long = 146008555100680L // 2b2t nether seed
-    private val pathLock: Lock = ReentrantLock()
+    private val pathLock: AtomicBoolean = AtomicBoolean(false)
 
     init {
         literal("goto") {
@@ -67,31 +67,33 @@ object NetherPathfindCommand : ClientCommand(
     }
 
     private fun goto(x: Int, z: Int) {
-        if (pathLock.tryLock() && isNull(pathJob)) {
+        if (pathLock.compareAndSet(false, true) && isNull(pathJob)) {
             pathJob = defaultScope.launch {
                 MessageSendHelper.sendChatMessage("Calculating path...")
                 val t1 = System.currentTimeMillis()
-                val longs: LongArray
+                var longs: LongArray? = null
                 try {
                     longs = PathFinder.pathFind(seed, false, true, mc.player.posX.toInt(), mc.player.posY.toInt(), mc.player.posZ.toInt(), x, 64, z)
                 } catch (e: Throwable) {
-                    MessageSendHelper.sendChatMessage("path find failed")
-                    pathLock.unlock()
-                    return@launch
+                    LambdaMod.LOG.error(e)
                 }
-
-                val t2 = System.currentTimeMillis()
-                val path: MutableList<BlockPos> = Arrays.stream(longs).mapToObj { serialized: Long -> BlockPos.fromLong(serialized) }.collect(Collectors.toList())
-                if (isActive) { // allow us to "cancel" pathfind
-                    mc.addScheduledTask {
-                        resetRenderer()
-                        registerRenderer(path)
-                        scheduledFuture?.cancel(true)
-                        scheduledFuture = scheduledExecutor.scheduleAtFixedRate({ scheduledGotoRepathCheck(path, x, z) }, 5000, 5000, TimeUnit.MILLISECONDS)
-                        MessageSendHelper.sendChatMessage(String.format("Found path in %.2f seconds", (t2 - t1) / 1000.0))
-                        pathJob = null
-                        pathLock.unlock()
+                if (longs != null) {
+                    val t2 = System.currentTimeMillis()
+                    val path: MutableList<BlockPos> = Arrays.stream(longs).mapToObj { serialized: Long -> BlockPos.fromLong(serialized) }.collect(Collectors.toList())
+                    if (isActive) { // allow us to "cancel" pathfind
+                        mc.addScheduledTask {
+                            resetRenderer()
+                            registerRenderer(path)
+                            scheduledFuture?.cancel(true)
+                            scheduledFuture = scheduledExecutor.scheduleAtFixedRate({ scheduledGotoRepathCheck(path, x, z) }, 5000, 5000, TimeUnit.MILLISECONDS)
+                            MessageSendHelper.sendChatMessage(String.format("Found path in %.2f seconds", (t2 - t1) / 1000.0))
+                            pathJob = null
+                            pathLock.set(false)
+                        }
                     }
+                } else {
+                    pathJob = null
+                    pathLock.set(false)
                 }
             }
         } else {
@@ -117,11 +119,20 @@ object NetherPathfindCommand : ClientCommand(
     }
 
     private fun resetAll() {
+        if (pathJob != null) {
+            // important: if this is called while there is no path pathing ongoing the next path will fail
+            // thank you babbaj
+            PathFinder.cancel()
+        }
         pathJob?.cancel()
         pathJob = null
         scheduledFuture?.cancel(true)
-        mc.addScheduledTask { resetRenderer() }.get(1, TimeUnit.SECONDS)
-        pathLock.unlock()
+        try {
+            mc.addScheduledTask { resetRenderer() }.get(1, TimeUnit.SECONDS)
+        } catch (e: Exception) {
+
+        }
+        pathLock.set(false)
     }
 
     private fun scheduledGotoRepathCheck(path: MutableList<BlockPos>, destX: Int, destZ: Int) {
