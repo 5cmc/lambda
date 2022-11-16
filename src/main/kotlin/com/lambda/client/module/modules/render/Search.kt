@@ -39,8 +39,6 @@ import net.minecraft.world.chunk.Chunk
 import net.minecraftforge.fml.common.gameevent.TickEvent
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentMap
-import java.util.concurrent.locks.Lock
-import java.util.concurrent.locks.ReentrantLock
 import kotlin.collections.set
 import kotlin.math.max
 
@@ -287,7 +285,7 @@ object Search : Module(
         if (block == Blocks.AIR) return false
         return blockSearchList.contains(block.registryName.toString())
             || isIllegalBedrock(state, pos)
-            || isIllegalWater(state, pos)
+            || isIllegalWater(state)
     }
 
     private fun isIllegalBedrock(state: IBlockState, pos: BlockPos): Boolean {
@@ -307,7 +305,7 @@ object Search : Module(
         }
     }
 
-    private fun isIllegalWater(state: IBlockState, pos: BlockPos): Boolean {
+    private fun isIllegalWater(state: IBlockState): Boolean {
         if (!illegalNetherWater.value) return false
         return (mc.player.dimension == -1 && state.isWater)
     }

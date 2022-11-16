@@ -48,7 +48,7 @@ class NetherPathFinderRenderer(path: List<BlockPos>){
         return id
     }
 
-    fun getInterpolatedAmount(entity: Entity?, ticks: Double): Vec3d? {
+    private fun getInterpolatedAmount(entity: Entity?, ticks: Double): Vec3d {
         return Vec3d(
             (entity!!.posX - entity.lastTickPosX) * ticks,
             (entity.posY - entity.lastTickPosY) * ticks,

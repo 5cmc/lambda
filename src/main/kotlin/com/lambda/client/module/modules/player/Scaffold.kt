@@ -102,7 +102,7 @@ object Scaffold : Module(
         }
     }
 
-    private fun schematicToggle(prev: Boolean, input: Boolean): Boolean {
+    private fun schematicToggle(@Suppress("UNUSED_PARAMETER") prev: Boolean, input: Boolean): Boolean {
         if (input) {
             val schematic = loadSchematic()
             if (schematic.isPresent) {
@@ -184,7 +184,10 @@ object Scaffold : Module(
             val blockTypeForSchematicBlockPos: IBlockState? = getSchematicBlockState(loadedSchematic!!, loadedSchematicOrigin!!, placeInfo.placedPos)
             if (blockTypeForSchematicBlockPos != null) {
                 if (blockTypeForSchematicBlockPos.block == AIR) return
-                if (!swapToBlockOrMove(this@Scaffold, blockTypeForSchematicBlockPos.block, predicateItem = { it.item.block.getStateFromMeta(it.metadata).equals(blockTypeForSchematicBlockPos)})) {
+                if (!swapToBlockOrMove(this@Scaffold, blockTypeForSchematicBlockPos.block, predicateItem = {
+                        @Suppress("DEPRECATION")
+                        it.item.block.getStateFromMeta(it.metadata).equals(blockTypeForSchematicBlockPos)
+                    })) {
                     if (blockTypeForSchematicBlockPos.block == STAINED_GLASS) {
                         val color: EnumDyeColor = blockTypeForSchematicBlockPos.properties.get(COLOR) as EnumDyeColor
                         MessageSendHelper.sendChatMessage("$chatName No ${color.dyeColorName} ${blockTypeForSchematicBlockPos.block.localizedName} was found in inventory.")
