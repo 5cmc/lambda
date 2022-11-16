@@ -266,6 +266,7 @@ abstract class AbstractLambdaGui<S : SettingWindow<*>, E : Any> : GuiScreen() {
 
     // Rendering
     final override fun drawScreen(mouseX: Int, mouseY: Int, partialTicks: Float) {
+        handleInput()
         val scale = ClickGUI.getScaleFactorFloat()
         val scaledResolution = ScaledResolution(mc)
         val multiplier = fadeMultiplier
