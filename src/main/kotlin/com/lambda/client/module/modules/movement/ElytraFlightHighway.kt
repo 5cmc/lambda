@@ -36,6 +36,7 @@ object ElytraFlightHighway : Module(
     private val baritoneEndDelayMs by setting("Baritone End Pathing Delay Ms", 500, 0..2000, 50)
     private val baritoneStartDelayMs by setting("Baritone Start Delay Ms", 500, 0..2000, 50)
     private val centerPlayer by setting("Center", true)
+    private val sneak by setting("Sneak", true)
     private const val jumpDelay: Int = 10
 
     private var currentState = State.WALKING
@@ -49,6 +50,7 @@ object ElytraFlightHighway : Module(
     private var baritoneEndPathingTime: Long = 0L
     private var beforePathingPlayerPitchYaw: Vec2f = Vec2f.ZERO
     private var scheduleBaritoneJob: Job? = null
+    private var shouldSneak: Boolean = false
 
     enum class State {
         FLYING, TAKEOFF, WALKING
@@ -66,6 +68,7 @@ object ElytraFlightHighway : Module(
         }
 
         onDisable {
+            shouldSneak = false
             currentState = State.WALKING
             toggleAllOff()
             scheduleBaritoneJob?.cancel()
@@ -81,6 +84,7 @@ object ElytraFlightHighway : Module(
                         return@safeListener
                     }
                     while (isPathing()) {
+                        shouldSneak = false
                         isBaritoning = true
                         return@safeListener
                     }
@@ -100,6 +104,8 @@ object ElytraFlightHighway : Module(
                     toggleAllOn()
                 }
                 State.TAKEOFF -> {
+                    shouldSneak = true
+                    if (sneak) if (!player.isSneaking) return@safeListener
                     if (player.onGround && timer.tick(jumpDelay.toLong())) player.jump()
                     if (mc.player.isElytraFlying) {
                         currentState = State.FLYING
@@ -146,6 +152,7 @@ object ElytraFlightHighway : Module(
         }
 
         safeListener<InputUpdateEvent>(6969) {
+            if (sneak) it.movementInput.sneak = shouldSneak
             if (currentState != State.TAKEOFF) return@safeListener
             if (LagNotifier.isBaritonePaused && LagNotifier.pauseAutoWalk) return@safeListener
             if (it.movementInput !is MovementInputFromOptions) return@safeListener
