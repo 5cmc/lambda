@@ -35,8 +35,10 @@ object ElytraFlightHighway : Module(
     private val baritonePathForwardBlocks by setting("Rubberband Path Distance", 20, 1..50, 1)
     private val baritoneEndDelayMs by setting("Baritone End Pathing Delay Ms", 500, 0..2000, 50)
     private val baritoneStartDelayMs by setting("Baritone Start Delay Ms", 500, 0..2000, 50)
-    private val centerPlayer by setting("Center", true)
-    private val sneak by setting("Sneak", true)
+    private val centerPlayer by setting("Center", true,
+        description = "Move to center of block before deployment")
+    private val sneak by setting("Sneak", true,
+        description = "Sneak whilst flying, allows travel through 1x2 tunnels (+ less block collision in general)")
     private const val jumpDelay: Int = 10
 
     private var currentState = State.WALKING
