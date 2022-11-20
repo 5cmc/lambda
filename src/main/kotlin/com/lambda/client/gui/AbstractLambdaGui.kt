@@ -86,16 +86,16 @@ abstract class AbstractLambdaGui<S : SettingWindow<*>, E : Any> : GuiScreen() {
         mc = Wrapper.minecraft
         windowList.add(ColorPicker)
 
-        safeListener<RealWorldTickEvent> {
-            blurShader.shader?.let {
+        safeListener<RealWorldTickEvent> { event ->
+            blurShader.shader?.let { shaderGroup ->
                 val multiplier = ClickGUI.blur * fadeMultiplier
-                for (shader in it.listShaders) {
+                shaderGroup.listShaders.forEach { shader ->
                     shader.shaderManager.getShaderUniform("multiplier")?.set(multiplier)
                 }
             }
 
             if (displayed.value || alwaysTicking) {
-                for (window in windowList) window.onTick()
+                windowList.forEach { it.onTick() }
             }
         }
 
@@ -142,7 +142,7 @@ abstract class AbstractLambdaGui<S : SettingWindow<*>, E : Any> : GuiScreen() {
 
         displayed.value = true
 
-        for (window in windowList) window.onDisplayed()
+        windowList.forEach { it.onDisplayed() }
     }
 
     override fun initGui() {
@@ -152,7 +152,7 @@ abstract class AbstractLambdaGui<S : SettingWindow<*>, E : Any> : GuiScreen() {
         width = scaledResolution.scaledWidth + 16
         height = scaledResolution.scaledHeight + 16
 
-        for (window in windowList) window.onGuiInit()
+        windowList.forEach { it.onGuiInit() }
     }
 
     override fun onGuiClosed() {
@@ -164,7 +164,7 @@ abstract class AbstractLambdaGui<S : SettingWindow<*>, E : Any> : GuiScreen() {
 
         displayed.value = false
 
-        for (window in windowList) window.onClosed()
+        windowList.forEach { it.onClosed() }
         updateSettingWindow()
     }
     // End of gui init
@@ -318,11 +318,10 @@ abstract class AbstractLambdaGui<S : SettingWindow<*>, E : Any> : GuiScreen() {
     }
 
     private fun drawEachWindow(renderBlock: (WindowComponent) -> Unit) {
-        for (window in windowList) {
-            if (!window.visible) continue
+        windowList.filter { it.visible }.forEach {
             glPushMatrix()
-            glTranslatef(window.renderPosX, window.renderPosY, 0.0f)
-            renderBlock(window)
+            glTranslatef(it.renderPosX, it.renderPosY, 0.0f)
+            renderBlock(it)
             glPopMatrix()
         }
     }

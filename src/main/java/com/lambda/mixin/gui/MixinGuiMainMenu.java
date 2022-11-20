@@ -1,15 +1,10 @@
 package com.lambda.mixin.gui;
 
-import com.lambda.client.LambdaMod;
 import com.lambda.client.gui.mc.LambdaGuiIncompat;
 import com.lambda.client.module.modules.client.MenuShader;
 import com.lambda.client.util.KamiCheck;
-import com.lambda.client.util.WebUtils;
-import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.GuiMainMenu;
 import net.minecraft.client.gui.GuiScreen;
-import net.minecraft.util.text.TextFormatting;
-import org.lwjgl.input.Mouse;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
