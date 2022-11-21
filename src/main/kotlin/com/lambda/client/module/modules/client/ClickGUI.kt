@@ -29,7 +29,7 @@ object ClickGUI : Module(
     val verticalMargin by setting("Vertical Margin", 0.0f, 0.0f..10.0f, 0.5f, unit = "px")
     val darkness by setting("Darkness", 0.25f, 0.0f..1.0f, 0.05f)
     val gridSize by setting("Snap Grid", 10.0f, 0.0f..50.0f, 1.0f, unit = "px")
-    val fadeInTime by setting("Fade In Time", 0.25f, 0.0f..1.0f, 0.05f, unit = "s")
+    val fadeInTime by setting("Fade In Time", 0.1f, 0.0f..1.0f, 0.05f, unit = "s")
     val fadeOutTime by setting("Fade Out Time", 0.1f, 0.0f..1.0f, 0.05f, unit = "s")
     val scrollRubberband by setting("Scroll Rubberband", false)
     val scrollRubberbandSpeed by setting("Scroll Rubberband Speed", 0.5f, 0.01f..1.0f, 0.05f, { scrollRubberband })

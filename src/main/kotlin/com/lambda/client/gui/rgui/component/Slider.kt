@@ -33,7 +33,7 @@ open class Slider(
 
     protected val prevValue = TimedFlag(value)
     protected open val renderProgress: Double
-        get() = value
+        get() = AnimationUtils.linear(AnimationUtils.toDeltaTimeDouble(prevValue.lastUpdateTime), 50.0, prevValue.value, value)
 
     override val maxHeight
         get() = FontRenderAdapter.getFontHeight() + 3.0f

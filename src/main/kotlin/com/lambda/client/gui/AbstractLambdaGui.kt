@@ -86,7 +86,7 @@ abstract class AbstractLambdaGui<S : SettingWindow<*>, E : Any> : GuiScreen() {
         mc = Wrapper.minecraft
         windowList.add(ColorPicker)
 
-        safeListener<RealWorldTickEvent> { event ->
+        safeListener<RealWorldTickEvent> {
             blurShader.shader?.let { shaderGroup ->
                 val multiplier = ClickGUI.blur * fadeMultiplier
                 shaderGroup.listShaders.forEach { shader ->

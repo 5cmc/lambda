@@ -36,7 +36,6 @@ object LambdaClickGui : AbstractLambdaGui<ModuleSettingWindow, AbstractModule>()
     var remotePluginWindow: ListWindow
     var disabledRemotes = ArrayList<RemotePluginButton>()
     private var moduleCount = ModuleManager.modules.size
-    private var hasInit = false
 
     init {
         var posX = 0.0f
@@ -64,10 +63,8 @@ object LambdaClickGui : AbstractLambdaGui<ModuleSettingWindow, AbstractModule>()
     }
 
     override fun onDisplayed() {
-        if (!hasInit) {
-            reorderModules()
-            hasInit = true
-        }
+        reorderModules()
+
         super.onDisplayed()
     }
 

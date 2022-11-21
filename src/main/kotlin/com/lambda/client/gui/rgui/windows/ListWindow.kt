@@ -5,6 +5,7 @@ import com.lambda.client.gui.AbstractLambdaGui
 import com.lambda.client.gui.rgui.Component
 import com.lambda.client.gui.rgui.InteractiveComponent
 import com.lambda.client.module.modules.client.ClickGUI
+import com.lambda.client.util.TickTimer
 import com.lambda.client.util.graphics.GlStateUtils
 import com.lambda.client.util.graphics.VertexHelper
 import com.lambda.client.util.math.Vec2f
