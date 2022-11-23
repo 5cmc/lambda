@@ -101,7 +101,7 @@ Clone the repository to your local machine. Use the link of either your fork or 
 git clone https://github.com/5cmc/lambda
 ```
 
-Run `setupWorkspace.sh` to initialize the environment. 
+Run `setupWorkspace.sh` to initialize the environment.
 Use your terminal on Linux or [Git Bash](https://gitforwindows.org/) for Windows.
 ```
 ./setupWorkspace.sh
@@ -121,15 +121,10 @@ Test if the environment is set up correctly by building the client and running i
 1. Go to `lambda > Tasks > build > runClient` in the Gradle tab and run the client.
 2. To build the client as a jar run `lambda > Tasks > build > build`. Gradle will create a new directory called `build`. The final built jar will be in `build/libs`.
 
+### Stargazers
+[![Stargazers](https://starchart.cc/lambda-client/lambda.svg)](https://starchart.cc/lambda-client/lambda)
+
 ## Thanks to
-
-[zeroeightysix](https://github.com/zeroeightysix) for the original [KAMI](https://github.com/zeroeightysix/KAMI)
-
-[KAMI Blue](https://github.com/kami-blue) for the continuation of [KAMI](https://github.com/zeroeightysix/KAMI)
-
-[ronmamo](https://github.com/ronmamo) for [Reflections](https://github.com/ronmamo/reflections)
-
-[MinecraftForge](https://github.com/MinecraftForge) for [Forge](https://github.com/MinecraftForge/MinecraftForge)
 
 Our [contributors](https://github.com/lambda-client/lambda/graphs/contributors)
 
