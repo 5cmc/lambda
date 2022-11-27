@@ -214,7 +214,7 @@ task setGameDir() {
     // Check if custom gamedir has been passed, if not use default ones per platform
     if (!project.hasProperty("gameDir")) {
         if (org.gradle.internal.os.OperatingSystem.current().isWindows()) {
-            project.ext.gameDir = "D:\\MultiMC\\instances\\Anarchy\\.minecraft"
+            project.ext.gameDir = System.getenv("APPDATA") + "/.minecraft"
         } else if (org.gradle.internal.os.OperatingSystem.current().isMacOsX()) {
             project.ext.gameDir = System.properties["user.home"] + "/Library/Application Support/minecraft"
         } else {
@@ -234,7 +234,7 @@ class CopyJarTask extends DefaultTask {
     protected void exec() {
         project.copy {
             final gameDir = project.ext.gameDir;
-            final modDir = "$gameDir/mods"
+            final modDir = "$gameDir/mods/1.12.2"
 
             // find previous jar (if it exists)
             final previousJars = project.fileTree(dir: modDir).matching {
@@ -260,7 +260,7 @@ class CopyJarTask extends DefaultTask {
             }
 
             from project.jar
-            into "$gameDir/mods"
+            into "$gameDir/mods/1.12.2"
         }
     }
 }
