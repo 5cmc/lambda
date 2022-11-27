@@ -339,10 +339,11 @@ object ElytraFlight2b2t : Module(
         }
 
         safeListener<InputUpdateEvent> {
-            if (currentState == State.PAUSED) {
-                it.movementInput.moveForward = 0.0f
-                it.movementInput.moveStrafe = 0.0f
-            }
+            // commented this out because it was annoying, feel free to revert if this actually had a use
+//            if (currentState == State.PAUSED) {
+//                it.movementInput.moveForward = 0.0f
+//                it.movementInput.moveStrafe = 0.0f
+//            }
             if (currentState != State.PAUSED && !mc.player.onGround) {
                 if (enablePauseOnSneak && mc.gameSettings.keyBindSneak.isKeyDown) {
                     return@safeListener
