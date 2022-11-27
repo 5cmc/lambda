@@ -161,10 +161,12 @@ object ElytraFlight2b2t : Module(
                     if (!elytraIsEquipped) {
                         MessageSendHelper.sendChatMessage("No Elytra equipped")
                         disable()
+                        ElytraFlightHighway.disable()
                     }
-                    if (armorSlot.maxDamage <= 1) {
+                    if (elytraIsEquipped && armorSlot.maxDamage <= 1) {
                         MessageSendHelper.sendChatMessage("Equipped Elytra broken or almost broken")
                         disable()
+                        ElytraFlightHighway.disable()
                     }
                     currentState = State.PRETAKEOFF
                 }
