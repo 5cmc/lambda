@@ -102,7 +102,7 @@ object ElytraFlightHighway : Module(
                         return@safeListener
                     }
                     if (centerPlayer) if (!player.centerPlayer()) return@safeListener
-                    if (player.motionX != 0.0 || player.motionZ != 0.0) return@safeListener
+                    if (centerPlayer && player.motionX != 0.0 && player.motionZ != 0.0) return@safeListener
                     currentState = State.TAKEOFF
                     toggleAllOn()
                 }
