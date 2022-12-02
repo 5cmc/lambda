@@ -19,7 +19,7 @@ public class MixinGuiIngameMenu extends GuiScreen {
     @Inject(method = "initGui", at = @At("RETURN"))
     public void initGuiHook(CallbackInfo callbackInfo) {
         if (ManualDisconnect.INSTANCE.isEnabled() && ProxyManager.INSTANCE.isProxy()) {
-            this.buttonList.add(new GuiButton(1337, this.width / 2 - 100, this.height / 4 + 152, "Disconnect Proxy"));
+            this.buttonList.add(new GuiButton(1337, this.width / 2 - 100, this.height / 4 + 128, "Disconnect Proxy"));
         }
     }
 
