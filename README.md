@@ -124,7 +124,7 @@ Test if the environment is set up correctly by building the client and running i
 ### Stargazers
 [![Stargazers](https://starchart.cc/lambda-client/lambda.svg)](https://starchart.cc/lambda-client/lambda)
 
-## Thanks to
+## Thanks to...
 
 Our [contributors](https://github.com/lambda-client/lambda/graphs/contributors)
 
