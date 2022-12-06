@@ -3,7 +3,6 @@ package com.lambda.client.module.modules.player
 import com.lambda.client.event.Phase
 import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.event.events.*
-import com.lambda.client.event.listener.listener
 import com.lambda.client.manager.managers.HotbarManager.resetHotbar
 import com.lambda.client.manager.managers.HotbarManager.spoofHotbar
 import com.lambda.client.mixin.extension.syncCurrentPlayItem
@@ -20,7 +19,6 @@ import com.lambda.client.util.threads.safeListener
 import com.lambda.client.util.world.PlaceInfo
 import com.lambda.client.util.world.getNeighbour
 import com.lambda.client.util.world.placeBlock
-import com.lambda.mixin.entity.MixinEntity
 import com.lambda.schematic.LambdaSchematicaHelper
 import com.lambda.schematic.Schematic
 import net.minecraft.block.BlockStainedGlass.COLOR
@@ -30,7 +28,6 @@ import net.minecraft.init.Blocks.STAINED_GLASS
 import net.minecraft.item.EnumDyeColor
 import net.minecraft.item.ItemBlock
 import net.minecraft.network.play.client.CPacketEntityAction
-import net.minecraft.network.play.server.SPacketPlayerPosLook
 import net.minecraft.util.EnumFacing
 import net.minecraft.util.Tuple
 import net.minecraft.util.math.BlockPos
@@ -39,11 +36,6 @@ import net.minecraft.util.math.Vec3d
 import java.util.*
 import kotlin.math.roundToInt
 
-
-/**
- * @see MixinEntity.moveInvokeIsSneakingPre
- * @see MixinEntity.moveInvokeIsSneakingPost
- */
 object Scaffold : Module(
     name = "Scaffold",
     description = "Places blocks under you",
@@ -58,7 +50,7 @@ object Scaffold : Module(
     private val delay by setting("Delay", 2, 1..10, 1, unit = " ticks")
     private val maxRange by setting("Max Range", 1, 0..3, 1)
     private val schematicaBuild by setting("Schematic", false, consumer = this::schematicToggle)
-    private val noGhost by setting("NoGhost", false)
+    private val noGhost by setting("No Ghost Blocks", false)
 
     private val placeTimer = TickTimer(TimeUnit.TICKS)
 
@@ -81,10 +73,6 @@ object Scaffold : Module(
         onEnable {
             // todo: check if this is necessary
             schematicToggle(true, schematicaBuild)
-        }
-
-        listener<PacketEvent.Receive> {
-            if (it.packet !is SPacketPlayerPosLook) return@listener
         }
 
         safeListener<OnUpdateWalkingPlayerEvent> { event ->
@@ -180,6 +168,7 @@ object Scaffold : Module(
             val blockTypeForSchematicBlockPos: IBlockState? = getSchematicBlockState(loadedSchematic!!, loadedSchematicOrigin!!, placeInfo.placedPos)
             if (blockTypeForSchematicBlockPos != null) {
                 if (blockTypeForSchematicBlockPos.block == AIR) return false
+                // todo: spoofHotbar for schematic swaps
                 if (!swapToBlockOrMove(this@Scaffold, blockTypeForSchematicBlockPos.block, predicateItem = {
                         @Suppress("DEPRECATION")
                         it.item.block.getStateFromMeta(it.metadata).equals(blockTypeForSchematicBlockPos)
