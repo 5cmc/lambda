@@ -1,52 +1,61 @@
 package com.lambda.client.module.modules.movement
 
+import com.lambda.client.event.events.PlayerMoveEvent
 import com.lambda.client.module.Category
 import com.lambda.client.module.Module
-import com.lambda.client.module.modules.player.Scaffold
-import com.lambda.client.util.BaritoneUtils
-import com.lambda.client.util.EntityUtils.flooredPosition
-import com.lambda.client.util.Wrapper
-import com.lambda.client.util.math.VectorUtils.toVec3d
-import com.lambda.client.util.threads.runSafeR
-import com.lambda.mixin.entity.MixinEntity
+import com.lambda.client.util.threads.safeListener
 
-/**
- * @see MixinEntity.moveInvokeIsSneakingPre
- * @see MixinEntity.moveInvokeIsSneakingPost
- */
 object SafeWalk : Module(
     name = "SafeWalk",
     description = "Keeps you from walking off edges",
     category = Category.MOVEMENT
 ) {
-    private val checkFallDist by setting("Check Fall Distance", true, description = "Check fall distance from edge")
 
     init {
-        onToggle {
-            BaritoneUtils.settings?.assumeSafeWalk?.value = it
+        safeListener<PlayerMoveEvent> { event ->
+            if (player.onGround) {
+                var x = event.x
+                var z = event.z
+
+                if (player.onGround) {
+                    while (x != 0.0 && world.getCollisionBoxes(player, player.entityBoundingBox.offset(x, (-player.stepHeight).toDouble(), 0.0)).isEmpty()) {
+                        if (x < 0.05 && x >= -0.05) {
+                            x = 0.0
+                        } else if (x > 0.0) {
+                            x -= 0.05
+                        } else {
+                            x += 0.05
+                        }
+                    }
+                    while (z != 0.0 && world.getCollisionBoxes(player, player.entityBoundingBox.offset(0.0, (-player.stepHeight).toDouble(), z)).isEmpty()) {
+                        if (z < 0.05 && z >= -0.05) {
+                            z = 0.0
+                        } else if (z > 0.0) {
+                            z -= 0.05
+                        } else {
+                            z += 0.05
+                        }
+                    }
+                    while (x != 0.0 && z != 0.0 && world.getCollisionBoxes(player, player.entityBoundingBox.offset(x, (-player.stepHeight).toDouble(), z)).isEmpty()) {
+                        if (x < 0.05 && x >= -0.05) {
+                            x = 0.0
+                        } else if (x > 0.0) {
+                            x -= 0.05
+                        } else {
+                            x += 0.05
+                        }
+                        if (z < 0.05 && z >= -0.05) {
+                            z = 0.0
+                        } else if (z > 0.0) {
+                            z -= 0.05
+                        } else {
+                            z += 0.05
+                        }
+                    }
+                    event.x = x
+                    event.z = z
+                }
+            }
         }
     }
-
-    @JvmStatic
-    fun shouldSafewalk(entityID: Int) =
-        (Wrapper.player?.let { !it.isSneaking && it.entityId == entityID } ?: false)
-            && (isEnabled || Scaffold.isEnabled && Scaffold.safeWalk)
-            && (!checkFallDist && !BaritoneUtils.isPathing || !isEdgeSafe)
-
-    @JvmStatic
-    fun setSneaking(state: Boolean) {
-        Wrapper.player?.movementInput?.sneak = state
-    }
-
-    private val isEdgeSafe: Boolean
-        get() = runSafeR {
-            val pos = player.flooredPosition.toVec3d(0.5, 0.0, 0.5)
-            world.rayTraceBlocks(
-                pos,
-                pos.subtract(0.0, 3.1, 0.0),
-                true,
-                true,
-                false
-            ) != null
-        } ?: false
 }
