@@ -16,45 +16,42 @@ object SafeWalk : Module(
             if (player.onGround) {
                 var x = event.x
                 var z = event.z
-
-                if (player.onGround) {
-                    while (x != 0.0 && world.getCollisionBoxes(player, player.entityBoundingBox.offset(x, (-player.stepHeight).toDouble(), 0.0)).isEmpty()) {
-                        if (x < 0.05 && x >= -0.05) {
-                            x = 0.0
-                        } else if (x > 0.0) {
-                            x -= 0.05
-                        } else {
-                            x += 0.05
-                        }
+                while (x != 0.0 && world.getCollisionBoxes(player, player.entityBoundingBox.offset(x, (-player.stepHeight).toDouble(), 0.0)).isEmpty()) {
+                    if (x < 0.05 && x >= -0.05) {
+                        x = 0.0
+                    } else if (x > 0.0) {
+                        x -= 0.05
+                    } else {
+                        x += 0.05
                     }
-                    while (z != 0.0 && world.getCollisionBoxes(player, player.entityBoundingBox.offset(0.0, (-player.stepHeight).toDouble(), z)).isEmpty()) {
-                        if (z < 0.05 && z >= -0.05) {
-                            z = 0.0
-                        } else if (z > 0.0) {
-                            z -= 0.05
-                        } else {
-                            z += 0.05
-                        }
-                    }
-                    while (x != 0.0 && z != 0.0 && world.getCollisionBoxes(player, player.entityBoundingBox.offset(x, (-player.stepHeight).toDouble(), z)).isEmpty()) {
-                        if (x < 0.05 && x >= -0.05) {
-                            x = 0.0
-                        } else if (x > 0.0) {
-                            x -= 0.05
-                        } else {
-                            x += 0.05
-                        }
-                        if (z < 0.05 && z >= -0.05) {
-                            z = 0.0
-                        } else if (z > 0.0) {
-                            z -= 0.05
-                        } else {
-                            z += 0.05
-                        }
-                    }
-                    event.x = x
-                    event.z = z
                 }
+                while (z != 0.0 && world.getCollisionBoxes(player, player.entityBoundingBox.offset(0.0, (-player.stepHeight).toDouble(), z)).isEmpty()) {
+                    if (z < 0.05 && z >= -0.05) {
+                        z = 0.0
+                    } else if (z > 0.0) {
+                        z -= 0.05
+                    } else {
+                        z += 0.05
+                    }
+                }
+                while (x != 0.0 && z != 0.0 && world.getCollisionBoxes(player, player.entityBoundingBox.offset(x, (-player.stepHeight).toDouble(), z)).isEmpty()) {
+                    if (x < 0.05 && x >= -0.05) {
+                        x = 0.0
+                    } else if (x > 0.0) {
+                        x -= 0.05
+                    } else {
+                        x += 0.05
+                    }
+                    if (z < 0.05 && z >= -0.05) {
+                        z = 0.0
+                    } else if (z > 0.0) {
+                        z -= 0.05
+                    } else {
+                        z += 0.05
+                    }
+                }
+                event.x = x
+                event.z = z
             }
         }
     }
