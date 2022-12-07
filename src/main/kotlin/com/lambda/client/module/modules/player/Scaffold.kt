@@ -96,7 +96,7 @@ object Scaffold : Module(
                             if (shouldSneak) connection.sendPacket(CPacketEntityAction(player, CPacketEntityAction.Action.START_SNEAKING))
                             placeBlock(pi, noGhost = false) // noGhost true usually causes problems and has no real benefit here
                             if (shouldSneak) connection.sendPacket(CPacketEntityAction(player, CPacketEntityAction.Action.STOP_SNEAKING))
-                            mc.player.motionY = 0.42 // jump motion
+                            mc.player.jump()
                         } else {
                             if (placeTimer.tick(delay, true)) {
                                 val shouldSneak = sneak && !player.isSneaking
