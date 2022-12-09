@@ -14,7 +14,7 @@ object CustomFont : Module(
     description = "Use different GUI fonts",
     category = Category.CLIENT,
     showOnArray = false,
-    enabledByDefault = true
+    enabledByDefault = false
 ) {
     private const val DEFAULT_FONT_NAME = "Fira Sans"
 
