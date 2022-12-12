@@ -29,7 +29,7 @@ public abstract class MixinGuiMainMenu extends GuiScreen {
 
     @Redirect(method = "drawScreen", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiMainMenu;drawGradientRect(IIIIII)V"))
     private void drawScreen$Redirect$INVOKE$drawGradientRect(GuiMainMenu guiMainMenu, int left, int top, int right, int bottom, int startColor, int endColor) {
-        if (MenuShader.INSTANCE.isDisabled()) {
+        if (MenuShader.INSTANCE.isEnabled() && MenuShader.INSTANCE.getGradient()) {
             drawGradientRect(left, top, right, bottom, startColor, endColor);
         }
     }

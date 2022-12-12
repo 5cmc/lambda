@@ -21,6 +21,7 @@ object MenuShader : Module(
     showOnArray = false,
     enabledByDefault = false
 ) {
+    val gradient by setting("Gradient", false)
     private val mode by setting("Mode", Mode.SET)
     private val shader = setting("Shader", ShaderEnum.CLOUDS, { mode == Mode.SET })
 
