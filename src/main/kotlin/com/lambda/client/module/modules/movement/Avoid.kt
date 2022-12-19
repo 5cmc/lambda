@@ -8,8 +8,8 @@ import net.minecraft.init.Blocks
 import net.minecraft.network.play.client.CPacketPlayerDigging
 import net.minecraft.network.play.client.CPacketPlayerTryUseItemOnBlock
 
-object Prevent : Module(
-    name = "Prevent",
+object Avoid : Module(
+    name = "Avoid",
     description = "Prevents contact with certain objects",
     category = Category.MOVEMENT
 ) {
