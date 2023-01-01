@@ -165,7 +165,8 @@ object NewChunksPlus : Module(
         safeListener<RenderRadarEvent> {
             val playerOffset = Vec2d((player.posX - (player.chunkCoordX shl 4)), (player.posZ - (player.chunkCoordZ shl 4)))
             val chunkDist = (it.radius * it.scale).toInt() shr 4
-
+            val filledChunkRects: MutableList<Pair<Vec2d, Vec2d>> = ArrayList()
+            val outlineChunkRects: MutableList<Pair<Vec2d, Vec2d>> = ArrayList()
             for (chunkX in -chunkDist..chunkDist) {
                 for (chunkZ in -chunkDist..chunkDist) {
                     val pos0 = getChunkPos(chunkX, chunkZ, playerOffset, it.scale)
@@ -179,33 +180,41 @@ object NewChunksPlus : Module(
                             ) ?: false
 
                         if (!chunk.isLoaded && !isCachedChunk) {
-                            RenderUtils2D.drawRectFilled(it.vertexHelper, pos0, pos1, ColorHolder(100, 100, 100, 100))
+                            filledChunkRects.add(Pair(pos0, pos1))
                         }
-                        RenderUtils2D.drawRectOutline(it.vertexHelper, pos0, pos1, 0.3f, ColorHolder(255, 0, 0, 100))
+                        outlineChunkRects.add(Pair(pos0, pos1))
+
                     }
                 }
             }
+            if (filledChunkRects.isNotEmpty()) RenderUtils2D.drawRectFilledList(it.vertexHelper, filledChunkRects, ColorHolder(100, 100, 100, 100))
+            if (it.chunkLines && outlineChunkRects.isNotEmpty()) RenderUtils2D.drawRectOutlineList(it.vertexHelper, outlineChunkRects, 0.3f, ColorHolder(255, 0, 0, 100))
 
+            filledChunkRects.clear()
             if (mode == DetectionMode.TIMER || mode == DetectionMode.BOTH) {
                 timeChunks.forEach { chunk ->
                     val pos0 = getChunkPos(chunk.x - player.chunkCoordX, chunk.z - player.chunkCoordZ, playerOffset, it.scale)
                     val pos1 = getChunkPos(chunk.x - player.chunkCoordX + 1, chunk.z - player.chunkCoordZ + 1, playerOffset, it.scale)
 
                     if (isSquareInRadius(pos0, pos1, it.radius)) {
-                        RenderUtils2D.drawRectFilled(it.vertexHelper, pos0, pos1, timeChunkColor)
+                        filledChunkRects.add(Pair(pos0, pos1))
                     }
                 }
             }
+            if (filledChunkRects.isNotEmpty()) RenderUtils2D.drawRectFilledList(it.vertexHelper, filledChunkRects, timeChunkColor)
+
+            filledChunkRects.clear()
             if (mode == DetectionMode.PACKET || mode == DetectionMode.BOTH) {
                 packetChunks.forEach { chunk ->
                     val pos0 = getChunkPos(chunk.x - player.chunkCoordX, chunk.z - player.chunkCoordZ, playerOffset, it.scale)
                     val pos1 = getChunkPos(chunk.x - player.chunkCoordX + 1, chunk.z - player.chunkCoordZ + 1, playerOffset, it.scale)
 
                     if (isSquareInRadius(pos0, pos1, it.radius)) {
-                        RenderUtils2D.drawRectFilled(it.vertexHelper, pos0, pos1, packetChunkColor)
+                        filledChunkRects.add(Pair(pos0, pos1))
                     }
                 }
             }
+            if (filledChunkRects.isNotEmpty()) RenderUtils2D.drawRectFilledList(it.vertexHelper, filledChunkRects, packetChunkColor)
         }
     }
 
