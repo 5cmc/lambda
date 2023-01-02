@@ -202,21 +202,6 @@ object RenderUtils2D {
         glLineWidth(1f)
     }
 
-    private fun drawLines(vertexHelper: VertexHelper, vertices: Array<Vec2d>, lineWidth: Float = 1f, color: ColorHolder) {
-        prepareGl()
-        glLineWidth(lineWidth)
-
-        vertexHelper.begin(GL_LINES)
-        for (vertex in vertices) {
-            vertexHelper.put(vertex, color)
-        }
-        vertexHelper.end()
-
-
-        releaseGl()
-        glLineWidth(1f)
-    }
-
     fun drawLineStrip(vertexHelper: VertexHelper, vertices: Array<Vec2d>, lineWidth: Float = 1f, color: ColorHolder) {
         prepareGl()
         glLineWidth(lineWidth)
