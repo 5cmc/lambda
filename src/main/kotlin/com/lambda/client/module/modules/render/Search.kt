@@ -164,7 +164,7 @@ object Search : Module(
         foundBlockMap.entries
             .filterNot { blockSearchList.contains(it.value.block.registryName.toString()) }
             .forEach { foundBlockMap.remove(it.key) }
-        if (newBool) searchAllLoadedChunks()
+        if (newBool && mc.player != null && mc.world != null) searchAllLoadedChunks()
     }
 
     private fun searchLoadedEntities() {
