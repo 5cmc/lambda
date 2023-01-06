@@ -27,6 +27,9 @@ archivesBaseName = "lambda"
 compileJava {
     sourceCompatibility = targetCompatibility = '1.8'
     options.encoding = 'UTF-8'
+    // Disables Gradle build caching for this task
+    // If build caching is enabled this can cause the refmap to not be built and included
+    outputs.upToDateWhen { false }
 }
 
 compileKotlin.kotlinOptions {
@@ -135,8 +138,6 @@ mixin {
         }
     }
 }
-
-compileJava.outputs.upToDateWhen { false }
 
 processResources {
     exclude '**/rawimagefiles'
