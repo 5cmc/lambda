@@ -51,7 +51,7 @@ How do I...
 </details>
 
 <details>
-  <summary>... export KAMI blue config to lambda?</summary>
+  <summary>... export KAMI blue config to Lambda?</summary>
 
 > Rename `.minecraft/kamiblue` to `.minecraft/lambda`.
 > Please note that this might cause stability issues.
