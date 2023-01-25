@@ -5,6 +5,9 @@ import com.lambda.client.module.Category
 import com.lambda.client.module.Module
 import com.lambda.client.module.modules.player.Scaffold
 import com.lambda.client.util.BaritoneUtils
+import com.lambda.client.util.EntityUtils.flooredPosition
+import com.lambda.client.util.math.VectorUtils.toVec3d
+import com.lambda.client.util.threads.runSafeR
 import com.lambda.client.util.threads.safeListener
 
 object SafeWalk : Module(
@@ -13,10 +16,15 @@ object SafeWalk : Module(
     category = Category.MOVEMENT,
     alwaysListening = true
 ) {
+    private val checkFallDist by setting("Safe Fall Allowed", false, description = "Check fall distance from edge")
 
     init {
         safeListener<PlayerMoveEvent> { event ->
-            if ((isEnabled || (Scaffold.isEnabled && Scaffold.safeWalk)) && player.onGround && !BaritoneUtils.isPathing) {
+            if ((isEnabled || (Scaffold.isEnabled && Scaffold.safeWalk))
+                && player.onGround
+                && !BaritoneUtils.isPathing
+                && if (checkFallDist) isEdgeSafe else true) {
+
                 var x = event.x
                 var z = event.z
                 while (x != 0.0 && world.getCollisionBoxes(player, player.entityBoundingBox.offset(x, (-player.stepHeight).toDouble(), 0.0)).isEmpty()) {
@@ -58,4 +66,16 @@ object SafeWalk : Module(
             }
         }
     }
+
+    private val isEdgeSafe: Boolean
+        get() = runSafeR {
+            val pos = player.flooredPosition.toVec3d(0.5, 0.0, 0.5)
+            world.rayTraceBlocks(
+                pos,
+                pos.subtract(0.0, 3.1, 0.0),
+                true,
+                true,
+                false
+            ) != null
+        } ?: false
 }
