@@ -2,6 +2,7 @@ package com.lambda.client.setting
 
 import com.lambda.client.LambdaMod
 import com.lambda.client.commons.collections.NameableSet
+import com.lambda.client.module.modules.client.Configurations
 import com.lambda.client.setting.configs.IConfig
 
 internal object ConfigManager {
@@ -46,7 +47,7 @@ internal object ConfigManager {
     fun save(config: IConfig): Boolean {
         return try {
             config.save()
-            LambdaMod.LOG.info("${config.name} config saved")
+            if (Configurations.savingLogs) LambdaMod.LOG.info("${config.name} config saved")
             true
         } catch (e: Exception) {
             LambdaMod.LOG.error("Failed to save ${config.name} config!", e)

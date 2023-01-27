@@ -7,6 +7,7 @@ import com.lambda.client.LambdaMod
 import com.lambda.client.capeapi.PlayerProfile
 import com.lambda.client.commons.extension.synchronized
 import com.lambda.client.manager.Manager
+import com.lambda.client.module.modules.client.Configurations
 import com.lambda.client.util.ConfigUtils
 import com.lambda.client.util.FolderUtils
 import java.io.File
@@ -62,7 +63,7 @@ object FriendManager : Manager {
             FileWriter(file, false).buffered().use {
                 gson.toJson(friendFile, it)
             }
-            LambdaMod.LOG.info("Friends saved")
+            if (Configurations.savingLogs) LambdaMod.LOG.info("Friends saved")
             true
         } catch (e: Exception) {
             LambdaMod.LOG.warn("Failed saving friends", e)

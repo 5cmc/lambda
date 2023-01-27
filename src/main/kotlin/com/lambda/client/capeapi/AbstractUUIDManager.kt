@@ -5,6 +5,7 @@ import com.google.gson.JsonParser
 import com.google.gson.reflect.TypeToken
 import com.lambda.client.commons.extension.synchronized
 import com.lambda.client.commons.utils.ConnectionUtils
+import com.lambda.client.module.modules.client.Configurations
 import org.apache.logging.log4j.Logger
 import java.io.File
 import java.io.FileWriter
@@ -132,7 +133,7 @@ abstract class AbstractUUIDManager(
             file.bufferedWriter().use {
                 gson.toJson(cacheList, it)
             }
-            logger.info("UUID cache saved")
+            if (Configurations.savingLogs) logger.info("UUID cache saved")
             true
         } catch (e: Exception) {
             logger.warn("Failed saving UUID cache", e)

@@ -6,6 +6,7 @@ import com.lambda.client.LambdaMod
 import com.lambda.client.command.CommandManager
 import com.lambda.client.event.listener.listener
 import com.lambda.client.manager.Manager
+import com.lambda.client.module.modules.client.Configurations
 import com.lambda.client.util.ConfigUtils
 import com.lambda.client.util.FolderUtils
 import com.lambda.client.util.text.MessageSendHelper
@@ -51,7 +52,7 @@ object MacroManager : Manager {
             FileWriter(file, false).buffered().use {
                 gson.toJson(macroMap, it)
             }
-            LambdaMod.LOG.info("Macro saved")
+            if (Configurations.savingLogs) LambdaMod.LOG.info("Macro saved")
             true
         } catch (e: Exception) {
             LambdaMod.LOG.warn("Failed saving macro", e)

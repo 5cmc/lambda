@@ -41,6 +41,7 @@ internal object Configurations : AbstractModule(
 
     private val autoSaving by setting("Auto Saving", true)
     private val savingFeedBack by setting("Log autosaves in chat", false, { autoSaving })
+    val savingLogs by setting("Log autosaves in logs", false, { autoSaving })
     private val savingInterval by setting("Interval", 10, 1..30, 1, { autoSaving }, description = "Frequency of auto saving", unit = "m")
     val serverPreset by setting("Server Preset", false)
     private val guiPresetSetting = setting("Gui Preset", defaultPreset)
@@ -58,7 +59,7 @@ internal object Configurations : AbstractModule(
         BackgroundScope.launchLooping("Config Auto Saving", configSaveIntervalMs) {
             if (autoSaving && mc.currentScreen !is AbstractLambdaGui<*, *> && timer.tick(savingInterval.toLong())) {
                 if (savingFeedBack) MessageSendHelper.sendChatMessage("Auto saving settings...")
-                else LambdaMod.LOG.info("Auto saving settings...")
+                else if (savingLogs) LambdaMod.LOG.info("Auto saving settings...")
                 ConfigUtils.saveAll()
             }
         }
