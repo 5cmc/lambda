@@ -12,7 +12,6 @@ import com.lambda.client.manager.managers.PlayerPacketManager.sendPlayerPacket
 import com.lambda.client.mixin.extension.syncCurrentPlayItem
 import com.lambda.client.module.Category
 import com.lambda.client.module.Module
-import com.lambda.client.module.modules.player.Scaffold.isUsableItem
 import com.lambda.client.setting.settings.impl.collection.CollectionSetting
 import com.lambda.client.util.EntityUtils.flooredPosition
 import com.lambda.client.util.MovementUtils.speed
@@ -22,30 +21,34 @@ import com.lambda.client.util.color.ColorHolder
 import com.lambda.client.util.graphics.ESPRenderer
 import com.lambda.client.util.items.*
 import com.lambda.client.util.math.RotationUtils.getRotationTo
+import com.lambda.client.util.text.MessageSendHelper
 import com.lambda.client.util.threads.safeListener
 import com.lambda.client.util.world.PlaceInfo
 import com.lambda.client.util.world.getNeighbour
 import com.lambda.client.util.world.isFullBox
 import com.lambda.client.util.world.placeBlock
-import com.lambda.mixin.entity.MixinEntity
+import com.lambda.schematic.LambdaSchematicaHelper
+import com.lambda.schematic.Schematic
 import net.minecraft.block.Block
+import net.minecraft.block.BlockStainedGlass
 import net.minecraft.block.state.IBlockState
 import net.minecraft.init.Blocks
+import net.minecraft.init.Blocks.AIR
+import net.minecraft.item.EnumDyeColor
 import net.minecraft.item.Item
 import net.minecraft.item.ItemBlock
+import net.minecraft.item.ItemStack
 import net.minecraft.network.play.client.CPacketEntityAction
 import net.minecraft.network.play.server.SPacketBlockChange
 import net.minecraft.network.play.server.SPacketPlayerPosLook
+import net.minecraft.util.Tuple
 import net.minecraft.util.math.BlockPos
 import net.minecraftforge.client.event.InputUpdateEvent
 import net.minecraftforge.fml.common.gameevent.TickEvent
 import net.minecraftforge.fml.common.gameevent.TickEvent.ClientTickEvent
+import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 
-/**
- * @see MixinEntity.moveInvokeIsSneakingPre
- * @see MixinEntity.moveInvokeIsSneakingPost
- */
 object Scaffold : Module(
     name = "Scaffold",
     description = "Places blocks under you",
@@ -82,10 +85,20 @@ object Scaffold : Module(
 
     private enum class ScaffoldBlockSelectionMode(
         override val displayName: String,
-        val filter: (Item) -> Boolean): DisplayEnum {
-        ANY("Any", { it.isUsableItem() }),
-        WHITELIST("Whitelist", { blockSelectionWhitelist.contains(it.registryName.toString()) && it.isUsableItem() }),
-        BLACKLIST("Blacklist", { !blockSelectionBlacklist.contains(it.registryName.toString()) && it.isUsableItem() })
+        val filter: (ItemStack, PlaceInfo) -> Boolean): DisplayEnum {
+        ANY("Any", { it, _ -> it.item.isUsableItem() }),
+        WHITELIST("Whitelist", { it, _ -> blockSelectionWhitelist.contains(it.item.registryName.toString()) && it.item.isUsableItem() }),
+        BLACKLIST("Blacklist", { it, _ -> !blockSelectionBlacklist.contains(it.item.registryName.toString()) && it.item.isUsableItem() }),
+        SCHEMATIC("Schematic", { item, placeInfo -> schematicFilter(item, placeInfo) });
+    }
+    fun schematicFilter(itemStack: ItemStack, placeInfo: PlaceInfo): Boolean {
+        if (loadedSchematic != null && loadedSchematicOrigin != null) {
+            getSchematicBlockState(loadedSchematic!!, loadedSchematicOrigin!!, placeInfo.placedPos)?.let {
+                if (it.block == AIR) return false
+                return itemStack.item.block.getStateFromMeta(itemStack.metadata).equals(it)
+            }
+        }
+        return false
     }
 
     private var placeInfo: PlaceInfo? = null
@@ -98,12 +111,15 @@ object Scaffold : Module(
     private var oldNoFall = false
     private var oldFallMode = NoFall.Mode.CATCH
     private var goDown = false
+    private var loadedSchematic: Schematic? = null
+    private var loadedSchematicOrigin: BlockPos? = null
 
     private val pendingBlocks = ConcurrentHashMap<BlockPos, PendingBlock>()
 
     init {
         onEnable {
             towerTimer.reset()
+            schematicToggle(true, blockSelectionMode == ScaffoldBlockSelectionMode.SCHEMATIC)
 
             if (!useNoFall) return@onEnable
 
@@ -188,7 +204,7 @@ object Scaffold : Module(
             && world.getCollisionBoxes(player, player.entityBoundingBox).isEmpty()
             && !player.capabilities.isFlying
             && player.speed < 0.1
-            && (getHeldScaffoldBlock() != null || getBlockSlot() != null)
+//            && (getHeldScaffoldBlock(placeInfo) != null || getBlockSlot(placeInfo) != null)
 
     init {
         safeListener<ClientTickEvent> { event ->
@@ -208,7 +224,7 @@ object Scaffold : Module(
                         return@safeListener
                     }
                 }
-                swap()?.let { block ->
+                swap(placeInfo)?.let { block ->
                     place(placeInfo, block)
                     sendPlayerPacket {
                         rotate(getRotationTo(placeInfo.hitVec))
@@ -247,18 +263,31 @@ object Scaffold : Module(
         }
     }
 
-    private fun SafeClientEvent.swap(): Block? {
-        getHeldScaffoldBlock()?.let { return it }
-        getBlockSlot()?.let { slot ->
+    private fun SafeClientEvent.swap(placeInfo: PlaceInfo): Block? {
+        getHeldScaffoldBlock(placeInfo)?.let { return it }
+        getBlockSlot(placeInfo)?.let { slot ->
             if (spoofHotbar) spoofHotbar(slot)
             else swapToSlot(slot)
             return slot.stack.item.block
         }
-        if (swapToBlockOrMove<Block>(this@Scaffold, { blockSelectionMode.filter(it.item) } )) {
-            getBlockSlot()?.let { slot ->
+        if (swapToBlockOrMove<Block>(this@Scaffold, { blockSelectionMode.filter(it, placeInfo) } )) {
+            getBlockSlot(placeInfo)?.let { slot ->
                 if (spoofHotbar) spoofHotbar(slot)
                 else swapToSlot(slot)
                 return slot.stack.item.block
+            }
+        } else if (blockSelectionMode == ScaffoldBlockSelectionMode.SCHEMATIC) {
+            if (loadedSchematic != null && loadedSchematicOrigin != null) {
+                getSchematicBlockState(loadedSchematic!!, loadedSchematicOrigin!!, placeInfo.placedPos)?.let {
+                    if (it.block != AIR) {
+                        if (it.block == Blocks.STAINED_GLASS) {
+                            val color: EnumDyeColor = it.properties.get(BlockStainedGlass.COLOR) as EnumDyeColor
+                            MessageSendHelper.sendChatMessage("$chatName No ${color.dyeColorName} ${it.block.localizedName} was found in inventory.")
+                        } else {
+                            MessageSendHelper.sendChatMessage("$chatName No ${it.block.localizedName} was found in inventory.")
+                        }
+                    }
+                }
             }
         }
         return null
@@ -281,20 +310,52 @@ object Scaffold : Module(
         }
     }
 
-    private fun SafeClientEvent.getHeldScaffoldBlock(): Block? {
+    private fun SafeClientEvent.getHeldScaffoldBlock(placeInfo: PlaceInfo): Block? {
         playerController.syncCurrentPlayItem()
-        if (blockSelectionMode.filter(player.heldItemMainhand.item)) {
+        if (blockSelectionMode.filter(player.heldItemMainhand, placeInfo)) {
             return player.heldItemMainhand.item.block
         }
-        if (blockSelectionMode.filter(player.heldItemOffhand.item)) {
+        if (blockSelectionMode.filter(player.heldItemOffhand, placeInfo)) {
             return player.heldItemOffhand.item.block
         }
         return null
     }
 
-    private fun SafeClientEvent.getBlockSlot(): HotbarSlot? {
+    private fun SafeClientEvent.getBlockSlot(placeInfo: PlaceInfo): HotbarSlot? {
         playerController.syncCurrentPlayItem()
-        return player.hotbarSlots.firstItem<ItemBlock, HotbarSlot> { blockSelectionMode.filter(it.item) }
+        return player.hotbarSlots.firstItem<ItemBlock, HotbarSlot> { blockSelectionMode.filter(it, placeInfo) }
+    }
+
+    private fun schematicToggle(@Suppress("UNUSED_PARAMETER") prev: Boolean, input: Boolean): Boolean {
+        if (input) {
+            val schematic = loadSchematic()
+            if (schematic.isPresent) {
+                MessageSendHelper.sendChatMessage("Loaded schematic")
+                this.loadedSchematic = schematic.get().first
+                this.loadedSchematicOrigin = schematic.get().second
+            } else {
+                MessageSendHelper.sendChatMessage("No loaded schematic found")
+                return false
+            }
+        } else {
+            this.loadedSchematic = null
+            this.loadedSchematicOrigin = null
+        }
+        return input
+    }
+
+    private fun loadSchematic(): Optional<Tuple<Schematic, BlockPos>> {
+        return if (LambdaSchematicaHelper.isSchematicaPresent()) {
+            LambdaSchematicaHelper.getOpenSchematic()
+        } else {
+            Optional.empty()
+        }
+    }
+
+    private fun getSchematicBlockState(schematic: Schematic, origin: BlockPos, blockPos: BlockPos): IBlockState? {
+        return if (schematic.inSchematic(blockPos.x - origin.x, blockPos.y - origin.y, blockPos.z - origin.z)) {
+            return schematic.desiredState(blockPos.x - origin.x, blockPos.y - origin.y, blockPos.z - origin.z)
+        } else null
     }
 
     private data class PendingBlock(
