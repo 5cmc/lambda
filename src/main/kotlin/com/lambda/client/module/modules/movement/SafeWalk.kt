@@ -23,7 +23,7 @@ object SafeWalk : Module(
             if ((isEnabled || (Scaffold.isEnabled && Scaffold.safeWalk))
                 && player.onGround
                 && !BaritoneUtils.isPathing
-                && if (checkFallDist) isEdgeSafe else true) {
+                && if (checkFallDist) !isEdgeSafe else true) {
 
                 var x = event.x
                 var z = event.z
