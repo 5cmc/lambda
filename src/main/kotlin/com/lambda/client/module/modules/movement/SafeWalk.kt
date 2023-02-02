@@ -24,6 +24,10 @@ object SafeWalk : Module(
                 && player.onGround
                 && !BaritoneUtils.isPathing
                 && if (checkFallDist) !isEdgeSafe else true) {
+                /**
+                 * Code here is from net.minecraft.Entity::move
+                 * Cannot do a mixin on this method's sneak section due to mixin compatibility issues with Future (and possibly other clients)
+                 */
 
                 var x = event.x
                 var z = event.z
