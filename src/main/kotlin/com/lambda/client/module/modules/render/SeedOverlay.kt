@@ -33,9 +33,9 @@ object SeedOverlay: Module(
      *  increase efficiency similar to Search module - only need to compare on enable, new chunk packets, or changed block packets
      */
 
-    private val overworldSeed by setting("Overworld Seed", "-4172144997902289642")
-    private val netherSeed by setting("Nether Seed", "146008555100680")
-    private val endSeed by setting("End Seed", "146008555100680")
+    private val overworldSeed by setting("Overworld Seed", "-4172144997902289642", consumer = this::seedSettingConsumer)
+    private val netherSeed by setting("Nether Seed", "146008555100680", consumer = this::seedSettingConsumer)
+    private val endSeed by setting("End Seed", "146008555100680", consumer = this::seedSettingConsumer)
     private val compareMode by setting("Compare Mode", CompareMode.BLOCKS, description = "Compare exact block types or compare block materials")
     private val renderNewBlocks by setting("Render New Blocks", true)
     private val renderNewBlocksColor by setting("New Blocks Color", ColorHolder(255, 0, 0))
@@ -63,7 +63,8 @@ object SeedOverlay: Module(
     private val ignoreBlocks = listOf(Blocks.GLOWSTONE, Blocks.LOG, Blocks.LEAVES, Blocks.LOG2, Blocks.LEAVES2,
         Blocks.COAL_ORE, Blocks.IRON_ORE, Blocks.GOLD_ORE, Blocks.LAPIS_ORE, Blocks.EMERALD_ORE, Blocks.DIAMOND_ORE,
         Blocks.TALLGRASS, Blocks.DOUBLE_PLANT, Blocks.VINE, Blocks.YELLOW_FLOWER, Blocks.RED_FLOWER, Blocks.BROWN_MUSHROOM,
-        Blocks.RED_MUSHROOM, Blocks.BROWN_MUSHROOM_BLOCK, Blocks.RED_MUSHROOM_BLOCK, Blocks.FIRE, Blocks.DEADBUSH, Blocks.QUARTZ_ORE)
+        Blocks.RED_MUSHROOM, Blocks.BROWN_MUSHROOM_BLOCK, Blocks.RED_MUSHROOM_BLOCK, Blocks.FIRE, Blocks.DEADBUSH, Blocks.QUARTZ_ORE,
+        Blocks.CHORUS_FLOWER, Blocks.CHORUS_PLANT, Blocks.MAGMA, Blocks.COCOA, Blocks.CACTUS, Blocks.SAPLING, Blocks.REEDS)
 
     private enum class CompareMode {
         BLOCKS, MATERIAL
@@ -106,8 +107,8 @@ object SeedOverlay: Module(
                         }
                     }
                     try {
-                        worldGenerator = createFreshWorldCopy(Companion.mc.world, getSeedForCurrentWorld()!!)
-                        generatedWorld = worldGenerator!!.getWorld(Companion.mc.world.provider.dimension)
+                        worldGenerator = createFreshWorldCopy(mc.world, getSeedForCurrentWorld()!!)
+                        generatedWorld = worldGenerator!!.getWorld(mc.world.provider.dimension)
                     } catch (ex: Exception) {
                         worldGenerator = null
                         generatedWorld = null
@@ -186,33 +187,37 @@ object SeedOverlay: Module(
 
     private fun SafeClientEvent.update() {
         val newRender: MutableMap<BlockPos, Int> = HashMap()
-
-        if (generatedWorld != null && worldGenerator != null) {
-            generatedWorld = worldGenerator!!.getWorld(world.provider.dimension)
-            for (z in -range * 16 until range * 16) {
-                for (x in -range * 16 until range * 16) {
-                    val theX = (player.posX + x).toInt()
-                    val theZ = (player.posZ + z).toInt()
-                    if (yMin >= yMax) return
-                    for (y in yMin..yMax) {
-                        val bp = BlockPos(theX, y, theZ)
-                        if (world.isBlockLoaded(bp, false) && generatedWorld!!.getChunk(bp).isTerrainPopulated) {
-                            val a: IBlockState = world.getBlockState(bp)
-                            val b = generatedWorld!!.getBlockState(bp)
-                            val compare = when(compareMode) {
-                                CompareMode.BLOCKS -> a.block != b.block
-                                CompareMode.MATERIAL -> a.material != b.material
-                            }
-                            if (compare) {
-                                if (!a.material.isLiquid && !b.material.isLiquid &&
-                                    !BlockFalling::class.java.isAssignableFrom(a.block.javaClass) && !BlockFalling::class.java.isAssignableFrom(b.block.javaClass) &&
-                                    !ignoreBlocks.contains(a.block) && !ignoreBlocks.contains(b.block)) {
-                                    if (a.block == Blocks.AIR) {
-                                        newRender[bp] = -1 // block in generated world but not in player
-                                    } else if (b.block == Blocks.AIR) {
-                                        newRender[bp] = 1 // block in player world but not in generated
-                                    } else {
-                                        newRender[bp] = 0 // different block in both
+        try {
+            var maxZ = Int.MIN_VALUE
+            if (generatedWorld != null && worldGenerator != null) {
+                generatedWorld = worldGenerator!!.getWorld(world.provider.dimension)
+                for (z in -range * 16 until range * 16) {
+                    for (x in -range * 16 until range * 16) {
+                        val theX = (player.posX + x).toInt()
+                        val theZ = (player.posZ + z).toInt()
+                        maxZ = theZ.coerceAtLeast(maxZ)
+                        if (yMin >= yMax) return
+                        for (y in yMin..yMax) {
+                            val bp = BlockPos(theX, y, theZ)
+                            if (world.isBlockLoaded(bp, false) && generatedWorld!!.getChunk(bp).isTerrainPopulated) {
+                                var a: IBlockState = world.getBlockState(bp)
+                                var b = generatedWorld!!.getBlockState(bp)
+                                if (ignoreBlocks.contains(a.block)) a = Blocks.AIR.defaultState
+                                if (ignoreBlocks.contains(b.block)) b = Blocks.AIR.defaultState
+                                val compare = when(compareMode) {
+                                    CompareMode.BLOCKS -> a.block != b.block
+                                    CompareMode.MATERIAL -> a.material != b.material
+                                }
+                                if (compare) {
+                                    if (!a.material.isLiquid && !b.material.isLiquid &&
+                                        !BlockFalling::class.java.isAssignableFrom(a.block.javaClass) && !BlockFalling::class.java.isAssignableFrom(b.block.javaClass)) {
+                                        if (a.block == Blocks.AIR) {
+                                            newRender[bp] = -1 // block in generated world but not in player
+                                        } else if (b.block == Blocks.AIR) {
+                                            newRender[bp] = 1 // block in player world but not in generated
+                                        } else {
+                                            newRender[bp] = 0 // different block in both
+                                        }
                                     }
                                 }
                             }
@@ -220,10 +225,12 @@ object SeedOverlay: Module(
                     }
                 }
             }
-        }
-        synchronized(differences) {
-            differences.clear()
-            differences.putAll(newRender)
+            synchronized(differences) {
+                differences.clear()
+                differences.putAll(newRender)
+            }
+        } catch (ex: Exception) {
+            LambdaMod.LOG.warn("Error comparing chunks", ex)
         }
     }
 
@@ -247,5 +254,14 @@ object SeedOverlay: Module(
         }
         MessageSendHelper.sendChatMessage("Done generating world!")
         return w
+    }
+
+    private fun seedSettingConsumer(prev: String, newVal: String): String {
+        newVal.toLongOrNull()?.let {
+            disable()
+            return newVal
+        } ?: run {
+            return prev
+        }
     }
 }
