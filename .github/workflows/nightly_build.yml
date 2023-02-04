@@ -34,18 +34,6 @@ jobs:
           name: 5C-lambda-${{ github.run_number }}
           path: 5C-lambda-${{ github.run_number }}.jar
 
-      - name: Build plugin API
-        run: ./gradlew --no-build-cache buildApi
-
-      - name: Rename built plugin API
-        run: mv build/libs/lambda-*-api.jar 5C-lambda-${{ github.run_number }}-api.jar
-
-      - name: Archive plugin API
-        uses: actions/upload-artifact@v3
-        with:
-          name: 5C-lambda-${{ github.run_number }}-api
-          path: 5C-lambda-${{ github.run_number }}-api.jar
-
       - name: Release Artifact
         uses: "marvinpinto/action-automatic-releases@latest"
         with:

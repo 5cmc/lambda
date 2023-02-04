@@ -11,7 +11,7 @@ Customize your experience, and improve your efficiency!
 
 Find our plugins [here](https://github.com/lambda-plugins).
 
-Download latest 5cmc lambda build [here](https://github.com/5cmc/lambda/actions)
+Download latest 5cmc lambda build [here](https://github.com/5cmc/lambda/releases/tag/latest)
 
 <div align="center">
   <a href="https://discord.gg/QjfBxJzE5x"><img src="https://invidget.switchblade.xyz/QjfBxJzE5x" alt="Link to the lambda discord server https://discord.gg/QjfBxJzE5x"></a>
