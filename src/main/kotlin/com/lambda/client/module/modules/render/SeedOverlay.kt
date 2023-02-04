@@ -13,7 +13,6 @@ import com.lambda.client.util.threads.safeListener
 import com.lambda.worldgen.WorldGenerator
 import kotlinx.coroutines.launch
 import net.minecraft.block.BlockFalling
-import net.minecraft.block.material.Material
 import net.minecraft.block.state.IBlockState
 import net.minecraft.init.Blocks
 import net.minecraft.util.math.BlockPos
@@ -62,7 +61,7 @@ object SeedOverlay: Module(
     private val ignoreBlocks = listOf(Blocks.GLOWSTONE, Blocks.LOG, Blocks.LEAVES, Blocks.LOG2, Blocks.LEAVES2,
         Blocks.COAL_ORE, Blocks.IRON_ORE, Blocks.GOLD_ORE, Blocks.LAPIS_ORE, Blocks.EMERALD_ORE, Blocks.DIAMOND_ORE,
         Blocks.TALLGRASS, Blocks.DOUBLE_PLANT, Blocks.VINE, Blocks.YELLOW_FLOWER, Blocks.RED_FLOWER, Blocks.BROWN_MUSHROOM,
-        Blocks.RED_MUSHROOM, Blocks.BROWN_MUSHROOM_BLOCK, Blocks.RED_MUSHROOM_BLOCK, Blocks.FIRE, Blocks.DEADBUSH)
+        Blocks.RED_MUSHROOM, Blocks.BROWN_MUSHROOM_BLOCK, Blocks.RED_MUSHROOM_BLOCK, Blocks.FIRE, Blocks.DEADBUSH, Blocks.QUARTZ_ORE)
 
     init {
         onEnable {
@@ -149,9 +148,14 @@ object SeedOverlay: Module(
             synchronized(differences) {
                 differences.entries.take(maxRenderedDifferences).forEach {
                     when (it.value) {
+                        /**
+                         * 1 = block in player world but not in generated
+                         * 0 = different blocks in both worlds
+                         * -1 = block in generated world but not in player
+                         */
                         1 -> if (renderNewBlocks) espRenderer.add(it.key, renderNewBlocksColor)
-                        0 -> if (renderMissingBlocks) espRenderer.add(it.key, renderMissingBlocksColor)
-                        -1 -> if (renderDifferentBlocks) espRenderer.add(it.key, renderDifferentBlocksColor)
+                        0 -> if (renderDifferentBlocks) espRenderer.add(it.key, renderDifferentBlocksColor)
+                        -1 -> if (renderMissingBlocks) espRenderer.add(it.key, renderMissingBlocksColor)
                     }
                 }
             }
@@ -189,14 +193,14 @@ object SeedOverlay: Module(
                         if (world.isBlockLoaded(bp, false) && generatedWorld!!.getChunk(bp).isTerrainPopulated) {
                             val a: IBlockState = world.getBlockState(bp)
                             val b = generatedWorld!!.getBlockState(bp)
-                            if (a.material != b.material) {
+                            if (a.material != b.material || a.block != b.block) {
                                 if (!a.material.isLiquid && !b.material.isLiquid &&
                                     !BlockFalling::class.java.isAssignableFrom(a.block.javaClass) && !BlockFalling::class.java.isAssignableFrom(b.block.javaClass) &&
                                     !ignoreBlocks.contains(a.block) && !ignoreBlocks.contains(b.block)) {
-                                    if (a.material === Material.AIR) {
-                                        newRender[bp] = -1 // block in player world not in generated
-                                    } else if (b.material === Material.AIR) {
-                                        newRender[bp] = 1 // block in generated world but not in player world
+                                    if (a.block == Blocks.AIR) {
+                                        newRender[bp] = -1 // block in generated world but not in player
+                                    } else if (b.block == Blocks.AIR) {
+                                        newRender[bp] = 1 // block in player world but not in generated
                                     } else {
                                         newRender[bp] = 0 // different block in both
                                     }
