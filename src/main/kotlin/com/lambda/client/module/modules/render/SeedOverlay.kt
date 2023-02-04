@@ -30,11 +30,13 @@ object SeedOverlay: Module(
     /**
      * todo:
      *  paper generated world comparison (is this even feasible?)
+     *  increase efficiency similar to Search module - only need to compare on enable, new chunk packets, or changed block packets
      */
 
     private val overworldSeed by setting("Overworld Seed", "-4172144997902289642")
     private val netherSeed by setting("Nether Seed", "146008555100680")
     private val endSeed by setting("End Seed", "146008555100680")
+    private val compareMode by setting("Compare Mode", CompareMode.BLOCKS, description = "Compare exact block types or compare block materials")
     private val renderNewBlocks by setting("Render New Blocks", true)
     private val renderNewBlocksColor by setting("New Blocks Color", ColorHolder(255, 0, 0))
     private val renderMissingBlocks by setting("Render Missing Blocks", true)
@@ -62,6 +64,10 @@ object SeedOverlay: Module(
         Blocks.COAL_ORE, Blocks.IRON_ORE, Blocks.GOLD_ORE, Blocks.LAPIS_ORE, Blocks.EMERALD_ORE, Blocks.DIAMOND_ORE,
         Blocks.TALLGRASS, Blocks.DOUBLE_PLANT, Blocks.VINE, Blocks.YELLOW_FLOWER, Blocks.RED_FLOWER, Blocks.BROWN_MUSHROOM,
         Blocks.RED_MUSHROOM, Blocks.BROWN_MUSHROOM_BLOCK, Blocks.RED_MUSHROOM_BLOCK, Blocks.FIRE, Blocks.DEADBUSH, Blocks.QUARTZ_ORE)
+
+    private enum class CompareMode {
+        BLOCKS, MATERIAL
+    }
 
     init {
         onEnable {
@@ -193,7 +199,11 @@ object SeedOverlay: Module(
                         if (world.isBlockLoaded(bp, false) && generatedWorld!!.getChunk(bp).isTerrainPopulated) {
                             val a: IBlockState = world.getBlockState(bp)
                             val b = generatedWorld!!.getBlockState(bp)
-                            if (a.material != b.material || a.block != b.block) {
+                            val compare = when(compareMode) {
+                                CompareMode.BLOCKS -> a.block != b.block
+                                CompareMode.MATERIAL -> a.material != b.material
+                            }
+                            if (compare) {
                                 if (!a.material.isLiquid && !b.material.isLiquid &&
                                     !BlockFalling::class.java.isAssignableFrom(a.block.javaClass) && !BlockFalling::class.java.isAssignableFrom(b.block.javaClass) &&
                                     !ignoreBlocks.contains(a.block) && !ignoreBlocks.contains(b.block)) {
