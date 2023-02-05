@@ -5,6 +5,7 @@ import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.event.events.RenderWorldEvent
 import com.lambda.client.module.Category
 import com.lambda.client.module.Module
+import com.lambda.client.util.SeedOverlayBlockMap
 import com.lambda.client.util.color.ColorHolder
 import com.lambda.client.util.graphics.ESPRenderer
 import com.lambda.client.util.text.MessageSendHelper
@@ -36,7 +37,6 @@ object SeedOverlay: Module(
     private val overworldSeed by setting("Overworld Seed", "-4172144997902289642", consumer = this::seedSettingConsumer)
     private val netherSeed by setting("Nether Seed", "146008555100680", consumer = this::seedSettingConsumer)
     private val endSeed by setting("End Seed", "146008555100680", consumer = this::seedSettingConsumer)
-    private val compareMode by setting("Compare Mode", CompareMode.BLOCKS, description = "Compare exact block types or compare block materials")
     private val renderNewBlocks by setting("Render New Blocks", true)
     private val renderNewBlocksColor by setting("New Blocks Color", ColorHolder(255, 0, 0))
     private val renderMissingBlocks by setting("Render Missing Blocks", true)
@@ -54,21 +54,13 @@ object SeedOverlay: Module(
 
     private var worldGenerator: WorldGenerator? = null
     private var generatedWorld: World? = null
+    private var map: SeedOverlayBlockMap? = null
     private var isUpdating = false
     private var isInitializing = false
     private val espRenderer = ESPRenderer()
 
     private val differences = HashMap<BlockPos, Int>()
 
-    private val ignoreBlocks = listOf(Blocks.GLOWSTONE, Blocks.LOG, Blocks.LEAVES, Blocks.LOG2, Blocks.LEAVES2,
-        Blocks.COAL_ORE, Blocks.IRON_ORE, Blocks.GOLD_ORE, Blocks.LAPIS_ORE, Blocks.EMERALD_ORE, Blocks.DIAMOND_ORE,
-        Blocks.TALLGRASS, Blocks.DOUBLE_PLANT, Blocks.VINE, Blocks.YELLOW_FLOWER, Blocks.RED_FLOWER, Blocks.BROWN_MUSHROOM,
-        Blocks.RED_MUSHROOM, Blocks.BROWN_MUSHROOM_BLOCK, Blocks.RED_MUSHROOM_BLOCK, Blocks.FIRE, Blocks.DEADBUSH, Blocks.QUARTZ_ORE,
-        Blocks.CHORUS_FLOWER, Blocks.CHORUS_PLANT, Blocks.MAGMA, Blocks.COCOA, Blocks.CACTUS, Blocks.SAPLING, Blocks.REEDS)
-
-    private enum class CompareMode {
-        BLOCKS, MATERIAL
-    }
 
     init {
         onEnable {
@@ -83,6 +75,7 @@ object SeedOverlay: Module(
             }
             worldGenerator = null
             generatedWorld = null
+            map = null
             isUpdating = false
             isInitializing = false
             clearToRender()
@@ -98,6 +91,7 @@ object SeedOverlay: Module(
             }
             if (worldGenerator == null || generatedWorld == null) {
                 isInitializing = true
+                map = SeedOverlayBlockMap(world.provider.dimension, net.minecraft.init.Biomes.PLAINS)
                 defaultScope.launch {
                     worldGenerator?.let { generator ->
                         try {
@@ -112,6 +106,7 @@ object SeedOverlay: Module(
                     } catch (ex: Exception) {
                         worldGenerator = null
                         generatedWorld = null
+                        map = null
                         disable()
                         MessageSendHelper.sendChatMessage("Error starting SeedOverlay ${ex.message}")
                     }
@@ -123,6 +118,7 @@ object SeedOverlay: Module(
                 if (genWorld.provider.dimension != world.provider.dimension) {
                     worldGenerator = null
                     generatedWorld = null
+                    map = null
                     clearToRender()
                     return@safeListener
                 }
@@ -188,27 +184,20 @@ object SeedOverlay: Module(
     private fun SafeClientEvent.update() {
         val newRender: MutableMap<BlockPos, Int> = HashMap()
         try {
-            var maxZ = Int.MIN_VALUE
             if (generatedWorld != null && worldGenerator != null) {
                 generatedWorld = worldGenerator!!.getWorld(world.provider.dimension)
                 for (z in -range * 16 until range * 16) {
                     for (x in -range * 16 until range * 16) {
                         val theX = (player.posX + x).toInt()
                         val theZ = (player.posZ + z).toInt()
-                        maxZ = theZ.coerceAtLeast(maxZ)
+                        map!!.setBiome(world.provider.biomeProvider.getBiome(BlockPos(theX, theZ, 0)))
                         if (yMin >= yMax) return
                         for (y in yMin..yMax) {
                             val bp = BlockPos(theX, y, theZ)
                             if (world.isBlockLoaded(bp, false) && generatedWorld!!.getChunk(bp).isTerrainPopulated) {
                                 var a: IBlockState = world.getBlockState(bp)
                                 var b = generatedWorld!!.getBlockState(bp)
-                                if (ignoreBlocks.contains(a.block)) a = Blocks.AIR.defaultState
-                                if (ignoreBlocks.contains(b.block)) b = Blocks.AIR.defaultState
-                                val compare = when(compareMode) {
-                                    CompareMode.BLOCKS -> a.block != b.block
-                                    CompareMode.MATERIAL -> a.material != b.material
-                                }
-                                if (compare) {
+                                if (map!![a.block] != map!![b.block]) {
                                     if (!a.material.isLiquid && !b.material.isLiquid &&
                                         !BlockFalling::class.java.isAssignableFrom(a.block.javaClass) && !BlockFalling::class.java.isAssignableFrom(b.block.javaClass)) {
                                         if (a.block == Blocks.AIR) {
