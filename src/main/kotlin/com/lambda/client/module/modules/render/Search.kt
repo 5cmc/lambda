@@ -22,7 +22,7 @@ import com.lambda.client.util.threads.safeListener
 import com.lambda.client.util.world.isWater
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import net.minecraft.block.BlockEnderChest
 import net.minecraft.block.BlockShulkerBox
@@ -79,8 +79,9 @@ object Search : Module(
     private val blockRenderer = ESPRenderer()
     private val entityRenderer = ESPRenderer()
     private val foundBlockMap: ConcurrentMap<BlockPos, IBlockState> = ConcurrentHashMap()
+    private var blockRenderUpdateJob: Job? = null
+    private var entityRenderUpdateJob: Job? = null
     private var blockSearchJob: Job? = null
-    private var entitySearchJob: Job? = null
     private var prevDimension = -2
 
     override fun getHudInfo(): String {
@@ -105,6 +106,9 @@ object Search : Module(
         onDisable {
             blockRenderer.clear()
             foundBlockMap.clear()
+            blockRenderUpdateJob?.cancel()
+            entityRenderUpdateJob?.cancel()
+            blockSearchJob?.cancel()
         }
 
         safeListener<RenderWorldEvent> {
@@ -125,13 +129,13 @@ object Search : Module(
         }
 
         safeListener<TickEvent.ClientTickEvent> {
-            if (blockSearchJob == null || blockSearchJob?.isCompleted == true) {
-                blockSearchJob = defaultScope.launch {
+            if (blockRenderUpdateJob == null || blockRenderUpdateJob?.isCompleted == true) {
+                blockRenderUpdateJob = defaultScope.launch {
                     blockRenderUpdate()
                 }
             }
-            if (entitySearchJob == null || entitySearchJob?.isCompleted == true) {
-                entitySearchJob = defaultScope.launch {
+            if (entityRenderUpdateJob == null || entityRenderUpdateJob?.isCompleted == true) {
+                entityRenderUpdateJob = defaultScope.launch {
                     searchLoadedEntities()
                 }
             }
@@ -192,16 +196,18 @@ object Search : Module(
         val chunkPos1 = ChunkPos(playerChunkPos.x - renderDist, playerChunkPos.z - renderDist)
         val chunkPos2 = ChunkPos(playerChunkPos.x + renderDist, playerChunkPos.z + renderDist)
 
-        defaultScope.launch {
-            coroutineScope {
-                for (x in chunkPos1.x..chunkPos2.x) for (z in chunkPos1.z..chunkPos2.z) {
-                    val chunk = mc.world.getChunk(x, z)
-                    if (!chunk.isLoaded) continue
+        if (blockSearchJob?.isActive != true) {
+            blockSearchJob = defaultScope.launch {
+                coroutineScope {
+                    for (x in chunkPos1.x..chunkPos2.x) for (z in chunkPos1.z..chunkPos2.z) {
+                        if (!this.isActive) return@coroutineScope
+                        val chunk = mc.world.getChunk(x, z)
+                        if (!chunk.isLoaded) continue
 
-                    launch {
-                        findBlocksInChunk(chunk).forEach { pair -> foundBlockMap[pair.first] = pair.second }
+                        findBlocksInChunk(chunk).forEach {
+                            pair -> foundBlockMap[pair.first] = pair.second
+                        }
                     }
-                    delay(500L)
                 }
             }
         }
