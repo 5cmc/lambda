@@ -23,13 +23,13 @@ import com.lambda.client.util.threads.onMainThread
 import com.lambda.client.util.threads.safeAsyncListener
 import com.lambda.client.util.threads.safeListener
 import kotlinx.coroutines.runBlocking
+import net.minecraft.client.renderer.BufferBuilder
 import net.minecraft.client.renderer.vertex.DefaultVertexFormats
 import net.minecraft.network.play.server.SPacketChunkData
 import net.minecraft.network.play.server.SPacketUnloadChunk
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.ChunkPos
-import org.lwjgl.opengl.GL11.GL_LINE_LOOP
-import org.lwjgl.opengl.GL11.glLineWidth
+import org.lwjgl.opengl.GL11.*
 import java.time.Instant
 import kotlin.math.hypot
 import kotlin.math.pow
@@ -47,8 +47,9 @@ object NewChunksPlus : Module(
         PACKET, TIMER, BOTH
     }
 
-    private val mode by setting("New Chunks Mode", DetectionMode.BOTH)
+    private val mode by setting("New Chunks Mode", DetectionMode.PACKET)
     private val range by setting("Render Range", 1500, 64..2048, 32, description = "Maximum range for chunks to be highlighted")
+    private val renderMode by setting("Render Mode", RenderMode.OUTLINE)
     private val packetChunkYOffset by setting("Packet Chunk Y Offset", 40, -10..256, 4, fineStep = 1, description = "Packet chunk render offset in Y axis")
     private val timerChunkYOffset by setting("Timer Chunk Y Offset", 50, -10..256, 4, fineStep = 1, description = "Timer chunk render offset in Y axis")
     private val maxNumber by setting("Max Number", 5000, 1000..10000, 500, description = "Maximum number of chunks to keep")
@@ -62,6 +63,10 @@ object NewChunksPlus : Module(
     private val packetChunks = LinkedHashSet<ChunkPos>()
     private val timeChunks = LinkedHashSet<ChunkPos>()
     private val unloadChunkTimes = EvictingQueue.create<Long>(30)
+
+    private enum class RenderMode {
+        OUTLINE, FILLED
+    }
 
     // todo: make time settings configurations update timechunks so you don't have to keep loading new chunks while messing with them
     //  store state variables along with all chunks loaded and recalculate on every render
@@ -91,13 +96,10 @@ object NewChunksPlus : Module(
                 val y = packetChunkYOffset.toDouble()
                 for (chunkPos in packetChunks) {
                     if (player.distanceTo(chunkPos) > range) continue
-
-                    buffer.begin(GL_LINE_LOOP, DefaultVertexFormats.POSITION_COLOR)
-                    buffer.pos(chunkPos.xStart.toDouble(), y, chunkPos.zStart.toDouble()).color(packetChunkColor.r, packetChunkColor.g, packetChunkColor.b, packetChunkColor.a).endVertex()
-                    buffer.pos(chunkPos.xEnd + 1.0, y, chunkPos.zStart.toDouble()).color(packetChunkColor.r, packetChunkColor.g, packetChunkColor.b, packetChunkColor.a).endVertex()
-                    buffer.pos(chunkPos.xEnd + 1.0, y, chunkPos.zEnd + 1.0).color(packetChunkColor.r, packetChunkColor.g, packetChunkColor.b, packetChunkColor.a).endVertex()
-                    buffer.pos(chunkPos.xStart.toDouble(), y, chunkPos.zEnd + 1.0).color(packetChunkColor.r, packetChunkColor.g, packetChunkColor.b, packetChunkColor.a).endVertex()
-                    LambdaTessellator.render()
+                    when(renderMode) {
+                        RenderMode.OUTLINE -> renderOutline(buffer, y, chunkPos, packetChunkColor)
+                        RenderMode.FILLED -> renderFilled(buffer, y, chunkPos, packetChunkColor)
+                    }
                 }
             }
 
@@ -105,13 +107,10 @@ object NewChunksPlus : Module(
                 val y = timerChunkYOffset.toDouble()
                 for (chunkPos in timeChunks) {
                     if (player.distanceTo(chunkPos) > range) continue
-
-                    buffer.begin(GL_LINE_LOOP, DefaultVertexFormats.POSITION_COLOR)
-                    buffer.pos(chunkPos.xStart.toDouble(), y, chunkPos.zStart.toDouble()).color(timeChunkColor.r, timeChunkColor.g, timeChunkColor.b, timeChunkColor.a).endVertex()
-                    buffer.pos(chunkPos.xEnd + 1.0, y, chunkPos.zStart.toDouble()).color(timeChunkColor.r, timeChunkColor.g, timeChunkColor.b, timeChunkColor.a).endVertex()
-                    buffer.pos(chunkPos.xEnd + 1.0, y, chunkPos.zEnd + 1.0).color(timeChunkColor.r, timeChunkColor.g, timeChunkColor.b, timeChunkColor.a).endVertex()
-                    buffer.pos(chunkPos.xStart.toDouble(), y, chunkPos.zEnd + 1.0).color(timeChunkColor.r, timeChunkColor.g, timeChunkColor.b, timeChunkColor.a).endVertex()
-                    LambdaTessellator.render()
+                    when(renderMode) {
+                        RenderMode.OUTLINE -> renderOutline(buffer, y, chunkPos, timeChunkColor)
+                        RenderMode.FILLED -> renderFilled(buffer, y, chunkPos, timeChunkColor)
+                    }
                 }
             }
 
@@ -218,6 +217,25 @@ object NewChunksPlus : Module(
         }
     }
 
+    private fun renderOutline(buffer: BufferBuilder, y: Double, chunkPos: ChunkPos, color: ColorHolder) {
+        buffer.begin(GL_LINE_LOOP, DefaultVertexFormats.POSITION_COLOR)
+        buffer.pos(chunkPos.xStart.toDouble(), y, chunkPos.zStart.toDouble()).color(color.r, color.g, color.b, color.a).endVertex()
+        buffer.pos(chunkPos.xEnd + 1.0, y, chunkPos.zStart.toDouble()).color(color.r, color.g, color.b, color.a).endVertex()
+        buffer.pos(chunkPos.xEnd + 1.0, y, chunkPos.zEnd + 1.0).color(color.r, color.g, color.b, color.a).endVertex()
+        buffer.pos(chunkPos.xStart.toDouble(), y, chunkPos.zEnd + 1.0).color(color.r, color.g, color.b, color.a).endVertex()
+        LambdaTessellator.render()
+    }
+
+    private fun renderFilled(buffer: BufferBuilder, y: Double, chunkPos: ChunkPos, color: ColorHolder) {
+        buffer.begin(GL_TRIANGLES, DefaultVertexFormats.POSITION_COLOR)
+        buffer.pos(chunkPos.xStart.toDouble(), y, chunkPos.zStart.toDouble()).color(color.r, color.g, color.b, color.a).endVertex()
+        buffer.pos(chunkPos.xEnd + 1.0, y, chunkPos.zStart.toDouble()).color(color.r, color.g, color.b, color.a).endVertex()
+        buffer.pos(chunkPos.xStart.toDouble(), y, chunkPos.zEnd + 1.0).color(color.r, color.g, color.b, color.a).endVertex()
+        buffer.pos(chunkPos.xStart.toDouble(), y, chunkPos.zEnd + 1.0).color(color.r, color.g, color.b, color.a).endVertex()
+        buffer.pos(chunkPos.xEnd + 1.0, y, chunkPos.zEnd + 1.0).color(color.r, color.g, color.b, color.a).endVertex()
+        buffer.pos(chunkPos.xEnd + 1.0, y, chunkPos.zStart.toDouble()).color(color.r, color.g, color.b, color.a).endVertex()
+        LambdaTessellator.render()
+    }
 
     private fun isSquareInRadius(p1: Vec2d, p2: Vec2d, radius: Float): Boolean {
         val x = if (p1.x + p2.x > 0) p2.x else p1.x
