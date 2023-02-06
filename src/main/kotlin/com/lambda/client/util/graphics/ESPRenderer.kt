@@ -11,7 +11,7 @@ import net.minecraft.entity.Entity
 import net.minecraft.util.math.AxisAlignedBB
 import net.minecraft.util.math.BlockPos
 import org.lwjgl.opengl.GL11.GL_LINES
-import org.lwjgl.opengl.GL11.GL_QUADS
+import org.lwjgl.opengl.GL11.GL_TRIANGLES
 
 /**
  * @author Xiaro
@@ -88,7 +88,7 @@ class ESPRenderer {
     }
 
     private fun drawList(type: Type, cull: Boolean = false) {
-        LambdaTessellator.begin(if (type == Type.FILLED) GL_QUADS else GL_LINES)
+        LambdaTessellator.begin(if (type == Type.FILLED) GL_TRIANGLES else GL_LINES)
 
         for ((box, color, sides) in toRender) when (type) {
             Type.FILLED -> drawFilled(cull, box, color, sides)

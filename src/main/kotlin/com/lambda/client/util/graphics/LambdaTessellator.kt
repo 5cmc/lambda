@@ -109,22 +109,22 @@ object LambdaTessellator : Tessellator(0x200000) {
         val vertexList = ArrayList<Vec3d>()
 
         if (sides and GeometryMasks.Quad.DOWN != 0) {
-            vertexList.addAll(SquareVec(box.minX, box.maxX, box.minZ, box.maxZ, box.minY, EnumFacing.DOWN).toQuad())
+            vertexList.addAll(SquareVec(box.minX, box.maxX, box.minZ, box.maxZ, box.minY, EnumFacing.DOWN).toTriangles())
         }
         if (sides and GeometryMasks.Quad.UP != 0) {
-            vertexList.addAll(SquareVec(box.minX, box.maxX, box.minZ, box.maxZ, box.maxY, EnumFacing.UP).toQuad())
+            vertexList.addAll(SquareVec(box.minX, box.maxX, box.minZ, box.maxZ, box.maxY, EnumFacing.UP).toTriangles())
         }
         if (sides and GeometryMasks.Quad.NORTH != 0) {
-            vertexList.addAll(SquareVec(box.minX, box.maxX, box.minY, box.maxY, box.minZ, EnumFacing.NORTH).toQuad())
+            vertexList.addAll(SquareVec(box.minX, box.maxX, box.minY, box.maxY, box.minZ, EnumFacing.NORTH).toTriangles())
         }
         if (sides and GeometryMasks.Quad.SOUTH != 0) {
-            vertexList.addAll(SquareVec(box.minX, box.maxX, box.minY, box.maxY, box.maxZ, EnumFacing.SOUTH).toQuad())
+            vertexList.addAll(SquareVec(box.minX, box.maxX, box.minY, box.maxY, box.maxZ, EnumFacing.SOUTH).toTriangles())
         }
         if (sides and GeometryMasks.Quad.WEST != 0) {
-            vertexList.addAll(SquareVec(box.minY, box.maxY, box.minZ, box.maxZ, box.minX, EnumFacing.WEST).toQuad())
+            vertexList.addAll(SquareVec(box.minY, box.maxY, box.minZ, box.maxZ, box.minX, EnumFacing.WEST).toTriangles())
         }
         if (sides and GeometryMasks.Quad.EAST != 0) {
-            vertexList.addAll(SquareVec(box.minY, box.maxY, box.minZ, box.maxZ, box.maxX, EnumFacing.EAST).toQuad())
+            vertexList.addAll(SquareVec(box.minY, box.maxY, box.minZ, box.maxZ, box.maxX, EnumFacing.EAST).toTriangles())
         }
 
         for (pos in vertexList) {
@@ -196,6 +196,14 @@ object LambdaTessellator : Tessellator(0x200000) {
                 Pair(quad[1], quad[2]),
                 Pair(quad[2], quad[3]),
                 Pair(quad[3], quad[0])
+            )
+        }
+
+        fun toTriangles(): Array<Vec3d> {
+            val quad = this.toQuad()
+            return arrayOf(
+                quad[0], quad[1], quad[3],
+                quad[1], quad[3], quad[2]
             )
         }
 
