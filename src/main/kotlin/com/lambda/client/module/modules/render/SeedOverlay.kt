@@ -20,6 +20,7 @@ import net.minecraft.util.math.BlockPos
 import net.minecraft.world.World
 import net.minecraft.world.WorldSettings
 import net.minecraftforge.fml.common.gameevent.TickEvent
+import java.lang.Integer.min
 import java.time.Duration
 import java.time.Instant
 
@@ -59,8 +60,27 @@ object SeedOverlay: Module(
     private var isInitializing = false
     private val espRenderer = ESPRenderer()
 
-    private val differences = HashMap<BlockPos, Int>()
+    private val differences = HashMap<BlockPos, BlockDifference>()
 
+    private enum class BlockDifference {
+        NEW, MISSING, DIFFERENT
+    }
+
+    override fun getHudInfo(): String {
+//        var n: Int = 0
+//        var m: Int = 0
+//        var d: Int = 0
+//        for (difference in differences) {
+//            if (difference.value == 1) {
+//                n++
+//            } else if (difference.value == 0) {
+//                d++
+//            } else {
+//                m++
+//            }
+//        }
+        return differences.size.toString()
+    }
 
     init {
         onEnable {
@@ -101,7 +121,7 @@ object SeedOverlay: Module(
                         }
                     }
                     try {
-                        worldGenerator = createFreshWorldCopy(mc.world, getSeedForCurrentWorld()!!)
+                        worldGenerator = initWorldGenerator(mc.world, getSeedForCurrentWorld()!!)
                         generatedWorld = worldGenerator!!.getWorld(mc.world.provider.dimension)
                     } catch (ex: Exception) {
                         worldGenerator = null
@@ -128,7 +148,7 @@ object SeedOverlay: Module(
             isUpdating = true
             defaultScope.launch {
                 try {
-                    update()
+                    searchLoadedChunks()
                 } catch (ex: Exception) {
                     LambdaMod.LOG.warn("Error updating SeedOverlay", ex)
                 }
@@ -151,14 +171,9 @@ object SeedOverlay: Module(
             synchronized(differences) {
                 differences.entries.take(maxRenderedDifferences).forEach {
                     when (it.value) {
-                        /**
-                         * 1 = block in player world but not in generated
-                         * 0 = different blocks in both worlds
-                         * -1 = block in generated world but not in player
-                         */
-                        1 -> if (renderNewBlocks) espRenderer.add(it.key, renderNewBlocksColor)
-                        0 -> if (renderDifferentBlocks) espRenderer.add(it.key, renderDifferentBlocksColor)
-                        -1 -> if (renderMissingBlocks) espRenderer.add(it.key, renderMissingBlocksColor)
+                        BlockDifference.NEW -> if (renderNewBlocks) espRenderer.add(it.key, renderNewBlocksColor)
+                        BlockDifference.DIFFERENT -> if (renderDifferentBlocks) espRenderer.add(it.key, renderDifferentBlocksColor)
+                        BlockDifference.MISSING -> if (renderMissingBlocks) espRenderer.add(it.key, renderMissingBlocksColor)
                     }
                 }
             }
@@ -181,34 +196,21 @@ object SeedOverlay: Module(
         }
     }
 
-    private fun SafeClientEvent.update() {
-        val newRender: MutableMap<BlockPos, Int> = HashMap()
+    private fun SafeClientEvent.searchLoadedChunks() {
+        if (yMin >= yMax) return
+        val newDifferences: MutableMap<BlockPos, BlockDifference> = HashMap()
         try {
             if (generatedWorld != null && worldGenerator != null) {
                 generatedWorld = worldGenerator!!.getWorld(world.provider.dimension)
-                for (z in -range * 16 until range * 16) {
-                    for (x in -range * 16 until range * 16) {
-                        val theX = (player.posX + x).toInt()
-                        val theZ = (player.posZ + z).toInt()
-                        map!!.setBiome(world.provider.biomeProvider.getBiome(BlockPos(theX, theZ, 0)))
-                        if (yMin >= yMax) return
+                val searchRange = min(mc.gameSettings.renderDistanceChunks, range)
+                for (z in -searchRange * 16 until searchRange * 16) {
+                    for (x in -searchRange * 16 until searchRange * 16) {
+                        val playerX = (player.posX + x).toInt()
+                        val playerZ = (player.posZ + z).toInt()
                         for (y in yMin..yMax) {
-                            val bp = BlockPos(theX, y, theZ)
-                            if (world.isBlockLoaded(bp, false) && generatedWorld!!.getChunk(bp).isTerrainPopulated) {
-                                var a: IBlockState = world.getBlockState(bp)
-                                var b = generatedWorld!!.getBlockState(bp)
-                                if (map!![a.block] != map!![b.block]) {
-                                    if (!a.material.isLiquid && !b.material.isLiquid &&
-                                        !BlockFalling::class.java.isAssignableFrom(a.block.javaClass) && !BlockFalling::class.java.isAssignableFrom(b.block.javaClass)) {
-                                        if (a.block == Blocks.AIR) {
-                                            newRender[bp] = -1 // block in generated world but not in player
-                                        } else if (b.block == Blocks.AIR) {
-                                            newRender[bp] = 1 // block in player world but not in generated
-                                        } else {
-                                            newRender[bp] = 0 // different block in both
-                                        }
-                                    }
-                                }
+                            val blockPos = BlockPos(playerX, y, playerZ)
+                            compare(blockPos)?.let {
+                                newDifferences[blockPos] = it
                             }
                         }
                     }
@@ -216,33 +218,56 @@ object SeedOverlay: Module(
             }
             synchronized(differences) {
                 differences.clear()
-                differences.putAll(newRender)
+                differences.putAll(newDifferences)
             }
         } catch (ex: Exception) {
             LambdaMod.LOG.warn("Error comparing chunks", ex)
         }
     }
 
-    private fun createFreshWorldCopy(worldIn: World, seed: Long): WorldGenerator {
-        val i = worldIn.worldInfo
+    private fun SafeClientEvent.compare(blockPos: BlockPos): BlockDifference? {
+        generatedWorld?.let { genWorld -> map?.let { blockMap ->
+            if (world.isBlockLoaded(blockPos, false) && genWorld.getChunk(blockPos).isTerrainPopulated) {
+                val playerBlockState: IBlockState = world.getBlockState(blockPos)
+                blockMap.setBiome(world.getBiome(blockPos))
+                val generatedBlockState = generatedWorld!!.getBlockState(blockPos)
+                if (blockMap[playerBlockState.block] != blockMap[generatedBlockState.block]) {
+                    if (!playerBlockState.material.isLiquid && !generatedBlockState.material.isLiquid &&
+                        !BlockFalling::class.java.isAssignableFrom(playerBlockState.block.javaClass) && !BlockFalling::class.java.isAssignableFrom(generatedBlockState.block.javaClass)) {
+                        return if (playerBlockState.block == Blocks.AIR) {
+                            BlockDifference.MISSING
+                        } else if (generatedBlockState.block == Blocks.AIR) {
+                            BlockDifference.NEW
+                        } else {
+                            BlockDifference.DIFFERENT
+                        }
+                    }
+                }
+            }}
+        }
+        return null
+    }
 
-        val nbt = i.cloneNBTCompound(null)
+    private fun initWorldGenerator(worldIn: World, seed: Long): WorldGenerator {
+        val worldInfo = worldIn.worldInfo
+
+        val nbt = worldInfo.cloneNBTCompound(null)
         nbt.setLong("RandomSeed", seed)
         val settings = WorldSettings(seed, worldIn.worldInfo.gameType, true, false, worldIn.worldType)
         settings.generatorOptions = worldIn.worldInfo.generatorOptions
 
-        val w: WorldGenerator = WorldGenerator.create(settings)
-        w.startServerThread()
+        val worldGen: WorldGenerator = WorldGenerator.create(settings)
+        worldGen.startServerThread()
         val before = Instant.now()
-        while (!w.done) {
-            MessageSendHelper.sendChatMessage("${w.percentDone}% Generated")
+        while (!worldGen.done) {
+            MessageSendHelper.sendChatMessage("[SeedOverlay] ${worldGen.percentDone}% Generated")
             Thread.sleep(1000)
             if (Instant.now().minus(Duration.ofSeconds(30)).isAfter(before)) {
                 throw RuntimeException("Timed out creating world")
             }
         }
         MessageSendHelper.sendChatMessage("Done generating world!")
-        return w
+        return worldGen
     }
 
     private fun seedSettingConsumer(prev: String, newVal: String): String {

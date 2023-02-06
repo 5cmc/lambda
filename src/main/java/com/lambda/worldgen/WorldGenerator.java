@@ -59,18 +59,19 @@ public class WorldGenerator extends MinecraftServer {
 
     public WorldGenerator(Minecraft clientIn, WorldSettings worldSettingsIn, YggdrasilAuthenticationService authServiceIn, MinecraftSessionService sessionServiceIn, GameProfileRepository profileRepoIn, PlayerProfileCache profileCacheIn)
     {
-        super(new File("lambdaSeedOverlay/saves"), clientIn.getProxy(), clientIn.getDataFixer(), authServiceIn, sessionServiceIn, profileRepoIn, profileCacheIn);
+        super(new File("lambda/SeedOverlay/saves"), clientIn.getProxy(), clientIn.getDataFixer(), authServiceIn, sessionServiceIn, profileRepoIn, profileCacheIn);
 
-        deleteDir(new File("lambdaSeedOverlay/saves/main"));
-        new File("lambdaSeedOverlay/saves/main").mkdirs();
+        deleteDir(new File("lambda/SeedOverlay"));
+        new File("lambda/SeedOverlay/saves/tmp").mkdirs();
 
         this.setServerOwner("Lambda");
-        this.setFolderName("main");
-        this.setWorldName("main");
+        this.setFolderName("tmp");
+        this.setWorldName("tmp");
         this.setDemo(clientIn.isDemo());
         this.canCreateBonusChest(worldSettingsIn.isBonusChestEnabled());
         this.setBuildLimit(256);
         this.setPlayerList(new PlayerList(this) { });
+        this.getPlayerList().setWhiteListEnabled(true);
         this.worldSettings = this.isDemo() ? WorldServerDemo.DEMO_WORLD_SETTINGS : worldSettingsIn;
     }
 
@@ -154,13 +155,12 @@ public class WorldGenerator extends MinecraftServer {
     }
 
     public boolean init() {
-        LOGGER.info("Starting integrated minecraft server version 1.12.2");
+        LOGGER.info("Starting SeedOverlay server");
         this.setOnlineMode(true);
         this.setCanSpawnAnimals(true);
         this.setCanSpawnNPCs(true);
         this.setAllowPvp(true);
         this.setAllowFlight(true);
-        LOGGER.info("Generating keypair");
         this.setKeyPair(CryptManager.generateKeyPair());
         if (!net.minecraftforge.fml.common.FMLCommonHandler.instance().handleServerAboutToStart(this)) return false;
         this.loadAllWorlds(this.getFolderName(), this.getWorldName(), this.worldSettings.getSeed(), this.worldSettings.getTerrainType(), this.worldSettings.getGeneratorOptions());
@@ -253,7 +253,7 @@ public class WorldGenerator extends MinecraftServer {
 
     public File getDataDirectory()
     {
-        return new File("lambdaSeedOverlaySaves");
+        return new File("lambda/SeedOverlay/data");
     }
 
     public boolean isDedicatedServer()
@@ -268,7 +268,6 @@ public class WorldGenerator extends MinecraftServer {
 
     public void finalTick(CrashReport report)
     {
-        //this.mc.crashed(report);
     }
 
     public CrashReport addServerInfoToCrashReport(CrashReport report)
@@ -317,7 +316,6 @@ public class WorldGenerator extends MinecraftServer {
     @Override
     public void addServerStatsToSnooper(Snooper playerSnooper)
     {
-        //super.addServerStatsToSnooper(playerSnooper);
     }
 
     public boolean isSnooperEnabled()
@@ -339,24 +337,6 @@ public class WorldGenerator extends MinecraftServer {
 
     public void initiateShutdown()
     {
-        // No need to check that, you cant join it anyway!
-        /*
-        if (isServerRunning())
-            Futures.getUnchecked(this.addScheduledTask(new Runnable()
-            {
-                public void run()
-                {
-                    for (EntityPlayerMP entityplayermp : Lists.newArrayList(WorldGenerator.this.getPlayerList().getPlayers()))
-                    {
-                        if (!entityplayermp.getUniqueID().equals(WorldGenerator.this.mc.player.getUniqueID()))
-                        {
-                            WorldGenerator.this.getPlayerList().playerLoggedOut(entityplayermp);
-                        }
-                    }
-                }
-            }));
-
-         */
         super.initiateShutdown();
 
     }
