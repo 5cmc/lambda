@@ -17,11 +17,11 @@ import com.lambda.client.util.math.VectorUtils.distanceTo
 import com.lambda.client.util.text.MessageSendHelper
 import com.lambda.client.util.text.formatValue
 import com.lambda.client.util.threads.defaultScope
+import com.lambda.client.util.threads.runSafe
 import com.lambda.client.util.threads.safeAsyncListener
 import com.lambda.client.util.threads.safeListener
 import com.lambda.client.util.world.isWater
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import net.minecraft.block.BlockEnderChest
@@ -99,12 +99,13 @@ object Search : Module(
                 MessageSendHelper.sendWarningMessage("$chatName If you're sure you want to try, run the ${formatValue("${CommandManager.prefix}search override")} command")
                 disable()
             } else {
-                searchAllLoadedChunks()
+                runSafe { searchAllLoadedChunks() }
             }
         }
 
         onDisable {
             blockRenderer.clear()
+            entityRenderer.clear()
             foundBlockMap.clear()
             blockRenderUpdateJob?.cancel()
             entityRenderUpdateJob?.cancel()
@@ -168,41 +169,41 @@ object Search : Module(
         foundBlockMap.entries
             .filterNot { blockSearchList.contains(it.value.block.registryName.toString()) }
             .forEach { foundBlockMap.remove(it.key) }
-        if (newBool && mc.player != null && mc.world != null) searchAllLoadedChunks()
+        if (newBool) runSafe { searchAllLoadedChunks() }
     }
 
-    private fun searchLoadedEntities() {
-        val renderList = mc.world.getLoadedEntityList()
+    private fun SafeClientEvent.searchLoadedEntities() {
+        val renderList = world.getLoadedEntityList()
             .filter {
                 val entityName: String? = EntityList.getKey(it)?.path
-                return@filter if (entityName != null) entitySearchList.contains(entityName) else false
+                if (entityName != null) entitySearchList.contains(entityName) else false
             }
             .filter {
                 val entityName: String = EntityList.getKey(it)?.path!!
                 val dims = entitySearchDimensionFilter.value.find { dimFilter -> dimFilter.searchKey == entityName }?.dim
-                return@filter dims?.contains(mc.player.dimension) ?: true
+                dims?.contains(player.dimension) ?: true
             }
-            .sortedBy { it.distanceTo(mc.player.getPositionEyes(1f)) }
+            .sortedBy { it.distanceTo(player.getPositionEyes(1f)) }
             .take(maximumEntities)
-            .filter { it.distanceTo(mc.player.getPositionEyes(1f)) < range }
+            .filter { it.distanceTo(player.getPositionEyes(1f)) < range }
             .toMutableList()
         entityRenderer.clear()
         renderList.forEach { entityRenderer.add(it, entitySearchColor) }
     }
 
-    private fun searchAllLoadedChunks() {
+    private fun SafeClientEvent.searchAllLoadedChunks() {
         val renderDist = mc.gameSettings.renderDistanceChunks
-        val playerChunkPos = ChunkPos(mc.player.position)
+        val playerChunkPos = ChunkPos(player.position)
         val chunkPos1 = ChunkPos(playerChunkPos.x - renderDist, playerChunkPos.z - renderDist)
         val chunkPos2 = ChunkPos(playerChunkPos.x + renderDist, playerChunkPos.z + renderDist)
 
         if (blockSearchJob?.isActive != true) {
             blockSearchJob = defaultScope.launch {
-                coroutineScope {
-                    for (x in chunkPos1.x..chunkPos2.x) for (z in chunkPos1.z..chunkPos2.z) {
-                        if (!this.isActive) return@coroutineScope
-                        val chunk = mc.world.getChunk(x, z)
-                        if (!chunk.isLoaded) continue
+                for (x in chunkPos1.x..chunkPos2.x) for (z in chunkPos1.z..chunkPos2.z) {
+                    if (!this.isActive) return@launch
+                    runSafe {
+                        val chunk = world.getChunk(x, z)
+                        if (!chunk.isLoaded) return@runSafe
 
                         findBlocksInChunk(chunk).forEach {
                             pair -> foundBlockMap[pair.first] = pair.second
@@ -213,7 +214,7 @@ object Search : Module(
         }
     }
 
-    private fun handleBlockChange(pos: BlockPos, state: IBlockState) {
+    private fun SafeClientEvent.handleBlockChange(pos: BlockPos, state: IBlockState) {
         if (searchQuery(state, pos)) {
             foundBlockMap[pos] = state
         } else {
@@ -222,41 +223,30 @@ object Search : Module(
     }
 
     private fun SafeClientEvent.blockRenderUpdate() {
-        val playerPos = mc.player.position
+        updateAlpha()
+        val playerPos = player.position
         // unload rendering on block pos > range
         foundBlockMap
-            .filter { entry -> playerPos.distanceTo(entry.key) > max(mc.gameSettings.renderDistanceChunks * 16, range) }
-            .map { entry -> entry.key }
-            .forEach { pos -> foundBlockMap.remove(pos) }
-        val eyePos = player.getPositionEyes(1f)
-        val sortedFoundBlocks = foundBlockMap
-            .filter {
-                val filterEntry = blockSearchDimensionFilter.value
-                    .find { dimFilter -> dimFilter.searchKey == it.value.block.registryName.toString() }?.dim
-                return@filter filterEntry?.contains(mc.player.dimension) ?: true
+            .filter { playerPos.distanceTo(it.key) > max(mc.gameSettings.renderDistanceChunks * 16, range) }
+            .map { it.key }
+            .forEach { foundBlockMap.remove(it) }
+
+        val renderList = foundBlockMap
+            .filterNot {
+                !(blockSearchDimensionFilter.value
+                    .find { dimFilter -> dimFilter.searchKey == it.value.block.registryName.toString() }
+                    ?.dim?.contains(player.dimension) ?: true)
             }
-            .map { entry -> (eyePos.distanceTo(entry.key) to entry.key) }
-            .filter { pair -> pair.first < range }
-            .toList()
-
-        updateAlpha()
-
-        val renderList = sortedFoundBlocks
+            .map { (player.getPositionEyes(1f).distanceTo(it.key) to it.key) }
+            .filter { it.first < range }
             .take(maximumBlocks)
-            .map { pair ->
-                try {
-                    // concurrency could cause foundBlockMap value to no longer be in map when we get here
-                    // todo: create a lock on this method?
-                    val bb = foundBlockMap[pair.second]!!.getSelectedBoundingBox(world, pair.second)
-                    val color = getBlockColor(pair.second, foundBlockMap[pair.second]!!)
-
-                    return@map Triple(bb, color, GeometryMasks.Quad.ALL)
-                } catch (ex: Exception) {
-                    // fall through
-                    return@map null
+            .flatMap { pair ->
+                foundBlockMap[pair.second]?.let { bb ->
+                    return@flatMap listOf(Triple(bb.getSelectedBoundingBox(world, pair.second), getBlockColor(pair.second, bb), GeometryMasks.Quad.ALL))
+                } ?: run {
+                    return@flatMap emptyList()
                 }
             }
-            .filterNotNull()
             .toMutableList()
         blockRenderer.replaceAll(renderList)
     }
@@ -272,7 +262,7 @@ object Search : Module(
         entityRenderer.thickness = thickness
     }
 
-    private fun findBlocksInChunk(chunk: Chunk): ArrayList<Pair<BlockPos, IBlockState>> {
+    private fun SafeClientEvent.findBlocksInChunk(chunk: Chunk): ArrayList<Pair<BlockPos, IBlockState>> {
         val yRange = yRangeTop..yRangeBottom
         val xRange = (chunk.x shl 4)..(chunk.x shl 4) + 15
         val zRange = (chunk.z shl 4)..(chunk.z shl 4) + 15
@@ -286,19 +276,21 @@ object Search : Module(
         return blocks
     }
 
-    private fun searchQuery(state: IBlockState, pos: BlockPos): Boolean {
+    private fun SafeClientEvent.searchQuery(state: IBlockState, pos: BlockPos): Boolean {
         val block = state.block
         if (block == Blocks.AIR) return false
-        return blockSearchList.contains(block.registryName.toString())
+        return (blockSearchList.contains(block.registryName.toString())
+                && blockSearchDimensionFilter.value.find { dimFilter ->
+                    dimFilter.searchKey == block.registryName.toString() }
+                    ?.dim?.contains(player.dimension) ?: true)
             || isIllegalBedrock(state, pos)
             || isIllegalWater(state)
     }
 
-    private fun isIllegalBedrock(state: IBlockState, pos: BlockPos): Boolean {
+    private fun SafeClientEvent.isIllegalBedrock(state: IBlockState, pos: BlockPos): Boolean {
         if (!illegalBedrock.value) return false
-        val block = state.block
-        if (block != Blocks.BEDROCK) return false
-        return when (mc.player.dimension) {
+        if (state.block != Blocks.BEDROCK) return false
+        return when (player.dimension) {
             0 -> {
                 pos.y >= 5
             }
@@ -311,9 +303,9 @@ object Search : Module(
         }
     }
 
-    private fun isIllegalWater(state: IBlockState): Boolean {
+    private fun SafeClientEvent.isIllegalWater(state: IBlockState): Boolean {
         if (!illegalNetherWater.value) return false
-        return (mc.player.dimension == -1 && state.isWater)
+        return player.dimension == -1 && state.isWater
     }
 
     private fun SafeClientEvent.getBlockColor(pos: BlockPos, blockState: IBlockState): ColorHolder {
