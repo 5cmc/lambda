@@ -7,10 +7,13 @@ import com.lambda.client.event.events.RenderWorldEvent
 import com.lambda.client.event.events.ResolutionUpdateEvent
 import com.lambda.client.gui.mc.LambdaGuiChat
 import com.lambda.client.module.ModuleManager
+import com.lambda.client.module.modules.client.ClickGUI
 import com.lambda.client.util.Wrapper
 import com.lambda.client.util.graphics.LambdaTessellator
 import com.lambda.client.util.graphics.ProjectionUtils
 import com.lambda.client.util.text.MessageDetection
+import net.minecraft.client.gui.GuiMainMenu
+import net.minecraft.client.gui.GuiMultiplayer
 import net.minecraftforge.client.event.*
 import net.minecraftforge.event.entity.living.LivingEntityUseItemEvent
 import net.minecraftforge.event.entity.player.PlayerInteractEvent
@@ -85,6 +88,11 @@ internal object ForgeEventProcessor {
 
     @SubscribeEvent
     fun onGuiKeyInput(event: GuiScreenEvent.KeyboardInputEvent.Pre) {
+        if (mc.currentScreen is GuiMainMenu || mc.currentScreen is GuiMultiplayer) {
+            if (ClickGUI.bind.value.isDown(Keyboard.getEventKey()) && !ClickGUI.isEnabled) {
+                ClickGUI.toggle()
+            }
+        }
         LambdaEventBus.post(event)
     }
 

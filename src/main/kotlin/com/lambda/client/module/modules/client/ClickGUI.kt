@@ -6,7 +6,6 @@ import com.lambda.client.gui.clickgui.LambdaClickGui
 import com.lambda.client.module.Category
 import com.lambda.client.module.Module
 import com.lambda.client.util.StopTimer
-import com.lambda.client.util.threads.safeListener
 import net.minecraftforge.fml.common.gameevent.TickEvent
 import org.lwjgl.input.Keyboard
 import kotlin.math.round
@@ -57,7 +56,7 @@ object ClickGUI : Module(
     fun getScaleFactor() = (prevScale + (scale - prevScale) * mc.renderPartialTicks) * 2.0
 
     init {
-        safeListener<TickEvent.ClientTickEvent> {
+        listener<TickEvent.ClientTickEvent> {
             prevScale = scale
             if (settingTimer.stop() > 1000L) {
                 val diff = scale - getRoundedScale()
