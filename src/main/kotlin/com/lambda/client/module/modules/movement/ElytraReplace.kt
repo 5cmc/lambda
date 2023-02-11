@@ -1,6 +1,8 @@
 package com.lambda.client.module.modules.movement
 
 import com.lambda.client.event.SafeClientEvent
+import com.lambda.client.manager.managers.PlayerInventoryManager
+import com.lambda.client.manager.managers.PlayerInventoryManager.addInventoryTask
 import com.lambda.client.module.Category
 import com.lambda.client.module.Module
 import com.lambda.client.util.TickTimer
@@ -29,7 +31,7 @@ object ElytraReplace : Module(
     private val playSound by setting("Play Sound", false, { logToChat })
     private val logThreshold by setting("Warning Threshold", 2, 1..10, 1, { logToChat })
     private val threshold by setting("Damage Threshold", 7, 1..50, 1)
-    private val delay by setting("Delay", 20, 1..400, 1)
+    private val delay by setting("Delay", 1, 0..20, 1)
     private val force by setting("Force Equip Elytra", true)
 
     private var elytraCount = 0
@@ -105,7 +107,7 @@ object ElytraReplace : Module(
     }
 
 
-    private fun swapToChest() {
+    private fun SafeClientEvent.swapToChest() {
         if (chestPlateCount == 0) {
             return
         }
@@ -119,19 +121,23 @@ object ElytraReplace : Module(
 
         if (slot < 9) slot += 36 // hotbar is slots 0 to 8, convert the slot if it's hotbar
 
-        if (mc.player.inventory.armorInventory[2].isEmpty) { // place chest into empty chest slot
-            mc.playerController.windowClick(0, slot, 0, ClickType.QUICK_MOVE, mc.player)
-            return
-        } else { // swap chestplate from inventory with whatever you were wearing, if you're already wearing non-armor in chest slot
-            mc.playerController.windowClick(0, 6, 0,
-                ClickType.QUICK_MOVE, mc.player)
-            mc.playerController.windowClick(0, slot, 0,
-                ClickType.QUICK_MOVE, mc.player)
-            return
+        if (PlayerInventoryManager.isDone()) {
+            if (mc.player.inventory.armorInventory[2].isEmpty) { // place new elytra in empty chest slot
+                addInventoryTask(
+                    PlayerInventoryManager.ClickInfo(0, slot, 0, ClickType.QUICK_MOVE)
+                )
+            } else { // switch non-broken elytra with whatever was previously in the chest slot
+                addInventoryTask(
+                    PlayerInventoryManager.ClickInfo(0, slot, 0, ClickType.PICKUP),
+                    PlayerInventoryManager.ClickInfo(0, 6, 0, ClickType.PICKUP),
+                    PlayerInventoryManager.ClickInfo(0, slot, 0, ClickType.PICKUP)
+                )
+
+            }
         }
     }
 
-    private fun swapToElytra(): Boolean { // returns success
+    private fun SafeClientEvent.swapToElytra(): Boolean { // returns success
 
         if (elytraCount == 0) {
             return false
@@ -154,15 +160,22 @@ object ElytraReplace : Module(
         isInDelay = false
         if (slot < 9) slot += 36 // hotbar is slots 0 to 8, convert the slot if it's hotbar
 
-        return if (mc.player.inventory.armorInventory[2].isEmpty) { // place new elytra in empty chest slot
-            mc.playerController.windowClick(0, slot, 0, ClickType.QUICK_MOVE, mc.player)
-            true
-        } else { // switch non-broken elytra with whatever was previously in the chest slot
-            mc.playerController.windowClick(0, 6, 0,
-                ClickType.QUICK_MOVE, mc.player)
-            mc.playerController.windowClick(0, slot, 0,
-                ClickType.QUICK_MOVE, mc.player)
-            true
+        if (PlayerInventoryManager.isDone()) {
+            return if (mc.player.inventory.armorInventory[2].isEmpty) { // place new elytra in empty chest slot
+                addInventoryTask(
+                    PlayerInventoryManager.ClickInfo(0, slot, 0, ClickType.QUICK_MOVE)
+                )
+                true
+            } else { // switch non-broken elytra with whatever was previously in the chest slot
+                addInventoryTask(
+                    PlayerInventoryManager.ClickInfo(0, slot, 0, ClickType.PICKUP),
+                    PlayerInventoryManager.ClickInfo(0, 6, 0, ClickType.PICKUP),
+                    PlayerInventoryManager.ClickInfo(0, slot, 0, ClickType.PICKUP)
+                )
+                true
+            }
+        } else {
+            return false
         }
     }
 

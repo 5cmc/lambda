@@ -27,6 +27,12 @@ val EntityPlayer.inventorySlots: List<Slot>
 val EntityPlayer.storageSlots: List<Slot>
     get() = inventoryContainer.getSlots(9..35)
 
+val EntityPlayer.hasItemInMouseSlot: Boolean
+    get() = inventory.itemStack != ItemStack.EMPTY
+
+val EntityPlayer.mouseItem: ItemStack
+    get() = inventory.itemStack
+
 val EntityPlayer.hotbarSlots: List<HotbarSlot>
     get() = ArrayList<HotbarSlot>().apply {
         for (slot in 36..44) {

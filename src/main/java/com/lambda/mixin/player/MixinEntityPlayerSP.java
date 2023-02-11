@@ -1,7 +1,10 @@
 package com.lambda.mixin.player;
 
 import com.lambda.client.event.LambdaEventBus;
-import com.lambda.client.event.events.*;
+import com.lambda.client.event.events.CriticalsUpdateWalkingEvent;
+import com.lambda.client.event.events.OnUpdateWalkingPlayerEvent;
+import com.lambda.client.event.events.PlayerMoveEvent;
+import com.lambda.client.event.events.PushOutOfBlocksEvent;
 import com.lambda.client.gui.mc.LambdaGuiBeacon;
 import com.lambda.client.manager.managers.MessageManager;
 import com.lambda.client.manager.managers.PlayerPacketManager;
@@ -48,7 +51,6 @@ public abstract class MixinEntityPlayerSP extends EntityPlayer {
     @Shadow private boolean serverSneakState;
     @Shadow private boolean prevOnGround;
     @Shadow private boolean autoJumpEnabled;
-    private OnUpdateWalkingPlayerEvent updateWalkingPlayerEvent = new OnUpdateWalkingPlayerEvent();
 
     public MixinEntityPlayerSP(World worldIn, GameProfile gameProfileIn) {
         super(worldIn, gameProfileIn);
@@ -147,43 +149,33 @@ public abstract class MixinEntityPlayerSP extends EntityPlayer {
         this.lastReportedPitch = serverSideRotation.getY();
     }
 
-    @Inject(
-        method = "onUpdate",
-        at = @At(
-            // need to do this weird injection for future compatibility
-            // what's likely going on is future does a similar thing, setting the player rotation values based on the event
-            // but those values are being taken from the updateWalkingPlayer method args rather than the field values
-            // idk no way to be sure without looking at future src
-            // 3arthh4ck does a similar mixin like this for compatibility
-            value = "INVOKE",
-            target = "Lnet/minecraft/client/entity/EntityPlayerSP;onUpdateWalkingPlayer()V",
-            shift = At.Shift.BEFORE),
-        cancellable = true)
-    public void onUpdateWalkingPlayerInvoke(CallbackInfo ci)
-    {
+    @Inject(method = "onUpdateWalkingPlayer", at = @At("HEAD"), cancellable = true)
+    private void onUpdateWalkingPlayerHead(CallbackInfo ci) {
+
         CriticalsUpdateWalkingEvent criticalsEditEvent = new CriticalsUpdateWalkingEvent();
         LambdaEventBus.INSTANCE.post(criticalsEditEvent);
+
         // Setup flags
         Vec3d position = new Vec3d(this.posX, this.getEntityBoundingBox().minY, this.posZ);
         Vec2f rotation = new Vec2f(this.rotationYaw, this.rotationPitch);
         boolean moving = isMoving(position);
         boolean rotating = isRotating(rotation);
 
-        updateWalkingPlayerEvent = new OnUpdateWalkingPlayerEvent(moving, rotating, position, rotation);
-        LambdaEventBus.INSTANCE.post(updateWalkingPlayerEvent);
+        OnUpdateWalkingPlayerEvent event = new OnUpdateWalkingPlayerEvent(moving, rotating, position, rotation);
+        LambdaEventBus.INSTANCE.post(event);
 
-        updateWalkingPlayerEvent = updateWalkingPlayerEvent.nextPhase();
-        LambdaEventBus.INSTANCE.post(updateWalkingPlayerEvent);
+        event = event.nextPhase();
+        LambdaEventBus.INSTANCE.post(event);
 
-        if (updateWalkingPlayerEvent.getCancelled()) {
+        if (event.getCancelled()) {
             ci.cancel();
 
-            if (!updateWalkingPlayerEvent.getCancelAll()) {
+            if (!event.getCancelAll()) {
                 // Copy flags from event
-                moving = updateWalkingPlayerEvent.isMoving();
-                rotating = updateWalkingPlayerEvent.isRotating();
-                position = updateWalkingPlayerEvent.getPosition();
-                rotation = updateWalkingPlayerEvent.getRotation();
+                moving = event.isMoving();
+                rotating = event.isRotating();
+                position = event.getPosition();
+                rotation = event.getRotation();
 
                 sendSprintPacket();
                 sendSneakPacket();
@@ -194,32 +186,10 @@ public abstract class MixinEntityPlayerSP extends EntityPlayer {
 
             ++this.positionUpdateTicks;
             this.autoJumpEnabled = this.mc.gameSettings.autoJump;
-        } else {
-            this.posX = updateWalkingPlayerEvent.getPosition().x;
-            // posY doesn't seem to affect this, need to update bounding box?
-            this.posZ = updateWalkingPlayerEvent.getPosition().z;
-            this.rotationYaw = updateWalkingPlayerEvent.getRotation().getX();
-            this.rotationPitch = updateWalkingPlayerEvent.getRotation().getY();
         }
-    }
 
-    @Inject(method = "onUpdateWalkingPlayer", at = @At("TAIL"))
-    private void onUpdateWalkingPlayerTail(CallbackInfo ci) {
-        final OnUpdateWalkingPlayerEvent event = updateWalkingPlayerEvent.nextPhase();
+        event = event.nextPhase();
         LambdaEventBus.INSTANCE.post(event);
-        this.posX = event.getPosInitial().x;
-        this.posZ = event.getPosInitial().z;
-        this.rotationYaw = event.getRotInitial().getX();
-        this.rotationPitch = event.getRotInitial().getY();
-    }
-
-    @Inject(method = "pushOutOfBlocks", at = @At("HEAD"), cancellable = true)
-    public void pushOutOfBlocks(double x, double y, double z, CallbackInfoReturnable<Boolean> cir) {
-        final PlayerBlockPushEvent playerBlockPushEvent = new PlayerBlockPushEvent();
-        LambdaEventBus.INSTANCE.post(playerBlockPushEvent);
-        if (playerBlockPushEvent.getCancelled()) {
-            cir.cancel();
-        }
     }
 
     private void sendSprintPacket() {

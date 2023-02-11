@@ -18,6 +18,7 @@ import com.lambda.client.util.MovementUtils.setSpeed
 import com.lambda.client.util.TaskState
 import com.lambda.client.util.TickTimer
 import com.lambda.client.util.TimeUnit
+import com.lambda.client.util.items.hasItemInMouseSlot
 import com.lambda.client.util.math.Vec2f
 import com.lambda.client.util.text.MessageSendHelper
 import com.lambda.client.util.threads.safeAsyncListener
@@ -217,14 +218,25 @@ object ElytraFlight2b2t : Module(
                     }
 
                     if (!elytraReplaceModuleSwap) {
-                        lastEquipTask = if (player.inventory.itemStack.isEmpty && !elytraIsEquipped) {
+                        lastEquipTask = if (!elytraIsEquipped) {
                             addInventoryTask(
                                 PlayerInventoryManager.ClickInfo(0, getSlotOfNextElytra(), type = ClickType.QUICK_MOVE)
                             )
                         } else {
-                            addInventoryTask(
-                                PlayerInventoryManager.ClickInfo(0, 6, type = ClickType.PICKUP)
-                            )
+                            if (player.hasItemInMouseSlot) {
+                                addInventoryTask(
+                                    PlayerInventoryManager.ClickInfo(0, 6, type = ClickType.PICKUP)
+                                )
+                            } else {
+                                val nextElytraSlot = getSlotOfNextElytra()
+                                addInventoryTask(
+                                    PlayerInventoryManager.ClickInfo(0, nextElytraSlot, type = ClickType.PICKUP),
+                                    PlayerInventoryManager.ClickInfo(0, 6, type = ClickType.PICKUP),
+                                    PlayerInventoryManager.ClickInfo(0, nextElytraSlot, type = ClickType.PICKUP)
+                                )
+                            }
+
+
                         }
                     }
                 }
@@ -339,11 +351,6 @@ object ElytraFlight2b2t : Module(
         }
 
         safeListener<InputUpdateEvent> {
-            // commented this out because it was annoying, feel free to revert if this actually had a use
-//            if (currentState == State.PAUSED) {
-//                it.movementInput.moveForward = 0.0f
-//                it.movementInput.moveStrafe = 0.0f
-//            }
             if (currentState != State.PAUSED && !mc.player.onGround) {
                 if (enablePauseOnSneak && mc.gameSettings.keyBindSneak.isKeyDown) {
                     return@safeListener

@@ -15,6 +15,7 @@ import com.lambda.client.process.PauseProcess.pauseBaritone
 import com.lambda.client.process.PauseProcess.unpauseBaritone
 import com.lambda.client.util.TaskState
 import com.lambda.client.util.TickTimer
+import com.lambda.client.util.items.hasItemInMouseSlot
 import com.lambda.client.util.items.removeHoldingItem
 import com.lambda.client.util.threads.onMainThreadSafe
 import com.lambda.client.util.threads.safeListener
@@ -79,7 +80,7 @@ object PlayerInventoryManager : Manager {
                 return@safeListener
             }
 
-            if (currentId == 0 && !player.inventory.itemStack.isEmpty) {
+            if (currentId == 0 && player.hasItemInMouseSlot) {
                 if (mc.currentScreen is GuiContainer) transactionTimer.reset(250L) // Wait for 5 extra ticks if player is moving item
                 else removeHoldingItem(NoGhostItems)
                 return@safeListener
