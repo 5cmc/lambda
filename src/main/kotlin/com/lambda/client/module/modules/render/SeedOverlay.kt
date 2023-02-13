@@ -2,6 +2,7 @@ package com.lambda.client.module.modules.render
 
 import com.lambda.client.LambdaMod
 import com.lambda.client.event.SafeClientEvent
+import com.lambda.client.event.events.ConnectionEvent
 import com.lambda.client.event.events.RenderWorldEvent
 import com.lambda.client.module.Category
 import com.lambda.client.module.Module
@@ -12,6 +13,7 @@ import com.lambda.client.util.text.MessageSendHelper
 import com.lambda.client.util.threads.defaultScope
 import com.lambda.client.util.threads.safeListener
 import com.lambda.worldgen.WorldGenerator
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import net.minecraft.block.BlockFalling
 import net.minecraft.block.state.IBlockState
@@ -31,7 +33,6 @@ object SeedOverlay: Module(
 ) {
     /**
      * todo:
-     *  paper generated world comparison (is this even feasible?)
      *  increase efficiency similar to Search module - only need to compare on enable, new chunk packets, or changed block packets
      */
 
@@ -48,9 +49,10 @@ object SeedOverlay: Module(
     private val renderOutlineThickness by setting("Render Outline Thickness", 1.0, 0.1..3.0, 0.1)
     private val renderFilled by setting("Render Filled", true)
     private val renderFilledAlpha by setting("Render Fill Alpha", 100, 0..255, 1)
+    private val renderTracer by setting("Render Tracer", false)
     private val yMin by setting("Y Minimum", 30, 0..255, 1)
     private val yMax by setting("Y Maximum", 90, 0..255, 1)
-    private val range by setting("Render Distance Range", 8, 1..16, 1)
+    private val range by setting("Server View-Distance", 4, 1..16, 1)
     private val maxRenderedDifferences by setting("Max Rendered", 5000, 500..50000, 100)
 
     private var worldGenerator: WorldGenerator? = null
@@ -59,6 +61,7 @@ object SeedOverlay: Module(
     private var isUpdating = false
     private var isInitializing = false
     private val espRenderer = ESPRenderer()
+    private var stopJob: Job? = null
 
     private val differences = HashMap<BlockPos, BlockDifference>()
 
@@ -84,21 +87,22 @@ object SeedOverlay: Module(
 
     init {
         onEnable {
-
         }
 
         onDisable {
-            try {
-                worldGenerator?.stopServer()
-            } catch (ex: Exception) {
+            stopJob = defaultScope.launch {
+                try {
+                    worldGenerator?.stopServer()
+                } catch (ex: Exception) {
 
+                }
+                worldGenerator = null
+                generatedWorld = null
+                map = null
+                isUpdating = false
+                isInitializing = false
+                clearToRender()
             }
-            worldGenerator = null
-            generatedWorld = null
-            map = null
-            isUpdating = false
-            isInitializing = false
-            clearToRender()
         }
 
         safeListener<TickEvent.ClientTickEvent> {
@@ -168,6 +172,9 @@ object SeedOverlay: Module(
             } else {
                 espRenderer.aOutline = 0
             }
+            if (renderTracer) {
+                espRenderer.aTracer = 255
+            }
             synchronized(differences) {
                 differences.entries.take(maxRenderedDifferences).forEach {
                     when (it.value) {
@@ -178,6 +185,10 @@ object SeedOverlay: Module(
                 }
             }
             espRenderer.render(true)
+        }
+
+        safeListener<ConnectionEvent.Disconnect> {
+            disable()
         }
     }
 
@@ -202,7 +213,7 @@ object SeedOverlay: Module(
         try {
             if (generatedWorld != null && worldGenerator != null) {
                 generatedWorld = worldGenerator!!.getWorld(world.provider.dimension)
-                val searchRange = min(mc.gameSettings.renderDistanceChunks, range)
+                val searchRange = min((mc.gameSettings.renderDistanceChunks / 2), range)
                 for (z in -searchRange * 16 until searchRange * 16) {
                     for (x in -searchRange * 16 until searchRange * 16) {
                         val playerX = (player.posX + x).toInt()
@@ -227,7 +238,9 @@ object SeedOverlay: Module(
 
     private fun SafeClientEvent.compare(blockPos: BlockPos): BlockDifference? {
         generatedWorld?.let { genWorld -> map?.let { blockMap ->
-            if (world.isBlockLoaded(blockPos, false) && genWorld.getChunk(blockPos).isTerrainPopulated) {
+            val worldChunk = world.getChunk(blockPos)
+            val genChunk = genWorld.getChunk(blockPos)
+            if (worldChunk.isLoaded && worldChunk.isPopulated && genChunk.isLoaded && genChunk.isTerrainPopulated && genChunk.isLightPopulated) {
                 val playerBlockState: IBlockState = world.getBlockState(blockPos)
                 blockMap.setBiome(world.getBiome(blockPos))
                 val generatedBlockState = generatedWorld!!.getBlockState(blockPos)
