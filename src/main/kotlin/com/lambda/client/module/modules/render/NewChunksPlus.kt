@@ -1,5 +1,6 @@
 package com.lambda.client.module.modules.render
 
+import com.google.common.cache.CacheBuilder
 import com.google.common.collect.EvictingQueue
 import com.lambda.client.event.events.PacketEvent
 import com.lambda.client.event.events.RenderRadarEvent
@@ -31,6 +32,7 @@ import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.ChunkPos
 import org.lwjgl.opengl.GL11.*
 import java.time.Instant
+import java.util.concurrent.TimeUnit
 import kotlin.math.hypot
 import kotlin.math.pow
 import kotlin.math.roundToLong
@@ -63,6 +65,9 @@ object NewChunksPlus : Module(
     private val packetChunks = LinkedHashSet<ChunkPos>()
     private val timeChunks = LinkedHashSet<ChunkPos>()
     private val unloadChunkTimes = EvictingQueue.create<Long>(30)
+    private val distanceCache = CacheBuilder.newBuilder()
+        .expireAfterWrite(500, TimeUnit.MILLISECONDS)
+        .build<ChunkPos, Boolean>()
 
     private enum class RenderMode {
         OUTLINE, FILLED
@@ -94,22 +99,26 @@ object NewChunksPlus : Module(
 
             if (mode == DetectionMode.PACKET || mode == DetectionMode.BOTH) {
                 val y = packetChunkYOffset.toDouble()
-                for (chunkPos in packetChunks) {
-                    if (player.distanceTo(chunkPos) > range) continue
-                    when(renderMode) {
-                        RenderMode.OUTLINE -> renderOutline(buffer, y, chunkPos, packetChunkColor)
-                        RenderMode.FILLED -> renderFilled(buffer, y, chunkPos, packetChunkColor)
+                synchronized(packetChunks) {
+                    for (chunkPos in packetChunks) {
+                        if (distanceCache.get(chunkPos) { player.distanceTo(chunkPos) > range }) continue
+                        when(renderMode) {
+                            RenderMode.OUTLINE -> renderOutline(buffer, y, chunkPos, packetChunkColor)
+                            RenderMode.FILLED -> renderFilled(buffer, y, chunkPos, packetChunkColor)
+                        }
                     }
                 }
             }
 
             if (mode == DetectionMode.TIMER || mode == DetectionMode.BOTH) {
                 val y = timerChunkYOffset.toDouble()
-                for (chunkPos in timeChunks) {
-                    if (player.distanceTo(chunkPos) > range) continue
-                    when(renderMode) {
-                        RenderMode.OUTLINE -> renderOutline(buffer, y, chunkPos, timeChunkColor)
-                        RenderMode.FILLED -> renderFilled(buffer, y, chunkPos, timeChunkColor)
+                synchronized(timeChunks) {
+                    for (chunkPos in timeChunks) {
+                        if (distanceCache.get(chunkPos) { player.distanceTo(chunkPos) > range }) continue
+                        when(renderMode) {
+                            RenderMode.OUTLINE -> renderOutline(buffer, y, chunkPos, timeChunkColor)
+                            RenderMode.FILLED -> renderFilled(buffer, y, chunkPos, timeChunkColor)
+                        }
                     }
                 }
             }
@@ -124,27 +133,29 @@ object NewChunksPlus : Module(
             if ((mode == DetectionMode.TIMER || mode == DetectionMode.BOTH) && packet.isFullChunk) {
                 val receivedTime = Instant.now().toEpochMilli()
                 val chunkPos = ChunkPos(packet.chunkX, packet.chunkZ)
-                onMainThread {
-                    val unloadChunkTime = unloadChunkTimes.poll() ?: return@onMainThread
+                synchronized(timeChunks) {
+                    val unloadChunkTime = unloadChunkTimes.poll() ?: return@synchronized
                     if (receivedTime > unloadChunkTime + timerCalculate(chunkPos)) {
                         timeChunks.add(chunkPos)
                         if (timeChunks.size > maxNumber) {
-                            timeChunks.maxByOrNull { player.distanceTo(it) }?.let {
-                                timeChunks.remove(it)
-                            }
+                            timeChunks
+                                .sortedByDescending { player.distanceTo(it) }
+                                .take(maxNumber / 10)
+                                .forEach { timeChunks.remove(it) }
                         }
                     }
                 }
             }
 
             if ((mode == DetectionMode.PACKET || mode == DetectionMode.BOTH) && !packet.isFullChunk) {
-                val chunk = world.getChunk(event.packet.chunkX, event.packet.chunkZ)
-                onMainThread {
+            val chunk = world.getChunk(event.packet.chunkX, event.packet.chunkZ)
+                synchronized(packetChunks) {
                     if (packetChunks.add(chunk.pos)) {
                         if (packetChunks.size > maxNumber) {
-                            packetChunks.maxByOrNull { player.distanceTo(it) }?.let {
-                                packetChunks.remove(it)
-                            }
+                            packetChunks
+                                .sortedByDescending { player.distanceTo(it) }
+                                .take(maxNumber / 10)
+                                .forEach { packetChunks.remove(it) }
                         }
                     }
                 }
@@ -154,7 +165,7 @@ object NewChunksPlus : Module(
         safeAsyncListener<PacketEvent.PostReceive> { event ->
             if (event.packet !is SPacketUnloadChunk) return@safeAsyncListener
             if (mode == DetectionMode.TIMER || mode == DetectionMode.BOTH) {
-                onMainThread {
+                synchronized(unloadChunkTimes) {
                     val now = Instant.now().toEpochMilli()
                     unloadChunkTimes.offer(now)
                 }
