@@ -99,7 +99,9 @@ object Search : Module(
                 MessageSendHelper.sendWarningMessage("$chatName If you're sure you want to try, run the ${formatValue("${CommandManager.prefix}search override")} command")
                 disable()
             } else {
-                runSafe { searchAllLoadedChunks() }
+                defaultScope.launch {
+                    runSafe { searchAllLoadedChunks() }
+                }
             }
         }
 
@@ -156,7 +158,7 @@ object Search : Module(
             }
         }
 
-        safeAsyncListener<ConnectionEvent.Disconnect> {
+        safeListener<ConnectionEvent.Disconnect> {
             if (isEnabled) {
                 blockRenderer.clear()
                 entityRenderer.clear()
