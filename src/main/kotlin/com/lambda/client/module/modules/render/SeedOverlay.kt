@@ -211,17 +211,25 @@ object SeedOverlay: Module(
         if (yMin >= yMax) return
         val newDifferences: MutableMap<BlockPos, BlockDifference> = HashMap()
         try {
-            if (generatedWorld != null && worldGenerator != null) {
+            worldGenerator?.let {
                 generatedWorld = worldGenerator!!.getWorld(world.provider.dimension)
-                val searchRange = min((mc.gameSettings.renderDistanceChunks / 2), range)
-                for (z in -searchRange * 16 until searchRange * 16) {
-                    for (x in -searchRange * 16 until searchRange * 16) {
-                        val playerX = (player.posX + x).toInt()
-                        val playerZ = (player.posZ + z).toInt()
-                        for (y in yMin..yMax) {
-                            val blockPos = BlockPos(playerX, y, playerZ)
-                            compare(blockPos)?.let {
-                                newDifferences[blockPos] = it
+                generatedWorld?.let { genWorld ->
+                    val searchRange = min((mc.gameSettings.renderDistanceChunks / 2), range)
+                    for (z in -searchRange * 16 until searchRange * 16) {
+                        for (x in -searchRange * 16 until searchRange * 16) {
+                            val playerX = (player.posX + x).toInt()
+                            val playerZ = (player.posZ + z).toInt()
+                            val sampleBlockPos = BlockPos(playerX, 40, playerZ)
+                            val worldChunk = world.getChunk(sampleBlockPos)
+                            val genChunk = generatedWorld!!.getChunk(sampleBlockPos)
+                            if (worldChunk.isLoaded && worldChunk.isPopulated && genChunk.isLoaded && genChunk.isTerrainPopulated && genChunk.isLightPopulated
+                                && surroundingChunksLoaded(world, worldChunk.x, worldChunk.z) && surroundingChunksLoaded(genWorld, genChunk.x, genChunk.z)) {
+                                for (y in yMin..yMax) {
+                                    val blockPos = BlockPos(playerX, y, playerZ)
+                                    compare(blockPos)?.let {
+                                        newDifferences[blockPos] = it
+                                    }
+                                }
                             }
                         }
                     }
@@ -237,35 +245,43 @@ object SeedOverlay: Module(
     }
 
     private fun SafeClientEvent.compare(blockPos: BlockPos): BlockDifference? {
-        generatedWorld?.let { genWorld -> map?.let { blockMap ->
-            val worldChunk = world.getChunk(blockPos)
-            val genChunk = genWorld.getChunk(blockPos)
-            if (worldChunk.isLoaded && worldChunk.isPopulated && genChunk.isLoaded && genChunk.isTerrainPopulated && genChunk.isLightPopulated) {
-                val playerBlockState: IBlockState = world.getBlockState(blockPos)
-                blockMap.setBiome(world.getBiome(blockPos))
-                val generatedBlockState = generatedWorld!!.getBlockState(blockPos)
-                if (blockMap[playerBlockState.block] != blockMap[generatedBlockState.block]) {
-                    if (!playerBlockState.material.isLiquid && !generatedBlockState.material.isLiquid &&
-                        !BlockFalling::class.java.isAssignableFrom(playerBlockState.block.javaClass) && !BlockFalling::class.java.isAssignableFrom(generatedBlockState.block.javaClass)) {
-                        return if (playerBlockState.block == Blocks.AIR) {
-                            BlockDifference.MISSING
-                        } else if (generatedBlockState.block == Blocks.AIR) {
-                            BlockDifference.NEW
-                        } else {
-                            BlockDifference.DIFFERENT
-                        }
+        map?.let { blockMap ->
+            val playerBlockState: IBlockState = world.getBlockState(blockPos)
+            blockMap.setBiome(world.getBiome(blockPos))
+            val generatedBlockState = generatedWorld!!.getBlockState(blockPos)
+            if (blockMap[playerBlockState.block] != blockMap[generatedBlockState.block]) {
+                if (!playerBlockState.material.isLiquid && !generatedBlockState.material.isLiquid &&
+                    !BlockFalling::class.java.isAssignableFrom(playerBlockState.block.javaClass) && !BlockFalling::class.java.isAssignableFrom(generatedBlockState.block.javaClass)) {
+                    return if (playerBlockState.block == Blocks.AIR) {
+                        BlockDifference.MISSING
+                    } else if (generatedBlockState.block == Blocks.AIR) {
+                        BlockDifference.NEW
+                    } else {
+                        BlockDifference.DIFFERENT
                     }
                 }
-            }}
+            }
         }
         return null
     }
 
-    private fun initWorldGenerator(worldIn: World, seed: Long): WorldGenerator {
-        val worldInfo = worldIn.worldInfo
+    // World features do not get populated immediately. They are populated when surround chunks are loaded.
+    // see net.minecraft.world.chunk.Chunk.populate
+    // todo: try adding a flag from DecorateBiomeEvent.Post as this should only be called after population and decoration are completed
+    //  there is some additional complexity in the overworld on timings here as structures get gen'd after that
+    private fun surroundingChunksLoaded(w: World, x: Int, z: Int): Boolean {
+        return isChunkLoaded(w, x, z)
+            && isChunkLoaded(w, x - 1, z)
+            && isChunkLoaded(w, x + 1, z)
+            && isChunkLoaded(w, x, z - 1)
+            && isChunkLoaded(w, x, z + 1)
+    }
 
-        val nbt = worldInfo.cloneNBTCompound(null)
-        nbt.setLong("RandomSeed", seed)
+    private fun isChunkLoaded(w: World, x: Int, z: Int): Boolean {
+        return w.chunkProvider.getLoadedChunk(x, z) != null
+    }
+
+    private fun initWorldGenerator(worldIn: World, seed: Long): WorldGenerator {
         val settings = WorldSettings(seed, worldIn.worldInfo.gameType, true, false, worldIn.worldType)
         settings.generatorOptions = worldIn.worldInfo.generatorOptions
 
