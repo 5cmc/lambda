@@ -45,11 +45,12 @@ object SeedOverlay: Module(
     private val renderMissingBlocksColor by setting("Missing Blocks Color", ColorHolder(0, 255, 0))
     private val renderDifferentBlocks by setting("Render Different Blocks", true)
     private val renderDifferentBlocksColor by setting("Different Blocks Color", ColorHolder(0, 0, 255))
-    private val renderOutline by setting("Render Outline", true)
-    private val renderOutlineThickness by setting("Render Outline Thickness", 1.0, 0.1..3.0, 0.1)
     private val renderFilled by setting("Render Filled", true)
     private val renderFilledAlpha by setting("Render Fill Alpha", 100, 0..255, 1)
+    private val renderOutline by setting("Render Outline", true)
     private val renderTracer by setting("Render Tracer", false)
+    private val renderTracerAlpha by setting("Render Tracer Alpha", 150, 1..255, 1)
+    private val renderThickness by setting("Render Line Thickness", 1.0, 0.1..3.0, 0.1)
     private val yMin by setting("Y Minimum", 30, 0..255, 1)
     private val yMax by setting("Y Maximum", 90, 0..255, 1)
     private val range by setting("Server View-Distance", 4, 1..16, 1)
@@ -161,6 +162,7 @@ object SeedOverlay: Module(
         }
 
         safeListener<RenderWorldEvent> {
+            espRenderer.thickness = renderThickness.toFloat()
             if (renderFilled) {
                 espRenderer.aFilled = renderFilledAlpha
             } else {
@@ -168,12 +170,11 @@ object SeedOverlay: Module(
             }
             if (renderOutline) {
                 espRenderer.aOutline = 255
-                espRenderer.thickness = renderOutlineThickness.toFloat()
             } else {
                 espRenderer.aOutline = 0
             }
             if (renderTracer) {
-                espRenderer.aTracer = 255
+                espRenderer.aTracer = renderTracerAlpha
             }
             synchronized(differences) {
                 differences.entries.take(maxRenderedDifferences).forEach {
