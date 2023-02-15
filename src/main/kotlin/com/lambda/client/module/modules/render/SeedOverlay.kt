@@ -175,6 +175,8 @@ object SeedOverlay: Module(
             }
             if (renderTracer) {
                 espRenderer.aTracer = renderTracerAlpha
+            } else {
+                espRenderer.aTracer = 0
             }
             synchronized(differences) {
                 differences.entries.take(maxRenderedDifferences).forEach {
