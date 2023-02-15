@@ -19,8 +19,10 @@ import net.minecraft.block.BlockFalling
 import net.minecraft.block.state.IBlockState
 import net.minecraft.init.Blocks
 import net.minecraft.util.math.BlockPos
+import net.minecraft.util.math.ChunkPos
 import net.minecraft.world.World
 import net.minecraft.world.WorldSettings
+import net.minecraftforge.common.ForgeModContainer
 import net.minecraftforge.fml.common.gameevent.TickEvent
 import java.lang.Integer.min
 import java.time.Duration
@@ -51,10 +53,10 @@ object SeedOverlay: Module(
     private val renderTracer by setting("Render Tracer", false)
     private val renderTracerAlpha by setting("Render Tracer Alpha", 150, 1..255, 1)
     private val renderThickness by setting("Render Line Thickness", 1.0, 0.1..3.0, 0.1)
-    private val yMin by setting("Y Minimum", 30, 0..255, 1)
-    private val yMax by setting("Y Maximum", 90, 0..255, 1)
+    private val yMin by setting("Y Minimum", 5, 0..255, 1)
+    private val yMax by setting("Y Maximum", 128, 0..255, 1)
     private val range by setting("Server View-Distance", 4, 1..16, 1)
-    private val maxRenderedDifferences by setting("Max Rendered", 5000, 500..50000, 100)
+    private val maxRenderedDifferences by setting("Max Rendered", 500, 1..5000, 1)
 
     private var worldGenerator: WorldGenerator? = null
     private var generatedWorld: World? = null
@@ -71,23 +73,14 @@ object SeedOverlay: Module(
     }
 
     override fun getHudInfo(): String {
-//        var n: Int = 0
-//        var m: Int = 0
-//        var d: Int = 0
-//        for (difference in differences) {
-//            if (difference.value == 1) {
-//                n++
-//            } else if (difference.value == 0) {
-//                d++
-//            } else {
-//                m++
-//            }
-//        }
         return differences.size.toString()
     }
 
     init {
         onEnable {
+            // stop potential logspam
+            // i don't think this really matters or is something we need to care about
+            ForgeModContainer.logCascadingWorldGeneration = false
         }
 
         onDisable {
@@ -223,10 +216,23 @@ object SeedOverlay: Module(
                             val playerX = (player.posX + x).toInt()
                             val playerZ = (player.posZ + z).toInt()
                             val sampleBlockPos = BlockPos(playerX, 40, playerZ)
-                            val worldChunk = world.getChunk(sampleBlockPos)
-                            val genChunk = generatedWorld!!.getChunk(sampleBlockPos)
-                            if (worldChunk.isLoaded && worldChunk.isPopulated && genChunk.isLoaded && genChunk.isTerrainPopulated && genChunk.isLightPopulated
-                                && surroundingChunksLoaded(world, worldChunk.x, worldChunk.z) && surroundingChunksLoaded(genWorld, genChunk.x, genChunk.z)) {
+                            val chunkPos = ChunkPos(sampleBlockPos)
+                            // need to have all surrounding chunks loaded in order for structures/features to be populated
+                            // otherwise we'll get large sections of false positives
+                            // unwanted side effect: we won't compare blocks in chunks at edges of view distance
+                            if (surroundingChunksLoaded(world, chunkPos.x, chunkPos.z)) {
+                                if (!surroundingChunksLoaded(genWorld, chunkPos.x, chunkPos.z)) {
+                                    // force surrounding chunks to get loaded
+                                    genWorld.chunkProvider.provideChunk(chunkPos.x, chunkPos.z)
+                                    genWorld.chunkProvider.provideChunk(chunkPos.x+1, chunkPos.z)
+                                    genWorld.chunkProvider.provideChunk(chunkPos.x-1, chunkPos.z)
+                                    genWorld.chunkProvider.provideChunk(chunkPos.x, chunkPos.z+1)
+                                    genWorld.chunkProvider.provideChunk(chunkPos.x, chunkPos.z-1)
+                                    genWorld.chunkProvider.provideChunk(chunkPos.x+1, chunkPos.z+1)
+                                    genWorld.chunkProvider.provideChunk(chunkPos.x+1, chunkPos.z-1)
+                                    genWorld.chunkProvider.provideChunk(chunkPos.x-1, chunkPos.z+1)
+                                    genWorld.chunkProvider.provideChunk(chunkPos.x-1, chunkPos.z-1)
+                                }
                                 for (y in yMin..yMax) {
                                     val blockPos = BlockPos(playerX, y, playerZ)
                                     compare(blockPos)?.let {
@@ -268,16 +274,16 @@ object SeedOverlay: Module(
         return null
     }
 
-    // World features do not get populated immediately. They are populated when surround chunks are loaded.
-    // see net.minecraft.world.chunk.Chunk.populate
-    // todo: try adding a flag from DecorateBiomeEvent.Post as this should only be called after population and decoration are completed
-    //  there is some additional complexity in the overworld on timings here as structures get gen'd after that
     private fun surroundingChunksLoaded(w: World, x: Int, z: Int): Boolean {
         return isChunkLoaded(w, x, z)
             && isChunkLoaded(w, x - 1, z)
             && isChunkLoaded(w, x + 1, z)
             && isChunkLoaded(w, x, z - 1)
             && isChunkLoaded(w, x, z + 1)
+            && isChunkLoaded(w, x + 1, z + 1)
+            && isChunkLoaded(w, x + 1, z - 1)
+            && isChunkLoaded(w, x - 1, z + 1)
+            && isChunkLoaded(w, x - 1, z - 1)
     }
 
     private fun isChunkLoaded(w: World, x: Int, z: Int): Boolean {
