@@ -36,10 +36,13 @@ object SeedOverlay: Module(
     /**
      * todo:
      *  increase efficiency similar to Search module - only need to compare on enable, new chunk packets, or changed block packets
+     *  add more overworld biome block mappings to handle feature differences
      */
-
+    private val overworldEnabled by setting("Overworld Enabled", true)
     private val overworldSeed by setting("Overworld Seed", "-4172144997902289642", consumer = this::seedSettingConsumer)
+    private val netherEnabled by setting("Nether Enabled", true)
     private val netherSeed by setting("Nether Seed", "146008555100680", consumer = this::seedSettingConsumer)
+    private val endEnabled by setting("End Enabled", true)
     private val endSeed by setting("End Seed", "146008555100680", consumer = this::seedSettingConsumer)
     private val renderNewBlocks by setting("Render New Blocks", true)
     private val renderNewBlocksColor by setting("New Blocks Color", ColorHolder(255, 0, 0))
@@ -60,11 +63,10 @@ object SeedOverlay: Module(
 
     private var worldGenerator: WorldGenerator? = null
     private var generatedWorld: World? = null
-    private var map: SeedOverlayBlockMap? = null
-    private var isUpdating = false
-    private var isInitializing = false
+    private var map: SeedOverlayBlockMap = SeedOverlayBlockMap(0)
+    private var updateJob: Job? = null
+    private var initializingJob: Job? = null
     private val espRenderer = ESPRenderer()
-    private var stopJob: Job? = null
 
     private val differences = HashMap<BlockPos, BlockDifference>()
 
@@ -84,73 +86,52 @@ object SeedOverlay: Module(
         }
 
         onDisable {
-            stopJob = defaultScope.launch {
-                try {
-                    worldGenerator?.stopServer()
-                } catch (ex: Exception) {
-
-                }
-                worldGenerator = null
-                generatedWorld = null
-                map = null
-                isUpdating = false
-                isInitializing = false
-                clearToRender()
+            defaultScope.launch {
+                reset()
+                updateJob?.cancel()
+                initializingJob?.cancel()
             }
         }
 
         safeListener<TickEvent.ClientTickEvent> {
             if (it.phase != TickEvent.Phase.START) return@safeListener
-            if (isUpdating || isInitializing) return@safeListener
+            if (!isJobCompletedOrNull(updateJob) || !isJobCompletedOrNull(initializingJob)) return@safeListener
             if (mc.isSingleplayer) {
                 MessageSendHelper.sendChatMessage("Single Player Not Supported")
                 disable()
                 return@safeListener
             }
+            if (!enabledOnCurrentDimension()) {
+                reset()
+                return@safeListener
+            }
             if (worldGenerator == null || generatedWorld == null) {
-                isInitializing = true
                 map = SeedOverlayBlockMap(world.provider.dimension, net.minecraft.init.Biomes.PLAINS)
-                defaultScope.launch {
-                    worldGenerator?.let { generator ->
-                        try {
-                            generator.stopServer()
-                        } catch (e: Exception) {
-
-                        }
-                    }
+                initializingJob = defaultScope.launch {
+                    reset()
                     try {
                         worldGenerator = initWorldGenerator(mc.world, getSeedForCurrentWorld()!!)
-                        generatedWorld = worldGenerator!!.getWorld(mc.world.provider.dimension)
+                        generatedWorld = worldGenerator?.getWorld(mc.world.provider.dimension)
                     } catch (ex: Exception) {
-                        worldGenerator = null
-                        generatedWorld = null
-                        map = null
                         disable()
                         MessageSendHelper.sendChatMessage("Error starting SeedOverlay ${ex.message}")
                     }
-                    isInitializing = false
                 }
             }
 
             generatedWorld?.let { genWorld ->
                 if (genWorld.provider.dimension != world.provider.dimension) {
-                    worldGenerator = null
-                    generatedWorld = null
-                    map = null
-                    clearToRender()
+                    reset()
                     return@safeListener
                 }
             }
 
-
-            isUpdating = true
-            defaultScope.launch {
+            updateJob = defaultScope.launch {
                 try {
                     searchLoadedChunks()
                 } catch (ex: Exception) {
                     LambdaMod.LOG.warn("Error updating SeedOverlay", ex)
                 }
-                isUpdating = false
             }
         }
 
@@ -188,6 +169,10 @@ object SeedOverlay: Module(
         }
     }
 
+    private fun isJobCompletedOrNull(job: Job?): Boolean {
+        return job?.isCompleted ?: true
+    }
+
     private fun SafeClientEvent.getSeedForCurrentWorld(): Long? {
         return when(mc.world.provider.dimension) {
             0 -> overworldSeed.toLongOrNull()
@@ -197,10 +182,32 @@ object SeedOverlay: Module(
         }
     }
 
+    private fun SafeClientEvent.enabledOnCurrentDimension(): Boolean {
+        return when(mc.world.provider.dimension) {
+            0 -> overworldEnabled
+            -1 -> netherEnabled
+            1 -> endEnabled
+            else -> false
+        }
+    }
+
     private fun clearToRender() {
         synchronized(differences) {
             differences.clear()
         }
+    }
+
+    private fun reset() {
+        worldGenerator?.let { generator ->
+            try {
+                generator.stopServer()
+            } catch (e: Exception) {
+
+            }
+        }
+        worldGenerator = null
+        generatedWorld = null
+        clearToRender()
     }
 
     private fun SafeClientEvent.searchLoadedChunks() {
