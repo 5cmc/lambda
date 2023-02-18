@@ -182,9 +182,9 @@ object Freecam : Module(
             if (it.packet is SPacketEntityHeadLook && cheese) it.cancel()
         }
 
-        listener<InputEvent.MouseInputEvent> {
+        safeListener<InputEvent.MouseInputEvent> {
             if (leftClickCome && Mouse.getEventButton() == 0 && clickTimer.tick(1L)) {
-                val result: BlockPos = mc.objectMouseOver.blockPos ?: return@listener
+                val result: BlockPos = mc.objectMouseOver.blockPos ?: return@safeListener
 
                 if (mc.objectMouseOver.typeOfHit == RayTraceResult.Type.BLOCK) {
                     val pos = result.offset(mc.objectMouseOver.sideHit)

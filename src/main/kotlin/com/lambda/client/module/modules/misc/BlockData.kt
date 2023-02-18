@@ -16,6 +16,7 @@ object BlockData : Module(
     description = "Right click blocks to display their data",
     category = Category.MISC
 ) {
+    private val printBlockName by setting("Print Block Name", true)
     private val timer = TickTimer()
     private var lastPos = BlockPos.ORIGIN
 
@@ -28,11 +29,17 @@ object BlockData : Module(
                     val blockPos = it.blockPos
                     val blockState = world.getBlockState(blockPos)
                     lastPos = blockPos
+                    var baseMessage = chatName
+                    if (printBlockName) {
+                        baseMessage += " " + blockState.block.registryName.toString()
+                    }
 
                     if (blockState.block.hasTileEntity(blockState)) {
                         val tileEntity = world.getTileEntity(blockPos) ?: return@safeListener
                         val tag = NBTTagCompound().apply { tileEntity.writeToNBT(this) }
-                        MessageSendHelper.sendChatMessage("""$chatName &6Block Tags:$tag""".trimIndent())
+                        MessageSendHelper.sendChatMessage("""$baseMessage $tag""".trimIndent())
+                    } else {
+                        MessageSendHelper.sendChatMessage(baseMessage)
                     }
                 }
             }
