@@ -150,27 +150,34 @@ object LambdaFontRenderer {
                 posY += currentVariant.fontHeight * CustomFont.lineSpace
                 posX = 0.0
             } else {
-                val chunk = currentVariant.getChunk(char)
-                val charInfo = currentVariant.getCharInfo(char)
-                val color = if (currentColor == DyeColors.WHITE.color) colorIn else currentColor
+                try {
+                    val chunk = currentVariant.getChunk(char)
+                    val charInfo = currentVariant.getCharInfo(char)
+                    val color = if (currentColor == DyeColors.WHITE.color) colorIn else currentColor
 
-                if (chunk != lastChunk) {
-                    if (lastChunk != null) {
-                        tessellator.draw()
-                        buffer.begin(GL_QUADS, DefaultVertexFormats.POSITION_TEX_COLOR)
+                    if (chunk != lastChunk) {
+                        if (lastChunk != null) {
+                            tessellator.draw()
+                            buffer.begin(GL_QUADS, DefaultVertexFormats.POSITION_TEX_COLOR)
+                        }
+                        chunk.texture.bindTexture()
+                        chunk.updateLodBias(CustomFont.lodBias)
                     }
-                    chunk.texture.bindTexture()
-                    chunk.updateLodBias(CustomFont.lodBias)
+
+                    if (drawShadow) {
+                        drawQuad(posX + 4.5, posY + 4.5, charInfo, getShadowColor(color))
+                    }
+
+                    drawQuad(posX, posY, charInfo, color)
+                    posX += charInfo.width + CustomFont.gap
+
+                    lastChunk = chunk
+                } catch (e: Exception) {
+                    LambdaMod.LOG.error("Error drawing string: $text", e)
+                    // this char is fucked
+                    // idk lets try turning off custom font
+                    CustomFont.disable()
                 }
-
-                if (drawShadow) {
-                    drawQuad(posX + 4.5, posY + 4.5, charInfo, getShadowColor(color))
-                }
-
-                drawQuad(posX, posY, charInfo, color)
-                posX += charInfo.width + CustomFont.gap
-
-                lastChunk = chunk
             }
         }
 

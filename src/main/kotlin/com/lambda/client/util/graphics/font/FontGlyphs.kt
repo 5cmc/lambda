@@ -2,6 +2,7 @@ package com.lambda.client.util.graphics.font
 
 import com.lambda.client.LambdaMod
 import com.lambda.client.commons.utils.MathUtils
+import com.lambda.client.module.modules.client.CustomFont
 import com.lambda.client.util.graphics.texture.MipmapTexture
 import org.lwjgl.opengl.GL11.*
 import org.lwjgl.opengl.GL12.GL_CLAMP_TO_EDGE
@@ -78,7 +79,15 @@ class FontGlyphs(private val font: Font, private val fallbackFont: Font) {
         val charInt = char.code
         val chunk = charInt shr 8
         val chunkStart = chunk shl 8
-        return getChunk(chunk).charInfoArray[charInt - chunkStart]
+        return try {
+            getChunk(chunk).charInfoArray[charInt - chunkStart]
+        } catch (e: Exception) {
+            LambdaMod.LOG.error("Error getting CharInfo for: $char", e)
+            // this char is fucked
+            // idk lets try turning off custom font
+            CustomFont.disable()
+            CharInfo(1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+        }
     }
 
     /** @return the chunk the [char] is in */
@@ -89,7 +98,7 @@ class FontGlyphs(private val font: Font, private val fallbackFont: Font) {
         // Try to load the glyph chunk if absent
         // Return an empty char if failed to load glyph
         // And let it fix itself next time
-        loadGlyphChunk(chunk) ?: return chunkMap[0]!!
+        loadGlyphChunk(chunk) ?: return chunkMap[0]!! // this can throw NullPointerException
     }
 
     /** Delete all textures */
