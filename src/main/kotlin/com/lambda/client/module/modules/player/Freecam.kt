@@ -167,10 +167,11 @@ object Freecam : Module(
                         .filter { otherPlayer -> otherPlayer != camGuy }
                         .forEach { otherPlayer ->
                             val rotation = getRotationTo(otherPlayer.getPositionEyes(1.0f), camGuy.getPositionEyes(1.0f))
-
-                            otherPlayer.rotationYaw = rotation.x
-                            otherPlayer.rotationYawHead = rotation.x
-                            otherPlayer.rotationPitch = rotation.y
+                            // smooth rotations so we don't have jittering
+                            val threshold = 0.1
+                            otherPlayer.rotationYaw = if (abs(otherPlayer.rotationYaw - rotation.x) < threshold) otherPlayer.rotationYaw else rotation.x
+                            otherPlayer.rotationYawHead = if (abs(otherPlayer.rotationYawHead - rotation.x) < threshold) otherPlayer.rotationYawHead else rotation.x
+                            otherPlayer.rotationPitch = if (abs(otherPlayer.rotationPitch - rotation.y) < threshold) otherPlayer.rotationPitch else rotation.y
                         }
                 }
             } else if (autoRotate) updatePlayerRotation()
