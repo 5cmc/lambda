@@ -22,14 +22,14 @@ object Notifications : Module(
     name = "Notifications",
     category = Category.CLIENT,
     description = "Shows notifications",
-    alwaysListening = true,
+    alwaysListening = false,
     enabledByDefault = true
 ) {
     private val mode by setting("Mode", NotificationMode.RENDER)
     private val notificationHeight by setting("Notification Height", 15.0, 13.0..25.0, 1.0)
     private val renderLocation by setting("Render Location", RenderLocation.BOTTOM_RIGHT)
-    private val horizontalPadding by setting("W Padding", 6f, 0f..40f, 1f)
-    private val verticalPadding by setting("H Padding", 15f, 0f..40f, 1f)
+    private val horizontalPadding by setting("W Padding", 100f, 0f..200f, 1f)
+    private val verticalPadding by setting("H Padding", 80f, 0f..200f, 1f)
 
     enum class RenderLocation(val renderDirection: Int) {
         BOTTOM_RIGHT(-1), TOP_RIGHT(1), TOP_LEFT(1)
@@ -113,10 +113,10 @@ object Notifications : Module(
         FontRenderAdapter.drawString(notification.text, 4.0f, ((notificationHeight / 2.5) - (textHeight / 2)).toFloat(), true, ColorHolder(), textScale, CustomFont.isEnabled)
     }
     fun addNotification(notification: Notification) {
-        if (mode == NotificationMode.CHAT || mode == NotificationMode.RENDER_AND_CHAT) {
+        if (isEnabled && mode == NotificationMode.CHAT || mode == NotificationMode.RENDER_AND_CHAT) {
             MessageSendHelper.sendChatMessage(notification.text)
         }
-        if (mode == NotificationMode.RENDER || mode == NotificationMode.RENDER_AND_CHAT) {
+        if (isEnabled && mode == NotificationMode.RENDER || mode == NotificationMode.RENDER_AND_CHAT) {
             notifications.add(notification)
         }
     }
