@@ -58,7 +58,6 @@ How do I...
 
 </details>
 
-
 <details>
   <summary>... fix most crashes on startup?</summary>
 
@@ -126,7 +125,7 @@ Test if the environment is set up correctly by building the client and running i
 
 ## Thanks to...
 
-Our [contributors](https://github.com/lambda-client/lambda/graphs/contributors)
+Our [contributors](https://github.com/5cmc/lambda/graphs/contributors)
 
 > ### Disclaimer
 > This software does not contain any copyrighted Minecraft code. This is a Forge utility mod, only meant for use in anarchy environments. Do not use without permission of server administration.
