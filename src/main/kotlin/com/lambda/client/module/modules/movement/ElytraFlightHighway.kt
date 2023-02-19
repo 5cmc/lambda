@@ -52,7 +52,7 @@ object ElytraFlightHighway : Module(
     private var baritoneEndPathingTime: Long = 0L
     private var beforePathingPlayerPitchYaw: Vec2f = Vec2f.ZERO
     private var scheduleBaritoneJob: Job? = null
-    private var shouldSneak: Boolean = false
+    var shouldSneak: Boolean = false
 
     enum class State {
         FLYING, TAKEOFF, WALKING
@@ -159,7 +159,7 @@ object ElytraFlightHighway : Module(
             if (currentState != State.TAKEOFF) return@safeListener
             if (LagNotifier.isBaritonePaused && LagNotifier.pauseAutoWalk) return@safeListener
             if (it.movementInput !is MovementInputFromOptions) return@safeListener
-            it.movementInput.moveForward = 1.0f
+//            it.movementInput.moveForward = 1.0f
         }
     }
 
