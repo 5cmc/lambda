@@ -108,6 +108,8 @@ object ElytraFlight2b2t : Module(
     private var lastEquipTask = TaskState(true)
     private val equipTimer = TickTimer(TimeUnit.TICKS)
     private val hoverTimer = TickTimer(TimeUnit.TICKS)
+    private var asd: Instant = Instant.now()
+    private var flightTime = TickTimer(TimeUnit.TICKS)
     private var hasHoverPaused = false
     private var elytraLockFallOriginalHeight: Int = 256
     private var lastRubberband: Long = Long.MIN_VALUE
@@ -246,6 +248,12 @@ object ElytraFlight2b2t : Module(
                     }
                 }
                 State.FLYING -> {
+                    if (isFlying && !ElytraFlightHighway.shouldSneak) {
+                        if (flightTime.tick(ElytraFlightHighway.unSneakTicks, true)) {
+                            MessageSendHelper.sendChatMessage("sneaking")
+                            ElytraFlightHighway.shouldSneak = true
+                        }
+                    }
                     if (enableBoost) {
                         if (shouldStartBoosting) {
                             if (timer.tick(ticksBetweenBoosts, true)) {
@@ -303,7 +311,16 @@ object ElytraFlight2b2t : Module(
             stateUpdate()
             if (currentState == State.FLYING) {
                 if (elytraIsEquipped && elytraDurability > 1) {
+                    if (startedFlying) {
+//                        MessageSendHelper.sendChatMessage("started")
+                        asd = Instant.now()
+                        if (ElytraFlightHighway.unSneak) ElytraFlightHighway.shouldSneak = false
+                        flightTime.reset()
+                    }
                     if (stoppedFlying) {
+//                        MessageSendHelper.sendChatMessage("stopped")
+                        flightTime.reset()
+                        MessageSendHelper.sendChatMessage("time: " + ((Instant.now().toEpochMilli() - asd.toEpochMilli()) / 50))
                         setFlightSpeed(currentFlightSpeed / redeploySpeedDecreaseFactor)
                     }
                     if (!isFlying) {

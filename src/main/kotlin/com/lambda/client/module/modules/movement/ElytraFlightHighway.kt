@@ -39,6 +39,10 @@ object ElytraFlightHighway : Module(
         description = "Move to center of block before deployment")
     private val sneak by setting("Sneak", true,
         description = "Sneak whilst flying, allows travel through 1x2 tunnels (+ less block collision in general)")
+    val unSneak by setting("unSneak", false,
+        visibility = { sneak })
+    val unSneakTicks by setting("unSneak Ticks", 45, 10..60, 1,
+        visibility = { sneak })
     private const val jumpDelay: Int = 10
 
     private var currentState = State.WALKING
@@ -103,14 +107,16 @@ object ElytraFlightHighway : Module(
                     }
                     if (centerPlayer) if (!player.centerPlayer()) return@safeListener
                     if (centerPlayer && player.motionX != 0.0 && player.motionZ != 0.0) return@safeListener
+                    shouldSneak = true
                     currentState = State.TAKEOFF
                     toggleAllOn()
                 }
                 State.TAKEOFF -> {
-                    shouldSneak = true
+//                    shouldSneak = true
                     if (sneak) if (!player.isSneaking) return@safeListener
                     if (player.onGround && timer.tick(jumpDelay.toLong())) player.jump()
                     if (mc.player.isElytraFlying) {
+                        if (unSneak) shouldSneak = false
                         currentState = State.FLYING
                     }
                 }
