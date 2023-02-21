@@ -26,6 +26,9 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import net.minecraft.block.BlockEnderChest
 import net.minecraft.block.BlockShulkerBox
+import net.minecraft.block.BlockStandingSign
+import net.minecraft.block.BlockWallSign
+import net.minecraft.block.state.BlockStateContainer.StateImplementation
 import net.minecraft.block.state.IBlockState
 import net.minecraft.entity.EntityList
 import net.minecraft.entity.item.EntityItem
@@ -33,8 +36,10 @@ import net.minecraft.entity.item.EntityItemFrame
 import net.minecraft.init.Blocks
 import net.minecraft.network.play.server.SPacketBlockChange
 import net.minecraft.network.play.server.SPacketMultiBlockChange
+import net.minecraft.tileentity.TileEntitySign
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.ChunkPos
+import net.minecraft.util.text.TextComponentString
 import net.minecraft.world.chunk.Chunk
 import net.minecraftforge.fml.common.gameevent.TickEvent
 import java.util.concurrent.ConcurrentHashMap
@@ -53,6 +58,7 @@ object Search : Module(
     private val blockSearch by setting("Block Search", true)
     private val illegalBedrock = setting("Illegal Bedrock", false)
     private val illegalNetherWater = setting("Illegal Nether Water", false)
+    private val oldSigns = setting("Old Signs", true)
     private val range by setting("Search Range", 512, 0..4096, 8)
     private val yRangeBottom by setting("Top Y", 256, 0..256, 1)
     private val yRangeTop by setting("Bottom Y", 0, 0..256, 1)
@@ -92,6 +98,7 @@ object Search : Module(
         blockSearchList.editListeners.add { blockSearchListUpdateListener(isEnabled) }
         illegalBedrock.listeners.add { blockSearchListUpdateListener(illegalBedrock.value) }
         illegalNetherWater.listeners.add { blockSearchListUpdateListener(illegalNetherWater.value) }
+        oldSigns.listeners.add { blockSearchListUpdateListener(oldSigns.value) }
 
         onEnable {
             if (!overrideWarning && ShaderHelper.isIntegratedGraphics) {
@@ -144,8 +151,8 @@ object Search : Module(
             }
         }
 
-        safeAsyncListener<ChunkDataEvent> {
-            val foundBlocksInChunk = findBlocksInChunk(it.chunk)
+        safeAsyncListener<ChunkDataEvent> { event ->
+            val foundBlocksInChunk = findBlocksInChunk(event.chunk)
             foundBlocksInChunk.forEach { block -> foundBlockMap[block.first] = block.second }
         }
 
@@ -273,6 +280,11 @@ object Search : Module(
         for (y in yRange) for (x in xRange) for (z in zRange) {
             val pos = BlockPos(x, y, z)
             val blockState = chunk.getBlockState(pos)
+            if (isOldSign(blockState, pos)) {
+                val signState = if (blockState.block == Blocks.STANDING_SIGN) OldStandingSign(blockState) else OldWallSign(blockState)
+                blocks.add((pos to signState))
+                continue // skip searching for regular sign at this pos
+            }
             if (searchQuery(blockState, pos)) blocks.add((pos to blockState))
         }
         return blocks
@@ -310,6 +322,22 @@ object Search : Module(
         return player.dimension == -1 && state.isWater
     }
 
+    private fun SafeClientEvent.isOldSign(state: IBlockState, pos: BlockPos): Boolean {
+        if (!oldSigns.value) return false
+        return (state.block == Blocks.STANDING_SIGN || state.block == Blocks.WALL_SIGN) && isOldSignText(pos)
+    }
+
+    private fun SafeClientEvent.isOldSignText(pos: BlockPos): Boolean {
+        // Explanation: Old signs on 2b2t (pre-2015 <1.9 ?) have older style NBT text tags.
+        // we can tell them apart by checking if there are siblings in the tag. Old signs won't have siblings.
+        val signTextComponents = listOf(world.getTileEntity(pos))
+            .filterIsInstance<TileEntitySign>()
+            .flatMap { it.signText.toList() }
+            .filterIsInstance<TextComponentString>()
+            .toList()
+        return signTextComponents.isNotEmpty() && signTextComponents.all { it.siblings.size == 0 }
+    }
+
     private fun SafeClientEvent.getBlockColor(pos: BlockPos, blockState: IBlockState): ColorHolder {
         val block = blockState.block
         return if (autoBlockColor) {
@@ -323,6 +351,12 @@ object Search : Module(
                 }
                 is BlockEnderChest -> {
                     ColorHolder(64, 49, 114)
+                }
+                is BlockOldStandingSign -> {
+                    ColorHolder(0, 0, 220, 100)
+                }
+                is BlockOldWallSign -> {
+                    ColorHolder(0, 0, 220, 100)
                 }
                 else -> {
                     val colorInt = blockState.getMapColor(world, pos).colorValue
@@ -340,4 +374,8 @@ object Search : Module(
         }
     }
 
+    class OldWallSign(blockStateIn: IBlockState): StateImplementation(BlockOldWallSign, blockStateIn.properties)
+    class OldStandingSign(blockStateIn: IBlockState): StateImplementation(BlockOldStandingSign, blockStateIn.properties)
+    object BlockOldWallSign: BlockWallSign()
+    object BlockOldStandingSign: BlockStandingSign()
 }
