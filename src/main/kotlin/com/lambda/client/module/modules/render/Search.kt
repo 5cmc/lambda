@@ -59,6 +59,7 @@ object Search : Module(
     private val illegalBedrock = setting("Illegal Bedrock", false)
     private val illegalNetherWater = setting("Illegal Nether Water", false)
     private val oldSigns = setting("Old Signs", true)
+    private val oldSignsColor by setting("Old Signs Color", ColorHolder(220, 0, 0, 110), visibility = { oldSigns.value })
     private val range by setting("Search Range", 512, 0..4096, 8)
     private val yRangeBottom by setting("Top Y", 256, 0..256, 1)
     private val yRangeTop by setting("Bottom Y", 0, 0..256, 1)
@@ -353,10 +354,10 @@ object Search : Module(
                     ColorHolder(64, 49, 114)
                 }
                 is BlockOldStandingSign -> {
-                    ColorHolder(0, 0, 220, 100)
+                    oldSignsColor
                 }
                 is BlockOldWallSign -> {
-                    ColorHolder(0, 0, 220, 100)
+                    oldSignsColor
                 }
                 else -> {
                     val colorInt = blockState.getMapColor(world, pos).colorValue
