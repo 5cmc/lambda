@@ -10,6 +10,7 @@ import net.minecraft.item.ItemStack
 import net.minecraft.util.EnumHand
 import net.minecraft.util.EnumHandSide
 import net.minecraft.util.math.MathHelper.sin
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo
 
 object ItemModel : Module(
     name = "ItemModel",
@@ -19,6 +20,9 @@ object ItemModel : Module(
 ) {
     private val mode by setting("Mode", Mode.BOTH)
     private val page by setting("Page", Page.POSITION)
+    private val noItemBobbing by setting("No Item Bobbing", false)
+    private val noEatAnimation by setting("No Eat Animation", false)
+    val noSway by setting("No Item Sway", false)
 
     private val posX by setting("Pos X", 0.0f, -5.0f..5.0f, 0.025f, { page == Page.POSITION })
     private val posY by setting("Pos Y", 0.0f, -5.0f..5.0f, 0.025f, { page == Page.POSITION })
@@ -131,6 +135,22 @@ object ItemModel : Module(
                 GlStateManager.scale(scaleR, scaleR, scaleR)
                 animateR()
             }
+        }
+    }
+
+    @JvmStatic
+    fun transformSideFirstPerson(hand: EnumHandSide, ci: CallbackInfo) {
+        if (isEnabled && noItemBobbing) {
+            val i = if (hand == EnumHandSide.RIGHT) 1 else -1
+            GlStateManager.translate(i.toFloat() * 0.56f, -0.52f, -0.72f)
+            ci.cancel()
+        }
+    }
+
+    @JvmStatic
+    fun transformEatFirstPerson(ci: CallbackInfo) {
+        if (isEnabled && noEatAnimation) {
+            ci.cancel()
         }
     }
 
