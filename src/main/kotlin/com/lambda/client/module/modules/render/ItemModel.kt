@@ -120,12 +120,12 @@ object ItemModel : Module(
         if (mode == Mode.BOTH) {
             rotate(rotateX, rotateY, rotateZ, getSideMultiplier(enumHandSide))
             GlStateManager.scale(scale, scale, scale)
-            animate()
+            animate(enumHandSide)
         } else {
             if (enumHandSide == EnumHandSide.LEFT) {
                 rotate(rotateX, rotateY, rotateZ, -1.0f)
                 GlStateManager.scale(scale, scale, scale)
-                animate()
+                animate(enumHandSide)
             } else {
                 rotate(rotateXR, rotateYR, rotateZR, 1.0f)
                 GlStateManager.scale(scaleR, scaleR, scaleR)
@@ -134,7 +134,7 @@ object ItemModel : Module(
         }
     }
 
-    private fun animate() {
+    private fun animate(enumHandSide: EnumHandSide) {
         if (animateRotation) {
             if (animateX && animateXTimer.tick(animateXSpeed.range.endInclusive - animateXSpeed.value, true)) {
                 animateXT += 1;
@@ -149,7 +149,7 @@ object ItemModel : Module(
             val y = if (animateY) animateYT * sin(180f) else 0f
             val z = if (animateZ) animateZT * sin(180f) else 0f
 
-            rotate(x, y, z, -1.0f)
+            rotate(x, y, z, getSideMultiplier(enumHandSide))
         }
     }
 
@@ -168,7 +168,7 @@ object ItemModel : Module(
             val y = if (animateYR) animateYTR * sin(180f) else 0f
             val z = if (animateZR) animateZTR * sin(180f) else 0f
 
-            rotate(x, y, z, 1.0f)
+            rotate(x, y, z, getSideMultiplier(EnumHandSide.RIGHT))
         }
     }
 
