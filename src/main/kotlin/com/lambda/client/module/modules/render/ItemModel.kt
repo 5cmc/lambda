@@ -2,11 +2,14 @@ package com.lambda.client.module.modules.render
 
 import com.lambda.client.module.Category
 import com.lambda.client.module.Module
+import com.lambda.client.util.TickTimer
+import com.lambda.client.util.TimeUnit
 import net.minecraft.client.entity.AbstractClientPlayer
 import net.minecraft.client.renderer.GlStateManager
 import net.minecraft.item.ItemStack
 import net.minecraft.util.EnumHand
 import net.minecraft.util.EnumHandSide
+import net.minecraft.util.math.MathHelper.sin
 
 object ItemModel : Module(
     name = "ItemModel",
@@ -36,12 +39,55 @@ object ItemModel : Module(
 
     private val modifyHand by setting("Modify Hand", false)
 
+    private val animateRotation by setting("Animation", true, visibility = { page == Page.ANIMATION })
+    private val animateX by setting("Animation X", true, visibility = { page == Page.ANIMATION && animateRotation })
+    private val animateXSpeed = setting("Animation X Speed", 20, 1..20, 1, visibility = { page == Page.ANIMATION && animateRotation && animateX })
+    private val animateY by setting("Animation Y", false, visibility = { page == Page.ANIMATION && animateRotation })
+    private val animateYSpeed = setting("Animation Y Speed", 20, 1..20, 1, visibility = { page == Page.ANIMATION && animateRotation && animateY })
+    private val animateZ by setting("Animation Z", false, visibility = { page == Page.ANIMATION && animateRotation })
+    private val animateZSpeed = setting("Animation Z Speed", 20, 1..20, 1, visibility = { page == Page.ANIMATION && animateRotation && animateZ })
+    private val animateRotationR by setting("Animation Right", true, visibility = { page == Page.ANIMATION && mode == Mode.SEPARATE })
+    private val animateXR by setting("Animation X Right", true, visibility = { page == Page.ANIMATION && mode == Mode.SEPARATE && animateRotationR })
+    private val animateXSpeedR = setting("Animation X Speed Right", 20, 1..20, 1, visibility = { page == Page.ANIMATION && mode == Mode.SEPARATE && animateRotationR && animateXR })
+    private val animateYR by setting("Animation Y Right", false, visibility = { page == Page.ANIMATION && mode == Mode.SEPARATE && animateRotationR })
+    private val animateYSpeedR = setting("Animation Y Speed Right", 20, 1..20, 1, visibility = { page == Page.ANIMATION && mode == Mode.SEPARATE && animateRotationR && animateYR })
+    private val animateZR by setting("Animation Z Right", false, visibility = { page == Page.ANIMATION && mode == Mode.SEPARATE && animateRotationR })
+    private val animateZSpeedR = setting("Animation Z Speed Right", 20, 1..20, 1, visibility = { page == Page.ANIMATION && mode == Mode.SEPARATE && animateRotationR && animateZR })
+    private val syncT by setting("Sync", false, consumer = { _, _ ->
+        animateXT = 0
+        animateXTimer.reset()
+        animateYT = 0
+        animateYTimer.reset()
+        animateZT = 0
+        animateZTimer.reset()
+        animateXTR = 0
+        animateXTimerR.reset()
+        animateYTR = 0
+        animateYTimerR.reset()
+        animateZTR = 0
+        animateZTimerR.reset()
+        return@setting false
+       }, visibility = { page == Page.ANIMATION && mode == Mode.SEPARATE })
+
+    private val animateXTimer = TickTimer(timeUnit = TimeUnit.MILLISECONDS)
+    private var animateXT = 0
+    private val animateYTimer = TickTimer(timeUnit = TimeUnit.MILLISECONDS)
+    private var animateYT = 0
+    private val animateZTimer = TickTimer(timeUnit = TimeUnit.MILLISECONDS)
+    private var animateZT = 0
+    private val animateXTimerR = TickTimer(timeUnit = TimeUnit.MILLISECONDS)
+    private var animateXTR = 0
+    private val animateYTimerR = TickTimer(timeUnit = TimeUnit.MILLISECONDS)
+    private var animateYTR = 0
+    private val animateZTimerR = TickTimer(timeUnit = TimeUnit.MILLISECONDS)
+    private var animateZTR = 0
+
     private enum class Mode {
         BOTH, SEPARATE
     }
 
     private enum class Page {
-        POSITION, ROTATION, SCALE
+        POSITION, ROTATION, SCALE, ANIMATION
     }
 
     @JvmStatic
@@ -74,14 +120,55 @@ object ItemModel : Module(
         if (mode == Mode.BOTH) {
             rotate(rotateX, rotateY, rotateZ, getSideMultiplier(enumHandSide))
             GlStateManager.scale(scale, scale, scale)
+            animate()
         } else {
             if (enumHandSide == EnumHandSide.LEFT) {
                 rotate(rotateX, rotateY, rotateZ, -1.0f)
                 GlStateManager.scale(scale, scale, scale)
+                animate()
             } else {
                 rotate(rotateXR, rotateYR, rotateZR, 1.0f)
                 GlStateManager.scale(scaleR, scaleR, scaleR)
+                animateR()
             }
+        }
+    }
+
+    private fun animate() {
+        if (animateRotation) {
+            if (animateX && animateXTimer.tick(animateXSpeed.range.endInclusive - animateXSpeed.value, true)) {
+                animateXT += 1;
+            }
+            if (animateY && animateYTimer.tick(animateYSpeed.range.endInclusive - animateXSpeed.value, true)) {
+                animateYT += 1;
+            }
+            if (animateZ && animateZTimer.tick(animateZSpeed.range.endInclusive - animateZSpeed.value, true)) {
+                animateZT += 1;
+            }
+            val x = if (animateX) animateXT * sin(180f) else 0f
+            val y = if (animateY) animateYT * sin(180f) else 0f
+            val z = if (animateZ) animateZT * sin(180f) else 0f
+
+            rotate(x, y, z, -1.0f)
+        }
+    }
+
+    private fun animateR() {
+        if (animateRotation) {
+            if (animateXR && animateXTimerR.tick(animateXSpeedR.range.endInclusive - animateXSpeedR.value, true)) {
+                animateXTR += 1;
+            }
+            if (animateYR && animateYTimerR.tick(animateYSpeedR.range.endInclusive - animateXSpeedR.value, true)) {
+                animateYTR += 1;
+            }
+            if (animateZR && animateZTimerR.tick(animateZSpeedR.range.endInclusive - animateZSpeedR.value, true)) {
+                animateZTR += 1;
+            }
+            val x = if (animateXR) animateXTR * sin(180f) else 0f
+            val y = if (animateYR) animateYTR * sin(180f) else 0f
+            val z = if (animateZR) animateZTR * sin(180f) else 0f
+
+            rotate(x, y, z, 1.0f)
         }
     }
 
