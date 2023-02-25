@@ -139,7 +139,7 @@ object ItemModel : Module(
             if (animateX && animateXTimer.tick(animateXSpeed.range.endInclusive - animateXSpeed.value, true)) {
                 animateXT += 1;
             }
-            if (animateY && animateYTimer.tick(animateYSpeed.range.endInclusive - animateXSpeed.value, true)) {
+            if (animateY && animateYTimer.tick(animateYSpeed.range.endInclusive - animateYSpeed.value, true)) {
                 animateYT += 1;
             }
             if (animateZ && animateZTimer.tick(animateZSpeed.range.endInclusive - animateZSpeed.value, true)) {
@@ -158,7 +158,7 @@ object ItemModel : Module(
             if (animateXR && animateXTimerR.tick(animateXSpeedR.range.endInclusive - animateXSpeedR.value, true)) {
                 animateXTR += 1;
             }
-            if (animateYR && animateYTimerR.tick(animateYSpeedR.range.endInclusive - animateXSpeedR.value, true)) {
+            if (animateYR && animateYTimerR.tick(animateYSpeedR.range.endInclusive - animateYSpeedR.value, true)) {
                 animateYTR += 1;
             }
             if (animateZR && animateZTimerR.tick(animateZSpeedR.range.endInclusive - animateZSpeedR.value, true)) {
