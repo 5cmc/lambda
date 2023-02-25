@@ -23,7 +23,7 @@ object Notifications : Module(
     category = Category.CLIENT,
     description = "Shows notifications",
     alwaysListening = false,
-    enabledByDefault = true
+    enabledByDefault = false
 ) {
     private val mode by setting("Mode", NotificationMode.RENDER)
     private val notificationHeight by setting("Notification Height", 15.0, 13.0..25.0, 1.0)
