@@ -21,7 +21,6 @@ import com.lambda.client.util.TimeUnit
 import com.lambda.client.util.items.hasItemInMouseSlot
 import com.lambda.client.util.math.Vec2f
 import com.lambda.client.util.text.MessageSendHelper
-import com.lambda.client.util.threads.safeAsyncListener
 import com.lambda.client.util.threads.safeListener
 import com.lambda.client.util.world.getGroundPos
 import net.minecraft.init.Items
@@ -249,7 +248,11 @@ object ElytraFlight2b2t : Module(
                     if (enableBoost) {
                         if (shouldStartBoosting) {
                             if (timer.tick(ticksBetweenBoosts, true)) {
-                                if (avoidUnloaded && nextBlockMoveLoaded && isFlying) setFlightSpeed(currentFlightSpeed + boostSpeedIncrease)
+                                if (avoidUnloaded) {
+                                    if (nextBlockMoveLoaded && isFlying) setFlightSpeed(currentFlightSpeed + boostSpeedIncrease)
+                                } else {
+                                    setFlightSpeed(currentFlightSpeed + boostSpeedIncrease)
+                                }
                             }
                         } else {
                             if (timer.tick(boostDelayTicks, true)) {
@@ -261,7 +264,7 @@ object ElytraFlight2b2t : Module(
             }
         }
 
-        safeAsyncListener<PacketEvent.Receive> {
+        safeListener<PacketEvent.Receive> {
             if (it.packet is SPacketPlayerPosLook) {
                 if (currentState == State.FLYING) {
                     timer.reset()
@@ -293,7 +296,7 @@ object ElytraFlight2b2t : Module(
             }
         }
 
-        safeAsyncListener<PacketEvent.Send> {
+        safeListener<PacketEvent.Send> {
             if (avoidUnloaded && !nextBlockMoveLoaded && it.packet is CPacketPlayer) {
                 it.cancel()
             }
