@@ -6,6 +6,7 @@ import com.lambda.client.util.TickTimer
 import com.lambda.client.util.TimeUnit
 import net.minecraft.client.entity.AbstractClientPlayer
 import net.minecraft.client.renderer.GlStateManager
+import net.minecraft.item.ItemBlock
 import net.minecraft.item.ItemStack
 import net.minecraft.util.EnumHand
 import net.minecraft.util.EnumHandSide
@@ -44,6 +45,7 @@ object ItemModel : Module(
     private val modifyHand by setting("Modify Hand", false)
 
     private val animateRotation by setting("Animation", true, visibility = { page == Page.ANIMATION })
+    private val animateOnlyBlocks by setting("Animation Only Blocks", false, visibility = { page == Page.ANIMATION && animateRotation })
     private val animateX by setting("Animation X", true, visibility = { page == Page.ANIMATION && animateRotation })
     private val animateXSpeed = setting("Animation X Speed", 20, 1..20, 1, visibility = { page == Page.ANIMATION && animateRotation && animateX })
     private val animateY by setting("Animation Y", false, visibility = { page == Page.ANIMATION && animateRotation })
@@ -124,16 +126,29 @@ object ItemModel : Module(
         if (mode == Mode.BOTH) {
             rotate(rotateX, rotateY, rotateZ, getSideMultiplier(enumHandSide))
             GlStateManager.scale(scale, scale, scale)
-            animate(enumHandSide)
+            if (animateOnlyBlocks) {
+                if (stack.item is ItemBlock) animate(enumHandSide)
+            } else {
+                animate(enumHandSide)
+            }
+
         } else {
             if (enumHandSide == EnumHandSide.LEFT) {
                 rotate(rotateX, rotateY, rotateZ, -1.0f)
                 GlStateManager.scale(scale, scale, scale)
-                animate(enumHandSide)
+                if (animateOnlyBlocks) {
+                    if (stack.item is ItemBlock) animate(enumHandSide)
+                } else {
+                    animate(enumHandSide)
+                }
             } else {
                 rotate(rotateXR, rotateYR, rotateZR, 1.0f)
                 GlStateManager.scale(scaleR, scaleR, scaleR)
-                animateR()
+                if (animateOnlyBlocks) {
+                    if (stack.item is ItemBlock) animateR()
+                } else {
+                    animateR()
+                }
             }
         }
     }
