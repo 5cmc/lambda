@@ -144,5 +144,4 @@ object LambdaMojiManager : Manager {
             LambdaMod.LOG.warn("Failed to load emoji", e)
         }
     }
-
 }

@@ -336,7 +336,9 @@ object Search : Module(
             .flatMap { it.signText.toList() }
             .filterIsInstance<TextComponentString>()
             .toList()
-        return signTextComponents.isNotEmpty() && signTextComponents.all { it.siblings.size == 0 }
+        return signTextComponents.isNotEmpty()
+            && signTextComponents.all { it.siblings.size == 0 }
+            && !signTextComponents.all { it.text.isEmpty() }
     }
 
     private fun SafeClientEvent.getBlockColor(pos: BlockPos, blockState: IBlockState): ColorHolder {
