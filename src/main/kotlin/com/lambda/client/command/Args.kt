@@ -1,6 +1,5 @@
 package com.lambda.client.command
 
-import com.lambda.client.LambdaMod
 import com.lambda.client.capeapi.PlayerProfile
 import com.lambda.client.command.args.AbstractArg
 import com.lambda.client.command.args.AutoComplete
@@ -15,7 +14,6 @@ import com.lambda.client.util.*
 import com.lambda.client.util.threads.runSafeR
 import kotlinx.coroutines.Dispatchers
 import net.minecraft.block.Block
-import net.minecraft.entity.Entity
 import net.minecraft.entity.EntityList
 import net.minecraft.item.Item
 import net.minecraft.util.math.BlockPos
@@ -107,17 +105,7 @@ class EntityArg(
     }
 
     private companion object {
-        val allEntityNames = ArrayList<String>().apply {
-            EntityList.getEntityNameList().forEach {
-                try {
-                    add(it.path)
-                } catch (ex: Exception) {
-                    // do nothing
-                    // expected for certain entities like lighting bolt which don't have corresponding entity classes
-                    LambdaMod.LOG.error("Entity arg register failed for path: ${it.path}")
-                }
-            }
-        }
+        val allEntityNames = EntityList.getEntityNameList().map { it.path }
     }
 }
 
