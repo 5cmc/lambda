@@ -66,7 +66,9 @@ object ModuleManager : AsyncLoader<List<Class<out AbstractModule>>> {
         if (Keyboard.isKeyDown(Keyboard.KEY_F3)) return  // if key is the 'none' key (stuff like mod key in i3 might return 0)
         modules.filter {
             it.bind.value.isDown(eventKey)
-        }.forEach { it.toggle() }
+        }.forEach {
+            it.toggle()
+        }
     }
 
     internal fun onMouseBind(eventMouse: Int) {
