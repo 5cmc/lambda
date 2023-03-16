@@ -4,16 +4,19 @@ import com.lambda.client.commons.extension.toRadian
 import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.event.events.PacketEvent
 import com.lambda.client.event.events.PlayerTravelEvent
+import com.lambda.client.manager.managers.HotbarManager.resetHotbar
+import com.lambda.client.manager.managers.HotbarManager.serverSideItem
+import com.lambda.client.manager.managers.HotbarManager.spoofHotbar
 import com.lambda.client.manager.managers.PlayerPacketManager.sendPlayerPacket
-import com.lambda.client.mixin.extension.boostedEntity
-import com.lambda.client.mixin.extension.playerPosLookPitch
-import com.lambda.client.mixin.extension.tickLength
-import com.lambda.client.mixin.extension.timer
+import com.lambda.client.mixin.extension.*
 import com.lambda.client.module.Category
 import com.lambda.client.module.Module
 import com.lambda.client.module.modules.player.LagNotifier
 import com.lambda.client.util.MovementUtils.calcMoveYaw
 import com.lambda.client.util.MovementUtils.speed
+import com.lambda.client.util.TickTimer
+import com.lambda.client.util.TimeUnit
+import com.lambda.client.util.items.*
 import com.lambda.client.util.math.Vec2f
 import com.lambda.client.util.text.MessageSendHelper.sendChatMessage
 import com.lambda.client.util.threads.runSafe
@@ -24,9 +27,12 @@ import net.minecraft.client.audio.PositionedSoundRecord
 import net.minecraft.entity.item.EntityFireworkRocket
 import net.minecraft.init.Items
 import net.minecraft.init.SoundEvents
+import net.minecraft.item.ItemFirework
 import net.minecraft.network.play.client.CPacketEntityAction
+import net.minecraft.network.play.client.CPacketPlayerTryUseItem
 import net.minecraft.network.play.server.SPacketEntityMetadata
 import net.minecraft.network.play.server.SPacketPlayerPosLook
+import net.minecraft.util.EnumHand
 import kotlin.math.*
 
 
@@ -100,10 +106,20 @@ object ElytraFlight : Module(
     private val downPitch by setting("Down Pitch", 0f, 0f..90f, 5f, { mode.value == ElytraFlightMode.VANILLA && page == Page.MODE_SETTINGS })
     private val rocketPitch by setting("Rocket Pitch", 50f, 0f..90f, 5f, { mode.value == ElytraFlightMode.VANILLA && page == Page.MODE_SETTINGS })
 
+    /* Fireworks */
+    private val fireworkUseMode by setting("Firework Use Mode", FireworkUseMode.SPEED)
+    private val delay by setting("Fireworks Delay Ticks", 30, 0..60, 1, { mode.value == ElytraFlightMode.FIREWORKS && fireworkUseMode == FireworkUseMode.DELAY && page == Page.MODE_SETTINGS })
+    private val fireworkUseStartSpeed by setting ("Fireworks Use Min Speed", 1.0, 0.01..2.0, 0.01, { mode.value == ElytraFlightMode.FIREWORKS && fireworkUseMode == FireworkUseMode.SPEED && page == Page.MODE_SETTINGS })
+    private const val minFireworkUseDelayTicks = 20
+
+    enum class FireworkUseMode {
+        DELAY, SPEED
+    }
+
     /* End of Mode Settings */
 
     enum class ElytraFlightMode {
-        BOOST, CONTROL, CREATIVE, PACKET, VANILLA
+        BOOST, CONTROL, CREATIVE, PACKET, VANILLA, FIREWORKS
     }
 
     private enum class Page {
@@ -133,11 +149,14 @@ object ElytraFlight : Module(
     private var shouldDescend = false
     private var lastHighY = 0.0
 
+    /* Fireworks mode state */
+    private var fireworkTickTimer: TickTimer = TickTimer(TimeUnit.TICKS)
+
     /* Event Listeners */
     init {
         safeListener<PacketEvent.Receive> {
             if (player.isSpectator || !elytraIsEquipped || elytraDurability <= 1 || !isFlying || mode.value == ElytraFlightMode.BOOST) return@safeListener
-            if (it.packet is SPacketPlayerPosLook && mode.value != ElytraFlightMode.PACKET) {
+            if (it.packet is SPacketPlayerPosLook && mode.value != ElytraFlightMode.PACKET && mode.value != ElytraFlightMode.FIREWORKS) {
                 val packet = it.packet
                 packet.playerPosLookPitch = player.rotationPitch
             }
@@ -168,6 +187,7 @@ object ElytraFlight : Module(
                         ElytraFlightMode.CREATIVE -> creativeMode()
                         ElytraFlightMode.PACKET -> packetMode(it)
                         ElytraFlightMode.VANILLA -> vanillaMode()
+                        ElytraFlightMode.FIREWORKS -> fireworksMode(it)
                     }
                 }
                 spoofRotation()
@@ -176,6 +196,7 @@ object ElytraFlight : Module(
             }
         }
     }
+
     /* End of Event Listeners */
 
     /* Generic Functions */
@@ -361,6 +382,7 @@ object ElytraFlight : Module(
             ElytraFlightMode.CREATIVE -> speedCreative
             ElytraFlightMode.PACKET -> speedPacket
             ElytraFlightMode.VANILLA -> 1f
+            ElytraFlightMode.FIREWORKS -> 1f
         }
     }
 
@@ -503,6 +525,47 @@ object ElytraFlight : Module(
         }
 
         lastY = playerY
+    }
+
+    private fun SafeClientEvent.fireworksMode(event: PlayerTravelEvent) {
+        val isBoosted = world.getLoadedEntityList().any { it is EntityFireworkRocket && it.boostedEntity == player }
+        val currentSpeed = sqrt(player.motionX * player.motionX + player.motionZ * player.motionZ)
+
+        if (isBoosted) {
+            // todo: adjust v speeds with testing
+            if (player.movementInput.jump) player.motionY = 1.0 else if (player.movementInput.sneak) player.motionY = -1.0
+            fireworkTickTimer.reset()
+        } else {
+            if (fireworkUseMode == FireworkUseMode.DELAY) {
+                if (fireworkTickTimer.tick(delay, true)) {
+                    useFirework()
+                }
+            } else if (fireworkUseMode == FireworkUseMode.SPEED) {
+                if (currentSpeed < fireworkUseStartSpeed && fireworkTickTimer.tick(minFireworkUseDelayTicks, true)) {
+                    useFirework()
+                }
+            }
+        }
+    }
+
+    private fun SafeClientEvent.useFirework() {
+        playerController.syncCurrentPlayItem()
+        val holdingFireworksMainhand = player.serverSideItem.item is ItemFirework
+        val holdingFireworksOffhand = player.offhandSlot.stack.item is ItemFirework
+        if (holdingFireworksMainhand) {
+            connection.sendPacket(CPacketPlayerTryUseItem(EnumHand.MAIN_HAND))
+        } else if (holdingFireworksOffhand) {
+            connection.sendPacket(CPacketPlayerTryUseItem(EnumHand.OFF_HAND))
+        } else {
+            player.hotbarSlots.firstItem<ItemFirework, HotbarSlot> { it.item is ItemFirework && it.getSubCompound("Fireworks")?.hasKey("Flight") == true }?.let {
+                spoofHotbar(it.hotbarSlot)
+                connection.sendPacket(CPacketPlayerTryUseItem(EnumHand.MAIN_HAND))
+                resetHotbar()
+            } ?: run {
+                swapToItemOrMove<ItemFirework>(this@ElytraFlight, { it.item is ItemFirework && it.getSubCompound("Fireworks")?.hasKey("Flight") == true })
+                fireworkTickTimer.reset(minFireworkUseDelayTicks * 40L)
+            }
+        }
     }
 
     fun shouldSwing(): Boolean {
