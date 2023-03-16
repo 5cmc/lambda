@@ -2,12 +2,16 @@ package com.lambda.client.module.modules.movement
 
 import com.babbaj.pathfinder.PathFinder
 import com.lambda.client.LambdaMod
+import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.event.events.RenderWorldEvent
 import com.lambda.client.module.Category
 import com.lambda.client.module.Module
-import com.lambda.client.module.modules.client.Hud
+import com.lambda.client.module.modules.client.GuiColors
+import com.lambda.client.util.Bind
 import com.lambda.client.util.graphics.LambdaTessellator
+import com.lambda.client.util.math.RotationUtils.getRotationTo
 import com.lambda.client.util.math.VectorUtils.distanceTo
+import com.lambda.client.util.math.VectorUtils.toVec3d
 import com.lambda.client.util.text.MessageSendHelper
 import com.lambda.client.util.threads.defaultScope
 import com.lambda.client.util.threads.safeListener
@@ -17,6 +21,9 @@ import kotlinx.coroutines.launch
 import net.minecraft.client.renderer.GlStateManager
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.MathHelper
+import net.minecraftforge.fml.common.gameevent.InputEvent
+import net.minecraftforge.fml.common.gameevent.TickEvent
+import org.lwjgl.input.Keyboard
 import org.lwjgl.opengl.GL11.GL_LINE_STRIP
 import java.util.*
 import java.util.Objects.isNull
@@ -40,9 +47,18 @@ object NetherPathfinder: Module(
     category = Category.MOVEMENT
 ) {
 
-    private val color by setting("Color", Hud.primaryColor)
-    private val throughBlocks by setting("Through Blocks", true)
-    private val thickness by setting("Line Thickness", 2.0f, 0.25f..8.0f, 0.25f)
+    private val color by setting("Color", GuiColors.primary)
+    private val throughBlocks by setting("Render Through Blocks", true)
+    private val thickness by setting("Line Thickness", 1.0f, 0.25f..3.0f, 0.25f)
+    private val rotatePlayer by setting("Rotate Player", false, consumer = { _, new ->
+        playerProgressIndex = Int.MIN_VALUE
+        return@setting new
+    })
+    private val rotateYaw by setting("Rotate Yaw", true, visibility = { rotatePlayer })
+    private val rotatePitch by setting("Rotate Pitch", true, visibility = { rotatePlayer })
+    private val pauseRotateBind by setting("Pause Rotate Bind", Bind(), description = "Pauses rotate mode while this key is held", visibility = { rotatePlayer })
+    private val pauseRotateMode by setting("Pause Rotate Mode", PauseRotateMode.HOLD, visibility = { rotatePlayer })
+    private val rotateDist by setting("Segment Reached Distance", 3, 1..10, 1, description = "How near you have to get to the next point before rotating to the next point. Y is ignored.", visibility = { rotatePlayer })
 
     private var pathJob: Job? = null
     private var scheduledExecutor: ScheduledExecutorService = Executors.newScheduledThreadPool(1)
@@ -50,6 +66,44 @@ object NetherPathfinder: Module(
     private var seed: Long = 146008555100680L // 2b2t nether seed
     private val pathLock: AtomicBoolean = AtomicBoolean(false)
     private var path: List<BlockPos>? = null
+    private var playerProgressIndex: Int = Int.MIN_VALUE
+    private var rotatePaused: Boolean = false
+
+    enum class PauseRotateMode {
+        HOLD, TOGGLE
+    }
+
+    /**
+     * todo: rework long goto paths into segments of shorter paths (2k or so)
+     * calculating a large path takes a long time and doesn't really minimize the calculated path that much
+     * it also causes additional strain on our distance and rotation calculations as well as rendering
+     *
+     * ideas for how this could be implemented:
+     *  1. store actual path that the user requested along with vec2d rotation
+     *  2. calculate path along vector with length = min(path_len, 2k)
+     *  3. when we are within N blocks of segment end, calculate the next segment. starting at current segment point - M blocks
+     *      (subtracting M blocks because sometimes our end point is not in an ideal location due to it not considering next movements)
+     *  4. when we've reached the end of segment 1, remove it from our path list and continue on
+     *
+     */
+
+    /**
+     * todo: make pathfinder path around features/structures it missed due to incomplete calculations
+     *
+     * The pathfinder lib has no idea about fortresses, glowstone outcrops, etc in our loaded chunks
+     * idea is we could have a very basic pathfinder integrated that checks if our current segment raytrace through a block in currently loaded chunks
+     * if so, update the path using our own logic to add additional points to the path that don't raytrace through blocks
+     *
+     * ideally this would only need one or two additional points inserted
+     *
+     * i'd rather not reimplement a whole A* algo, and there might a simpler solution:
+     *  1. progressively 3d spiral away from the raytraced block intersection point to test
+     *     permutations like (1,0,0)(1,1,0)(0,1,1)(1,0,1)(-1,0,0)....(2,0,0) and so on
+     *  2. check if a segment from this point and segment to next raytrace through a block
+     *  3. if yes, try another block. If no, update the path list
+     * this could run on a coroutine in the background. there's not that many path segments in loaded chunks
+     * so this shouldn't be too cpu intensive
+     */
 
     init {
         onDisable {
@@ -60,6 +114,33 @@ object NetherPathfinder: Module(
             if (!isInNether()) return@safeListener
             path?.let {
                 drawLine(it)
+            }
+        }
+
+        safeListener<TickEvent.ClientTickEvent> { event ->
+            if (event.phase != TickEvent.Phase.END) return@safeListener
+            if (!rotatePlayer) return@safeListener
+            path?.let { pathList ->
+                nextPathPos(pathList)?.let {
+                    if (!pauseRotateBind.isEmpty && pauseRotateMode == PauseRotateMode.HOLD && Keyboard.isKeyDown(pauseRotateBind.key)) {
+                        playerProgressIndex = Int.MIN_VALUE
+                        return@safeListener
+                    }
+                    if (pauseRotateMode == PauseRotateMode.TOGGLE && rotatePaused) return@safeListener
+                    val rotationTo = getRotationTo(it.toVec3d())
+                    if (rotateYaw) player.rotationYaw = rotationTo.x
+                    if (rotatePitch) player.rotationPitch = rotationTo.y
+                }
+            }
+        }
+
+        safeListener<InputEvent.KeyInputEvent> {
+            if (pauseRotateMode == PauseRotateMode.TOGGLE && !pauseRotateBind.isEmpty) {
+                val key = Keyboard.getEventKey()
+                if (pauseRotateBind.isDown(key)) {
+                    rotatePaused = !rotatePaused
+                    playerProgressIndex = Int.MIN_VALUE
+                }
             }
         }
     }
@@ -136,7 +217,7 @@ object NetherPathfinder: Module(
 
     fun resetAll() {
         if (pathJob != null) {
-            // important: if this is called while there is no path pathing ongoing the next path will fail
+            // important: if this is called while there is no pathing ongoing the next path will fail
             // thank you babbaj
             PathFinder.cancel()
         }
@@ -145,6 +226,8 @@ object NetherPathfinder: Module(
         scheduledFuture?.cancel(true)
         path = null
         pathLock.set(false)
+        playerProgressIndex = Int.MIN_VALUE
+        rotatePaused = false
     }
 
     fun scheduledGotoRepathCheck(path: MutableList<BlockPos>, destX: Int, destZ: Int) {
@@ -163,7 +246,7 @@ object NetherPathfinder: Module(
                 scheduledFuture?.cancel(true)
             } else if (path.last().distanceTo(mc.player.position) < 50.0) {
                 MessageSendHelper.sendChatMessage("Pathing goal completed, stopping..")
-                mc.addScheduledTask { resetAll() }
+                mc.addScheduledTask { disable() }
             }
         } catch (e: InterruptedException) {
             Thread.currentThread().interrupt()
@@ -171,7 +254,7 @@ object NetherPathfinder: Module(
         }
     }
 
-    private fun minPlayerDistanceToPath(path: MutableList<BlockPos>): Double {
+    private fun minPlayerDistanceToPath(path: List<BlockPos>): Double {
         val playerCurPos: BlockPos = mc.player.position
         val pX = playerCurPos.x
         val pZ = playerCurPos.z
@@ -184,6 +267,66 @@ object NetherPathfinder: Module(
             min = min(getDistance(pX.toDouble(), pZ.toDouble(), s1.x.toDouble(), s1.z.toDouble(), s2.x.toDouble(), s2.z.toDouble()), min)
         }
         return min
+    }
+
+    private fun SafeClientEvent.nextPathPos(path: List<BlockPos>): BlockPos? {
+        if (path.isEmpty()) return null
+        // we want to linearly along the path
+        // once we get to a point, get the next point in the sequence
+
+        /**
+         * diagram of what we want:
+         *
+         *  player.(1).....(2).... = 1
+         *  (1).player...(2)... = 2
+         *  (1)....player.(2).... = 2
+         *  (1)....(2)player...(3) = 3
+         *
+         *
+         *  points are in 3d space
+         */
+
+        try {
+            if (playerProgressIndex == Int.MIN_VALUE) {
+                // resume or start
+                val findNearestPathPosIndex = findNearestPathPosIndex(path)
+                playerProgressIndex = findNearestPathPosIndex
+                return path[playerProgressIndex]
+            }
+            val currentPathPos = path[playerProgressIndex]
+
+            if (path.size < playerProgressIndex + 1) return currentPathPos
+            val playerCurPos: BlockPos = mc.player.position
+            val normalizedCurrentPathPos = BlockPos(currentPathPos.x, playerCurPos.y, currentPathPos.z) // ignore y
+            if (playerCurPos.distanceTo(normalizedCurrentPathPos) < rotateDist) { // might need to adjust this distance...
+                playerProgressIndex++
+            }
+            return currentPathPos
+        } catch (ex: Exception) {
+            // just in case of async race conditions so we don't crash
+            // array index accesses are spooky
+            return null
+        }
+
+
+    }
+
+    private fun SafeClientEvent.findNearestPathPosIndex(path: List<BlockPos>): Int {
+        val playerCurPos: BlockPos = mc.player.position
+        val pX = playerCurPos.x
+        val pZ = playerCurPos.z
+        var min: Double = Double.MAX_VALUE
+        var bPosMinIndex: Int = 0
+        for ((index, pos) in path.withIndex()) {
+            // skip extra maths on points where we're already really far away
+            if (abs(abs(pos.x) - abs(pX)) > 1500.0 || abs(abs(pos.z) - abs(pZ)) > 1500.0) continue
+            val playerDist = player.distanceTo(pos.toVec3d())
+            if (playerDist < min) {
+                min = playerDist
+                bPosMinIndex = index
+            }
+        }
+        return bPosMinIndex
     }
 
     // ty stackoverflow https://stackoverflow.com/questions/849211/shortest-distance-between-a-point-and-a-line-segment

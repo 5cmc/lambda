@@ -11,6 +11,7 @@ import net.minecraftforge.fml.common.Mod
 import net.minecraftforge.fml.common.event.FMLInitializationEvent
 import net.minecraftforge.fml.common.event.FMLPostInitializationEvent
 import net.minecraftforge.fml.common.event.FMLPreInitializationEvent
+import org.apache.commons.lang3.SystemUtils
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import java.io.File
@@ -89,9 +90,11 @@ class LambdaMod {
 
     private fun pathFinderInit() {
         try {
-            val lol = System.mapLibraryName("uwu")
-            val extension = lol.substring(lol.lastIndexOf('.'))
-            val library = "libnether_pathfinder$extension"
+            val extension = if (SystemUtils.IS_OS_WINDOWS) "windows.dll"
+                else if (SystemUtils.IS_OS_MAC) "osx.dylib"
+                else if (SystemUtils.IS_OS_LINUX) "linux.os" // we don't have a compiled version for linux yet tho, sry nerds
+                else return
+            var library = "nether_pathfinder_$extension"
             val libraryStream: InputStream? = LambdaMod::class.java.classLoader.getResourceAsStream(library)
             Objects.requireNonNull(libraryStream, "Failed to find pathfinder library ($library)")
             val tempName = System.mapLibraryName("nether_pathfinder_temp")
