@@ -107,9 +107,11 @@ object ElytraFlight : Module(
     private val rocketPitch by setting("Rocket Pitch", 50f, 0f..90f, 5f, { mode.value == ElytraFlightMode.VANILLA && page == Page.MODE_SETTINGS })
 
     /* Fireworks */
-    private val fireworkUseMode by setting("Firework Use Mode", FireworkUseMode.SPEED)
-    private val delay by setting("Fireworks Delay Ticks", 30, 0..60, 1, { mode.value == ElytraFlightMode.FIREWORKS && fireworkUseMode == FireworkUseMode.DELAY && page == Page.MODE_SETTINGS })
-    private val fireworkUseStartSpeed by setting ("Fireworks Use Min Speed", 1.0, 0.01..2.0, 0.01, { mode.value == ElytraFlightMode.FIREWORKS && fireworkUseMode == FireworkUseMode.SPEED && page == Page.MODE_SETTINGS })
+    private val fireworkUseMode by setting("Firework Use Mode", FireworkUseMode.SPEED, { mode.value == ElytraFlightMode.FIREWORKS && page == Page.MODE_SETTINGS })
+    private val delay by setting("Fireworks Delay Ticks", 30, 0..100, 1, { mode.value == ElytraFlightMode.FIREWORKS && fireworkUseMode == FireworkUseMode.DELAY && page == Page.MODE_SETTINGS })
+    private val fireworkUseStartSpeed by setting ("Fireworks Use Min Speed", 1.0, 0.01..3.0, 0.01, { mode.value == ElytraFlightMode.FIREWORKS && fireworkUseMode == FireworkUseMode.SPEED && page == Page.MODE_SETTINGS })
+    private val fireworksVControl by setting("Boosted V Control", true, { mode.value == ElytraFlightMode.FIREWORKS && page == Page.MODE_SETTINGS })
+    private val fireworksVSpeed by setting("Boosted V Control Speed", 1.0, 0.0..3.0, 0.1, { mode.value == ElytraFlightMode.FIREWORKS && fireworksVControl && page == Page.MODE_SETTINGS })
     private const val minFireworkUseDelayTicks = 20
 
     enum class FireworkUseMode {
@@ -187,7 +189,7 @@ object ElytraFlight : Module(
                         ElytraFlightMode.CREATIVE -> creativeMode()
                         ElytraFlightMode.PACKET -> packetMode(it)
                         ElytraFlightMode.VANILLA -> vanillaMode()
-                        ElytraFlightMode.FIREWORKS -> fireworksMode(it)
+                        ElytraFlightMode.FIREWORKS -> fireworksMode()
                     }
                 }
                 spoofRotation()
@@ -527,13 +529,14 @@ object ElytraFlight : Module(
         lastY = playerY
     }
 
-    private fun SafeClientEvent.fireworksMode(event: PlayerTravelEvent) {
+    private fun SafeClientEvent.fireworksMode() {
         val isBoosted = world.getLoadedEntityList().any { it is EntityFireworkRocket && it.boostedEntity == player }
         val currentSpeed = sqrt(player.motionX * player.motionX + player.motionZ * player.motionZ)
 
         if (isBoosted) {
-            // todo: adjust v speeds with testing
-            if (player.movementInput.jump) player.motionY = 1.0 else if (player.movementInput.sneak) player.motionY = -1.0
+            if (fireworksVControl) {
+                if (player.movementInput.jump) player.motionY = fireworksVSpeed else if (player.movementInput.sneak) player.motionY = -fireworksVSpeed
+            }
             fireworkTickTimer.reset()
         } else {
             if (fireworkUseMode == FireworkUseMode.DELAY) {
@@ -580,7 +583,7 @@ object ElytraFlight : Module(
 
         if (autoLanding) {
             rotation = Vec2f(rotation.x, -20f)
-        } else if (mode.value != ElytraFlightMode.BOOST && mode.value != ElytraFlightMode.VANILLA) {
+        } else if (mode.value != ElytraFlightMode.BOOST && mode.value != ElytraFlightMode.VANILLA && mode.value != ElytraFlightMode.FIREWORKS) {
             if (!isStandingStill && mode.value != ElytraFlightMode.CREATIVE) rotation = Vec2f(packetYaw, rotation.y)
             if (spoofPitch) {
                 if (!isStandingStill) rotation = Vec2f(rotation.x, packetPitch)
