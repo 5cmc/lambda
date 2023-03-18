@@ -19,6 +19,7 @@ import java.io.IOException
 import java.io.InputStream
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
+import java.lang.UnsatisfiedLinkError;
 import java.util.*
 
 @Suppress("UNUSED_PARAMETER")
@@ -114,7 +115,7 @@ class LambdaMod {
                 tempFile.toFile().deleteOnExit()
             }
             println("Loaded shared library")
-        } catch (ex: Exception) {
+        } catch (ex: Exception|UnsatisfiedLinkError) {
             LOG.error("Failed linking nether pathfinder library, command will not function")
         }
     }
