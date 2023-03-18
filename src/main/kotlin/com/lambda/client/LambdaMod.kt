@@ -115,7 +115,7 @@ class LambdaMod {
                 tempFile.toFile().deleteOnExit()
             }
             println("Loaded shared library")
-        } catch (ex: Exception|UnsatisfiedLinkError) {
+        } catch (ex: Throwable) {
             LOG.error("Failed linking nether pathfinder library, command will not function")
         }
     }
