@@ -10,6 +10,7 @@ import com.lambda.client.module.modules.client.GuiColors
 import com.lambda.client.util.Bind
 import com.lambda.client.util.graphics.LambdaTessellator
 import com.lambda.client.util.math.RotationUtils.getRotationTo
+import com.lambda.client.util.math.Vec2d
 import com.lambda.client.util.math.VectorUtils.distanceTo
 import com.lambda.client.util.math.VectorUtils.toVec3d
 import com.lambda.client.util.text.MessageSendHelper
@@ -37,6 +38,7 @@ import kotlin.math.abs
 import kotlin.math.hypot
 import kotlin.math.min
 
+
 /**
  * For user interface:
  * @see com.lambda.client.command.commands.NetherPathfindCommand
@@ -56,6 +58,12 @@ object NetherPathfinder: Module(
     })
     private val rotateYaw by setting("Rotate Yaw", true, visibility = { rotatePlayer })
     private val rotatePitch by setting("Rotate Pitch", true, visibility = { rotatePlayer })
+    private val rotatePitchAdjust by setting("Elytra Pitch Adjust", false, { rotatePlayer && rotatePitch},
+        description = "Adjust pitch to optimize how closely the player is to the goal line. Intended to be used while elytra flying with vanilla physics")
+//    private val rotateYawAdjust by setting("Elytra Yaw Adjust", false, { rotatePlayer && rotateYaw},
+//        description = "Adjust pitch to optimize how closely the player is to the goal line. Intended to be used while elytra flying with vanilla physics")
+    private val adjustMultiplier by setting("Adjust Multiplier", 5.0, 1.0..10.0, 0.1, { rotatePlayer && rotatePitch && rotatePitchAdjust },
+        description = "How sharply to adjust towards the goal")
     private val pauseRotateBind by setting("Pause Rotate Bind", Bind(), description = "Pauses rotate mode while this key is held", visibility = { rotatePlayer })
     private val pauseRotateMode by setting("Pause Rotate Mode", PauseRotateMode.HOLD, visibility = { rotatePlayer })
     private val rotateDist by setting("Segment Reached Distance", 3, 1..10, 1, description = "How near you have to get to the next point before rotating to the next point. Y is ignored.", visibility = { rotatePlayer })
@@ -128,8 +136,25 @@ object NetherPathfinder: Module(
                     }
                     if (pauseRotateMode == PauseRotateMode.TOGGLE && rotatePaused) return@safeListener
                     val rotationTo = getRotationTo(it.toVec3d())
-                    if (rotateYaw) player.rotationYaw = rotationTo.x
-                    if (rotatePitch) player.rotationPitch = rotationTo.y
+                    if (rotateYaw) {
+                        // todo: fix
+//                        if (rotateYawAdjust) {
+//                            val playerToLineVec = getAdjustedYaw(pathList)
+//
+//                            player.rotationYaw = MathHelper.wrapDegrees(rotationTo.x + atan2(playerToLineVec.x, playerToLineVec.y)).toFloat()
+//                        } else {
+//                            player.rotationYaw = rotationTo.x
+//                        }
+                        player.rotationYaw = rotationTo.x
+                    }
+                    if (rotatePitch) {
+                        if (rotatePitchAdjust) {
+                            val adjustPitch = getAdjustedPitch(pathList).toFloat()
+                            player.rotationPitch = rotationTo.y + adjustPitch
+                        } else {
+                            player.rotationPitch = rotationTo.y
+                        }
+                    }
                 }
             }
         }
@@ -142,6 +167,27 @@ object NetherPathfinder: Module(
                     playerProgressIndex = Int.MIN_VALUE
                 }
             }
+        }
+    }
+
+    private fun SafeClientEvent.getAdjustedPitch(pathList: List<BlockPos>): Double {
+        try {
+            val prevPathPos = pathList[playerProgressIndex - 1]
+            val nextPathPos = pathList[playerProgressIndex]
+            val distanceVec = getDistanceVec(player.posX, player.posY, prevPathPos.x.toDouble(), prevPathPos.y.toDouble(), nextPathPos.x.toDouble(), nextPathPos.y.toDouble())
+            return distanceVec.y.coerceIn(-4.0, 4.0) * adjustMultiplier
+        } catch (ex: Exception) {
+            return 0.0
+        }
+    }
+
+    private fun SafeClientEvent.getAdjustedYaw(pathList: List<BlockPos>): Vec2d {
+        try {
+            val prevPathPos = pathList[playerProgressIndex - 1]
+            val nextPathPos = pathList[playerProgressIndex]
+            return getDistanceVec(player.posX, player.posZ, prevPathPos.x.toDouble(), prevPathPos.z.toDouble(), nextPathPos.x.toDouble(), nextPathPos.z.toDouble())
+        } catch (ex: Exception) {
+            return Vec2d.ZERO
         }
     }
 
@@ -353,6 +399,31 @@ object NetherPathfinder: Module(
         val dx = x - xx
         val dy = y - yy
         return hypot(dx, dy)
+    }
+
+    fun getDistanceVec(x: Double, y: Double, x1: Double, y1: Double, x2: Double, y2: Double): Vec2d {
+        val a = x - x1
+        val b = y - y1
+        val c = x2 - x1
+        val d = y2 - y1
+
+        val lenSq = c * c + d * d
+        val param = if (lenSq != .0) { //in case of 0 length line
+            val dot = a * c + b * d
+            dot / lenSq
+        } else {
+            -1.0
+        }
+
+        val (xx, yy) = when {
+            param < 0 -> x1 to y1
+            param > 1 -> x2 to y2
+            else -> x1 + param * c to y1 + param * d
+        }
+
+        val dx = x - xx
+        val dy = y - yy
+        return Vec2d(dx, dy)
     }
 
     fun isInNether(): Boolean {
