@@ -28,6 +28,7 @@ import net.minecraft.entity.item.EntityFireworkRocket
 import net.minecraft.init.Items
 import net.minecraft.init.SoundEvents
 import net.minecraft.item.ItemFirework
+import net.minecraft.item.ItemStack
 import net.minecraft.network.play.client.CPacketEntityAction
 import net.minecraft.network.play.client.CPacketPlayerTryUseItem
 import net.minecraft.network.play.server.SPacketEntityMetadata
@@ -553,22 +554,26 @@ object ElytraFlight : Module(
 
     private fun SafeClientEvent.useFirework() {
         playerController.syncCurrentPlayItem()
-        val holdingFireworksMainhand = player.serverSideItem.item is ItemFirework
-        val holdingFireworksOffhand = player.offhandSlot.stack.item is ItemFirework
+        val holdingFireworksMainhand = isBoostingFirework(player.serverSideItem)
+        val holdingFireworksOffhand = isBoostingFirework(player.offhandSlot.stack)
         if (holdingFireworksMainhand) {
             connection.sendPacket(CPacketPlayerTryUseItem(EnumHand.MAIN_HAND))
         } else if (holdingFireworksOffhand) {
             connection.sendPacket(CPacketPlayerTryUseItem(EnumHand.OFF_HAND))
         } else {
-            player.hotbarSlots.firstItem<ItemFirework, HotbarSlot> { it.item is ItemFirework && it.getSubCompound("Fireworks")?.hasKey("Flight") == true }?.let {
+            player.hotbarSlots.firstItem<ItemFirework, HotbarSlot> { isBoostingFirework(it) }?.let {
                 spoofHotbar(it.hotbarSlot)
                 connection.sendPacket(CPacketPlayerTryUseItem(EnumHand.MAIN_HAND))
                 resetHotbar()
             } ?: run {
-                swapToItemOrMove<ItemFirework>(this@ElytraFlight, { it.item is ItemFirework && it.getSubCompound("Fireworks")?.hasKey("Flight") == true })
+                swapToItemOrMove<ItemFirework>(this@ElytraFlight, { isBoostingFirework(it) })
                 fireworkTickTimer.reset(minFireworkUseDelayTicks * 40L)
             }
         }
+    }
+
+    private fun isBoostingFirework(it: ItemStack): Boolean {
+        return it.item is ItemFirework && it.getSubCompound("Fireworks")?.hasKey("Flight") == true
     }
 
     fun shouldSwing(): Boolean {

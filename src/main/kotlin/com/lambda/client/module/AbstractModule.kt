@@ -46,6 +46,7 @@ abstract class AbstractModule(
     val clicks = IntegerSetting("Clicks", 0, 0..Int.MAX_VALUE, 1, { false }).also(::addSetting) // Not nice, however easiest way to save it.
     enum class ToggleMode {
         TOGGLE, HOLD
+        // todo: idea: hold but only if this module was triggered by the bind. e.g. clickgui click acts like toggle instead of hold
     }
 
     val fullSettingList get() = (config as NameableConfig<Nameable>).getSettings(this)

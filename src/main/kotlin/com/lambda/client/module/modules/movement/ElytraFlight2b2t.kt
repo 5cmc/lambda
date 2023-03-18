@@ -58,7 +58,7 @@ object ElytraFlight2b2t : Module(
     private val minHoverTakeoffHeight by setting("Min Elytra Swap Takeoff Height", 10.0, 5.0..50.0, 1.0,
         visibility = { enableHoverRedeploy },
         description = "Minimum height from ground (m) to attempt an ElytraSwap hover deploy")
-    val rubberBandDetectionTime by setting("Rubberband Detection Time", 1110, 0..2000, 10,
+    private val rubberBandDetectionTime by setting("Rubberband Detection Time", 1110, 0..2000, 10,
         description = "Time period (ms) between which to detect rubberband teleports. Lower period = more sensitive.")
     private val elytraLockFallRedeploy by setting("ElytraLock Escape Fall", false,
         visibility = { enableHoverRedeploy })
@@ -96,7 +96,7 @@ object ElytraFlight2b2t : Module(
     private var elytraIsEquipped = false
     private var elytraDurability = 0
     private var wasInLiquid: Boolean = false
-    var isFlying: Boolean = false
+    private var isFlying: Boolean = false
         private set
     private var isStandingStill = false
     private var isStandingStillH: Boolean = false
