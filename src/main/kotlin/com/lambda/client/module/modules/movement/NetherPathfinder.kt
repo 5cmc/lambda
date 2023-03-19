@@ -10,8 +10,11 @@ import com.lambda.client.module.modules.client.GuiColors
 import com.lambda.client.util.Bind
 import com.lambda.client.util.graphics.LambdaTessellator
 import com.lambda.client.util.math.RotationUtils.getRotationTo
+import com.lambda.client.util.math.RotationUtils.normalizeAngle
 import com.lambda.client.util.math.Vec2d
 import com.lambda.client.util.math.VectorUtils.distanceTo
+import com.lambda.client.util.math.VectorUtils.magnitudeSquared
+import com.lambda.client.util.math.VectorUtils.scalarMultiply
 import com.lambda.client.util.math.VectorUtils.toVec3d
 import com.lambda.client.util.text.MessageSendHelper
 import com.lambda.client.util.threads.defaultScope
@@ -22,6 +25,7 @@ import kotlinx.coroutines.launch
 import net.minecraft.client.renderer.GlStateManager
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.MathHelper
+import net.minecraft.util.math.Vec3d
 import net.minecraftforge.fml.common.gameevent.InputEvent
 import net.minecraftforge.fml.common.gameevent.TickEvent
 import org.lwjgl.input.Keyboard
@@ -35,6 +39,7 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.stream.Collectors
 import kotlin.math.abs
+import kotlin.math.atan2
 import kotlin.math.hypot
 import kotlin.math.min
 
@@ -60,10 +65,10 @@ object NetherPathfinder: Module(
     private val rotatePitch by setting("Rotate Pitch", true, visibility = { rotatePlayer })
     private val rotatePitchAdjust by setting("Elytra Pitch Adjust", false, { rotatePlayer && rotatePitch},
         description = "Adjust pitch to optimize how closely the player is to the goal line. Intended to be used while elytra flying with vanilla physics")
-//    private val rotateYawAdjust by setting("Elytra Yaw Adjust", false, { rotatePlayer && rotateYaw},
-//        description = "Adjust pitch to optimize how closely the player is to the goal line. Intended to be used while elytra flying with vanilla physics")
-    private val adjustMultiplier by setting("Adjust Multiplier", 5.0, 1.0..10.0, 0.1, { rotatePlayer && rotatePitch && rotatePitchAdjust },
-        description = "How sharply to adjust towards the goal")
+    private val rotateYawAdjust by setting("Elytra Yaw Adjust", false, { rotatePlayer && rotateYaw},
+        description = "Adjust pitch to optimize how closely the player is to the goal line. Intended to be used while elytra flying with vanilla physics")
+    private val adjustMultiplier by setting("Adjust Multiplier", 5.0, 1.0..10.0, 0.1, { rotatePlayer && (rotateYaw || rotatePitch) && (rotateYawAdjust || rotatePitchAdjust) })
+    private val maxAdjustAngle by setting("Max Adjust Angle", 20.0, 1.0..90.0, 0.1, { rotatePlayer && (rotateYaw || rotatePitch) && (rotateYawAdjust || rotatePitchAdjust) })
     private val pauseRotateBind by setting("Pause Rotate Bind", Bind(), description = "Pauses rotate mode while this key is held", visibility = { rotatePlayer })
     private val pauseRotateMode by setting("Pause Rotate Mode", PauseRotateMode.HOLD, visibility = { rotatePlayer })
     private val rotateDist by setting("Segment Reached Distance", 3, 1..10, 1, description = "How near you have to get to the next point before rotating to the next point. Y is ignored.", visibility = { rotatePlayer })
@@ -137,15 +142,11 @@ object NetherPathfinder: Module(
                     if (pauseRotateMode == PauseRotateMode.TOGGLE && rotatePaused) return@safeListener
                     val rotationTo = getRotationTo(it.toVec3d())
                     if (rotateYaw) {
-                        // todo: fix
-//                        if (rotateYawAdjust) {
-//                            val playerToLineVec = getAdjustedYaw(pathList)
-//
-//                            player.rotationYaw = MathHelper.wrapDegrees(rotationTo.x + atan2(playerToLineVec.x, playerToLineVec.y)).toFloat()
-//                        } else {
-//                            player.rotationYaw = rotationTo.x
-//                        }
-                        player.rotationYaw = rotationTo.x
+                        if (rotateYawAdjust) {
+                            player.rotationYaw = getAdjustedYaw(pathList, rotationTo.x).toFloat()
+                        } else {
+                            player.rotationYaw = rotationTo.x
+                        }
                     }
                     if (rotatePitch) {
                         if (rotatePitchAdjust) {
@@ -170,24 +171,69 @@ object NetherPathfinder: Module(
         }
     }
 
+    private fun SafeClientEvent.getAdjustedYaw(pathList: List<BlockPos>, yawToGoal: Float): Double {
+        // i think these calculations can be simplified
+        // no idea how tho lol
+        val distanceVec = playerLineDistanceVec(pathList) // vector for how far away from the goal line we are
+        val pathVec = getPlayerVecToLine(pathList) // rotation vector from player directly to the goal line
+        // convert rotation vector to yaw
+        val yawToPath = normalizeAngle(Math.toDegrees(atan2(pathVec.z, pathVec.x)) - 90.0).toFloat()
+        // determine which way we should turn the player, clockwise (+) or counterclockwise (-) yaw
+        val clockwise = isClockwiseTargetAngle(yawToGoal, yawToPath)
+        // farther distance from goal line = sharper angle adjusted towards it
+        val adjustAngle = (if (clockwise) 1 else -1) * (distanceVec.length() * adjustMultiplier)
+            // cap our max adjust angle
+            .coerceIn(-maxAdjustAngle, maxAdjustAngle)
+        return yawToGoal + adjustAngle
+    }
+
     private fun SafeClientEvent.getAdjustedPitch(pathList: List<BlockPos>): Double {
-        try {
+        return try {
             val prevPathPos = pathList[playerProgressIndex - 1]
             val nextPathPos = pathList[playerProgressIndex]
-            val distanceVec = getDistanceVec(player.posX, player.posY, prevPathPos.x.toDouble(), prevPathPos.y.toDouble(), nextPathPos.x.toDouble(), nextPathPos.y.toDouble())
-            return distanceVec.y.coerceIn(-4.0, 4.0) * adjustMultiplier
+            val playerEyes = player.getPositionEyes(1f)
+            val distanceVec = getDistanceVec(playerEyes.x, playerEyes.y, prevPathPos.x.toDouble(), prevPathPos.y.toDouble(), nextPathPos.x.toDouble(), nextPathPos.y.toDouble())
+            (distanceVec.y * adjustMultiplier).coerceIn(-maxAdjustAngle, maxAdjustAngle)
         } catch (ex: Exception) {
-            return 0.0
+            0.0
         }
     }
 
-    private fun SafeClientEvent.getAdjustedYaw(pathList: List<BlockPos>): Vec2d {
-        try {
+    private fun SafeClientEvent.playerLineDistanceVec(pathList: List<BlockPos>): Vec2d {
+        return try {
             val prevPathPos = pathList[playerProgressIndex - 1]
             val nextPathPos = pathList[playerProgressIndex]
-            return getDistanceVec(player.posX, player.posZ, prevPathPos.x.toDouble(), prevPathPos.z.toDouble(), nextPathPos.x.toDouble(), nextPathPos.z.toDouble())
+            val playerEyes = player.getPositionEyes(1f)
+            getDistanceVec(playerEyes.x, playerEyes.z, prevPathPos.x.toDouble(), prevPathPos.z.toDouble(), nextPathPos.x.toDouble(), nextPathPos.z.toDouble())
         } catch (ex: Exception) {
-            return Vec2d.ZERO
+            Vec2d.ZERO
+        }
+    }
+
+    private fun isClockwiseTargetAngle(yawTo: Float, yawToPath: Float): Boolean {
+        // find shortest turn to get to yawToPath
+        //  either clockwise (+) or counterclockwise (-)
+        // yaw rolls over on 180/-180 so we're gonna normalize things to 360 degrees for simplicity
+        val degreedYaw = yawTo + 180f
+        val degreedYawToPath = yawToPath + 180f
+        return ((degreedYawToPath - degreedYaw + 540f) % 360f - 180f) >= 0
+    }
+
+    private fun SafeClientEvent.getPlayerVecToLine(pathList: List<BlockPos>): Vec3d {
+        return try {
+            val prevPathPos = pathList[playerProgressIndex - 1]
+            val nextPathPos = pathList[playerProgressIndex]
+            val playerEyes = player.getPositionEyes(1f)
+            val p = Vec3d(playerEyes.x, playerEyes.y, playerEyes.z)
+            val p1 = Vec3d(prevPathPos.x.toDouble(), prevPathPos.y.toDouble(), prevPathPos.z.toDouble())
+            val p2 = Vec3d(nextPathPos.x.toDouble(), nextPathPos.y.toDouble(), nextPathPos.z.toDouble())
+            val v = p2.subtract(p1)
+            val w = p.subtract(p1)
+            val scalarProj = w.dotProduct(v) / v.magnitudeSquared()
+            val c = p1.add(v.scalarMultiply(scalarProj))
+            c.subtract(p)
+        } catch (ex: Exception) {
+            Vec3d.ZERO
         }
     }
 

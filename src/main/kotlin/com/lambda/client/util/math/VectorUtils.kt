@@ -141,6 +141,14 @@ object VectorUtils {
         return Vec3i(x * multiplier, y * multiplier, z * multiplier)
     }
 
+    fun Vec3d.magnitudeSquared(): Double {
+        return x * x + y * y + z * z
+    }
+
+    fun Vec3d.scalarMultiply(scalar: Double): Vec3d {
+        return Vec3d(x * scalar, y * scalar, z * scalar)
+    }
+
     infix operator fun Vec3d.times(vec3d: Vec3d): Vec3d = Vec3d(x * vec3d.x, y * vec3d.y, z * vec3d.z)
 
     infix operator fun Vec3d.times(multiplier: Double): Vec3d = Vec3d(x * multiplier, y * multiplier, z * multiplier)
