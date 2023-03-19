@@ -155,9 +155,9 @@ object NetherPathfinder: Module(
                     if (rotatePitch) {
                         if (rotatePitchAdjust) {
                             val adjustPitch = getAdjustedPitch(pathList).toFloat()
-                            player.rotationPitch = rotationTo.y + adjustPitch
+                            player.rotationPitch = (rotationTo.y + adjustPitch).coerceIn(-49.9f..49.9f)
                         } else {
-                            player.rotationPitch = rotationTo.y
+                            player.rotationPitch = rotationTo.y.coerceIn(-49.9f..49.9f)
                         }
                     }
                 }
