@@ -66,7 +66,7 @@ object NetherPathfinder: Module(
     private val rotatePitchAdjust by setting("Elytra Pitch Adjust", false, { rotatePlayer && rotatePitch},
         description = "Adjust pitch to optimize how closely the player is to the goal line. Intended to be used while elytra flying with vanilla physics")
     private val rotateYawAdjust by setting("Elytra Yaw Adjust", false, { rotatePlayer && rotateYaw},
-        description = "Adjust pitch to optimize how closely the player is to the goal line. Intended to be used while elytra flying with vanilla physics")
+        description = "Adjust yaw to optimize how closely the player is to the goal line. Intended to be used while elytra flying with vanilla physics")
     private val adjustMultiplier by setting("Adjust Multiplier", 5.0, 1.0..10.0, 0.1, { rotatePlayer && (rotateYaw || rotatePitch) && (rotateYawAdjust || rotatePitchAdjust) })
     private val maxAdjustAngle by setting("Max Adjust Angle", 20.0, 1.0..90.0, 0.1, { rotatePlayer && (rotateYaw || rotatePitch) && (rotateYawAdjust || rotatePitchAdjust) })
     private val pauseRotateBind by setting("Pause Rotate Bind", Bind(), description = "Pauses rotate mode while this key is held", visibility = { rotatePlayer })
@@ -117,6 +117,10 @@ object NetherPathfinder: Module(
      * this could run on a coroutine in the background. there's not that many path segments in loaded chunks
      * so this shouldn't be too cpu intensive
      */
+
+    override fun getHudInfo(): String {
+        return if (path?.isNotEmpty() == true && rotatePlayer && !rotatePaused) "ROTATE" else ""
+    }
 
     init {
         onDisable {
