@@ -181,7 +181,7 @@ object NetherPathfinder: Module(
                         val distanceVec = getDistanceVec(playerEyes.x, playerEyes.y, prevPathPos.x.toDouble(), prevPathPos.y.toDouble(), nextPathPos.x.toDouble(), nextPathPos.y.toDouble())
                         if (abs(distanceVec.y) > 0.1) {
                             val m = -distanceVec.y.coerceIn(-1.0, 1.0)
-                            if (abs(player.motionY) < m) {
+                            if (abs(player.motionY) < abs(m)) {
                                 player.motionY = m
                             }
                         }
@@ -482,7 +482,7 @@ object NetherPathfinder: Module(
         return hypot(dx, dy)
     }
 
-    fun getDistanceVec(x: Double, y: Double, x1: Double, y1: Double, x2: Double, y2: Double): Vec2d {
+    private fun getDistanceVec(x: Double, y: Double, x1: Double, y1: Double, x2: Double, y2: Double): Vec2d {
         val a = x - x1
         val b = y - y1
         val c = x2 - x1
