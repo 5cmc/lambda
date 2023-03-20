@@ -102,7 +102,9 @@ object SeedOverlay: Module(
                 return@safeListener
             }
             if (!enabledOnCurrentDimension()) {
-                reset()
+                initializingJob = defaultScope.launch {
+                    reset()
+                }
                 return@safeListener
             }
             if (worldGenerator == null || generatedWorld == null) {
@@ -261,7 +263,7 @@ object SeedOverlay: Module(
     }
 
     private fun SafeClientEvent.compare(blockPos: BlockPos): BlockDifference? {
-        map?.let { blockMap ->
+        map.let { blockMap ->
             val playerBlockState: IBlockState = world.getBlockState(blockPos)
             blockMap.setBiome(world.getBiome(blockPos))
             val generatedBlockState = generatedWorld!!.getBlockState(blockPos)
