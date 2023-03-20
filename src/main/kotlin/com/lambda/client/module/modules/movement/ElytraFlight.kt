@@ -34,6 +34,7 @@ import net.minecraft.network.play.client.CPacketPlayerTryUseItem
 import net.minecraft.network.play.server.SPacketEntityMetadata
 import net.minecraft.network.play.server.SPacketPlayerPosLook
 import net.minecraft.util.EnumHand
+import net.minecraft.util.math.RayTraceResult
 import kotlin.math.*
 
 
@@ -111,6 +112,9 @@ object ElytraFlight : Module(
     private val fireworkUseMode by setting("Firework Use Mode", FireworkUseMode.SPEED, { mode.value == ElytraFlightMode.FIREWORKS && page == Page.MODE_SETTINGS })
     private val delay by setting("Fireworks Delay Ticks", 30, 0..100, 1, { mode.value == ElytraFlightMode.FIREWORKS && fireworkUseMode == FireworkUseMode.DELAY && page == Page.MODE_SETTINGS })
     private val fireworkUseStartSpeed by setting ("Fireworks Use Min Speed", 1.0, 0.01..3.0, 0.01, { mode.value == ElytraFlightMode.FIREWORKS && fireworkUseMode == FireworkUseMode.SPEED && page == Page.MODE_SETTINGS })
+    private val fireworkBlockAvoid by setting("Avoid Blocks", false, { mode.value == ElytraFlightMode.FIREWORKS && page == Page.MODE_SETTINGS },
+        description = "Don't use fireworks if player is facing into a block")
+    private val fireworkBlockAvoidDist by setting("Avoid Blocks Raytrace Distance", 2.0, 1.0..10.0, 0.1, { mode.value == ElytraFlightMode.FIREWORKS && page == Page.MODE_SETTINGS && fireworkBlockAvoid })
     private val fireworksVControl by setting("Boosted V Control", true, { mode.value == ElytraFlightMode.FIREWORKS && page == Page.MODE_SETTINGS })
     private val fireworksVSpeed by setting("Boosted V Control Speed", 1.0, 0.0..3.0, 0.1, { mode.value == ElytraFlightMode.FIREWORKS && fireworksVControl && page == Page.MODE_SETTINGS })
     private const val minFireworkUseDelayTicks = 20
@@ -553,6 +557,11 @@ object ElytraFlight : Module(
     }
 
     private fun SafeClientEvent.useFirework() {
+        if (fireworkBlockAvoid) {
+            player.rayTrace(fireworkBlockAvoidDist, 1f)?.let {
+                if (it.typeOfHit == RayTraceResult.Type.BLOCK) return
+            }
+        }
         playerController.syncCurrentPlayItem()
         val holdingFireworksMainhand = isBoostingFirework(player.serverSideItem)
         val holdingFireworksOffhand = isBoostingFirework(player.offhandSlot.stack)
