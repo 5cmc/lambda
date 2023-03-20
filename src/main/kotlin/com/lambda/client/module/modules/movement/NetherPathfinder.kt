@@ -3,7 +3,9 @@ package com.lambda.client.module.modules.movement
 import com.babbaj.pathfinder.PathFinder
 import com.lambda.client.LambdaMod
 import com.lambda.client.event.SafeClientEvent
+import com.lambda.client.event.events.PlayerTravelEvent
 import com.lambda.client.event.events.RenderWorldEvent
+import com.lambda.client.mixin.extension.boostedEntity
 import com.lambda.client.module.Category
 import com.lambda.client.module.Module
 import com.lambda.client.module.modules.client.GuiColors
@@ -23,6 +25,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import net.minecraft.client.renderer.GlStateManager
+import net.minecraft.entity.item.EntityFireworkRocket
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.MathHelper
 import net.minecraft.util.math.Vec3d
@@ -67,6 +70,8 @@ object NetherPathfinder: Module(
         description = "Adjust pitch to optimize how closely the player is to the goal line. Intended to be used while elytra flying with vanilla physics")
     private val rotateYawAdjust by setting("Elytra Yaw Adjust", false, { rotatePlayer && rotateYaw},
         description = "Adjust yaw to optimize how closely the player is to the goal line. Intended to be used while elytra flying with vanilla physics")
+    private val boostedYAdjust by setting("Boosted Efly Y Adjust", false, { rotatePlayer },
+        description = "Uses ElytraFlight V Control while firework boosted to make adjustments closer to the goal line")
     private val adjustMultiplier by setting("Adjust Multiplier", 5.0, 1.0..10.0, 0.1, { rotatePlayer && (rotateYaw || rotatePitch) && (rotateYawAdjust || rotatePitchAdjust) })
     private val maxAdjustAngle by setting("Max Adjust Angle", 20.0, 1.0..90.0, 0.1, { rotatePlayer && (rotateYaw || rotatePitch) && (rotateYawAdjust || rotatePitchAdjust) })
     private val pauseRotateBind by setting("Pause Rotate Bind", Bind(), description = "Pauses rotate mode while this key is held", visibility = { rotatePlayer })
@@ -164,6 +169,30 @@ object NetherPathfinder: Module(
             }
         }
 
+        safeListener<PlayerTravelEvent> {
+            if (!rotatePlayer || !boostedYAdjust || rotatePaused || !player.isElytraFlying) return@safeListener
+            path?.let { pathList ->
+                try {
+                    val isBoosted = world.getLoadedEntityList().any { it is EntityFireworkRocket && it.boostedEntity == player }
+                    if (isBoosted) {
+                        val prevPathPos = pathList[playerProgressIndex - 1]
+                        val nextPathPos = pathList[playerProgressIndex]
+                        val playerEyes = player.getPositionEyes(1f)
+                        val distanceVec = getDistanceVec(playerEyes.x, playerEyes.y, prevPathPos.x.toDouble(), prevPathPos.y.toDouble(), nextPathPos.x.toDouble(), nextPathPos.y.toDouble())
+                        if (abs(distanceVec.y) > 0.1) {
+                            val m = -distanceVec.y.coerceIn(-1.0, 1.0)
+                            if (abs(player.motionY) < m) {
+                                player.motionY = m
+                            }
+                        }
+                    }
+                } catch (ex: Exception) {
+                    // just in case index op is out of bounds
+                }
+            }
+
+        }
+
         safeListener<InputEvent.KeyInputEvent> {
             if (pauseRotateMode == PauseRotateMode.TOGGLE && !pauseRotateBind.isEmpty) {
                 val key = Keyboard.getEventKey()
@@ -178,6 +207,8 @@ object NetherPathfinder: Module(
     private fun SafeClientEvent.getAdjustedYaw(pathList: List<BlockPos>, yawToGoal: Float): Double {
         // i think these calculations can be simplified
         // no idea how tho lol
+        // idea: compare line xz angle to yawToGoal. these should match up when we are on the line
+
         val distanceVec = playerLineDistanceVec(pathList) // vector for how far away from the goal line we are
         val pathVec = getPlayerVecToLine(pathList) // rotation vector from player directly to the goal line
         // convert rotation vector to yaw
