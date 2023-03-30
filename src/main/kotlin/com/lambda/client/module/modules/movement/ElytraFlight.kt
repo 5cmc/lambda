@@ -7,12 +7,15 @@ import com.lambda.client.event.Phase
 import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.event.events.ElytraTravelEvent
 import com.lambda.client.event.events.PacketEvent
-import com.lambda.client.event.events.PlayerTravelEvent
+import com.lambda.client.event.events.PlayerMoveEvent
 import com.lambda.client.manager.managers.HotbarManager.resetHotbar
 import com.lambda.client.manager.managers.HotbarManager.serverSideItem
 import com.lambda.client.manager.managers.HotbarManager.spoofHotbar
 import com.lambda.client.manager.managers.PlayerPacketManager.sendPlayerPacket
-import com.lambda.client.mixin.extension.*
+import com.lambda.client.mixin.extension.boostedEntity
+import com.lambda.client.mixin.extension.syncCurrentPlayItem
+import com.lambda.client.mixin.extension.tickLength
+import com.lambda.client.mixin.extension.timer
 import com.lambda.client.module.Category
 import com.lambda.client.module.Module
 import com.lambda.client.module.modules.player.LagNotifier
@@ -25,7 +28,6 @@ import com.lambda.client.util.TimeUnit
 import com.lambda.client.util.items.*
 import com.lambda.client.util.math.Vec2f
 import com.lambda.client.util.text.MessageSendHelper.sendChatMessage
-import com.lambda.client.util.threads.runSafeR
 import com.lambda.client.util.threads.safeListener
 import com.lambda.client.util.world.getGroundPos
 import net.minecraft.client.audio.PositionedSoundRecord
@@ -36,7 +38,6 @@ import net.minecraft.item.ItemFirework
 import net.minecraft.item.ItemStack
 import net.minecraft.network.play.client.CPacketEntityAction
 import net.minecraft.network.play.client.CPacketPlayerTryUseItem
-import net.minecraft.network.play.server.SPacketEntityMetadata
 import net.minecraft.network.play.server.SPacketPlayerPosLook
 import net.minecraft.util.EnumHand
 import net.minecraft.util.math.RayTraceResult
@@ -123,8 +124,8 @@ object ElytraFlight : Module(
         BOOST("Boost", { boostMode() }),
         CONTROL("Control", { controlMode() }),
         STRICT("Strict", { strictMode() }),
-        FIREWORKS("Fireworks", { }),
-        VANILLA("Vanilla", { fireworksMode() }) /* Don't modify motion. Only manage angles */,
+        FIREWORKS("Fireworks", { fireworksMode() }),
+        VANILLA("Vanilla", { }) /* Don't modify motion. Only manage angles */,
     }
 
     private enum class Page {
@@ -462,13 +463,6 @@ object ElytraFlight : Module(
         player.motionZ = cos(dir) * MAX_SPEED
     }
     // endregion
-
-    /* Firework velocity desync fix */
-    @JvmStatic
-    fun shouldModify() = isEnabled &&
-        mode == Mode.VANILLA &&
-        fireworkSync &&
-        runSafeR { boostedFireworks.isNotEmpty() } == true
 
     private fun SafeClientEvent.fireworksMode() {
         val isBoosted = world.getLoadedEntityList().any { it is EntityFireworkRocket && it.boostedEntity == player }
