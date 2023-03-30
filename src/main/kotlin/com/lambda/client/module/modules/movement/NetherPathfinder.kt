@@ -453,6 +453,17 @@ object NetherPathfinder: Module(
                 bPosMinIndex = index
             }
         }
+        val playerYawToPoint = getRotationTo(path[bPosMinIndex].toVec3d()).x
+        if (abs(abs(player.rotationYaw) - abs(playerYawToPoint)) > 90.0) {
+            // try next point
+            val nextIndex = min(bPosMinIndex + 1, path.size-1)
+            val nextPoint = path[nextIndex]
+            val playerYawToPoint2 = getRotationTo(nextPoint.toVec3d()).x
+            if (abs(abs(player.rotationYaw) - abs(playerYawToPoint2)) < 90.0) {
+                bPosMinIndex = nextIndex
+            }
+        }
+
         return bPosMinIndex
     }
 
