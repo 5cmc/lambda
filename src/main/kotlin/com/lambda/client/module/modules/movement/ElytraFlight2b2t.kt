@@ -433,7 +433,7 @@ object ElytraFlight2b2t : Module(
 
         if (player.motionY < -0.02) {
             if (closeToGround) {
-                mc.timer.tickLength = 25.0f
+                mc.timer.tickLength = 50.0f
                 return
             }
 
