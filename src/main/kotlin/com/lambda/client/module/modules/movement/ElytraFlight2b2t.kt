@@ -46,6 +46,8 @@ object ElytraFlight2b2t : Module(
     private val takeoffTimerSpeed by setting("Takeoff Timer Tick Length", 395.0f, 100.0f..1000.0f, 1.0f,
         description = "How long each timer tick is during redeploy (ms). Lower length = faster timer. " +
             "Try increasing this if experiencing elytra timeout or rubberbands. This value is multiplied by 2 when setting timer")
+    private val midairFallFly by setting("Mid-flight Packet Deploy", false,
+        description = "Hover redeploy recommended instead. Uses packets to redeploy when mid-flight.", visibility = { !enableHoverRedeploy })
     private val enableHoverRedeploy by setting("Elytra Swap Redeploy", true,
         description = "Attempt takeoff from midair using an elytra swap redeploy. " +
             "If this fails, try mid-air glide takeoff with this setting disabled.")
@@ -181,11 +183,23 @@ object ElytraFlight2b2t : Module(
                         currentState = State.FLYING
                         unequipedElytra = false
                         reEquipedElytra = false
+                    } else if (!enableHoverRedeploy && midairFallFly && mc.player.motionY < takeOffYVelocity - 0.05) {
+                        if (mc.player.isElytraFlying) {
+                            // kicks us out of elytra flight
+                            // skips elytra swapping
+                            connection.sendPacket(CPacketEntityAction(player, CPacketEntityAction.Action.START_FALL_FLYING))
+                        }
                     } else if (!unequipedElytra && (mc.player.isElytraFlying || notCloseToGround) && enableHoverRedeploy) {
                         shouldHover = true
-                        lastEquipTask = addInventoryTask(
-                            PlayerInventoryManager.ClickInfo(0, 6, type = ClickType.QUICK_MOVE)
-                        )
+                        if (mc.player.isElytraFlying) {
+                            // kicks us out of elytra flight
+                            // skips elytra swapping
+                            connection.sendPacket(CPacketEntityAction(player, CPacketEntityAction.Action.START_FALL_FLYING))
+                        } else {
+                            lastEquipTask = addInventoryTask(
+                                PlayerInventoryManager.ClickInfo(0, 6, type = ClickType.QUICK_MOVE)
+                            )
+                        }
                         equipTimer.reset()
                         hoverTimer.reset()
                         hasHoverPaused = false
@@ -234,8 +248,6 @@ object ElytraFlight2b2t : Module(
                                     PlayerInventoryManager.ClickInfo(0, nextElytraSlot, type = ClickType.PICKUP)
                                 )
                             }
-
-
                         }
                     }
                 }
