@@ -1,8 +1,8 @@
 package com.lambda.client.commons.utils
 
 import com.lambda.client.module.modules.client.Plugins
+import java.net.HttpURLConnection
 import java.net.URL
-import javax.net.ssl.HttpsURLConnection
 
 object ConnectionUtils {
 
@@ -15,8 +15,8 @@ object ConnectionUtils {
         }, catch)
     }
 
-    fun <T> runConnection(url: String, block: (HttpsURLConnection) -> T?, catch: (Exception) -> Unit = { it.printStackTrace() }): T? {
-        (URL(url).openConnection() as HttpsURLConnection).run {
+    fun <T> runConnection(url: String, block: (HttpURLConnection) -> T?, catch: (Exception) -> Unit = { it.printStackTrace() }): T? {
+        (URL(url).openConnection() as HttpURLConnection).run {
             return try {
                 doOutput = true
                 doInput = true
@@ -29,5 +29,4 @@ object ConnectionUtils {
             }
         }
     }
-
 }
