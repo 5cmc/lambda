@@ -16,13 +16,13 @@ object PlaytimeCommand: ClientCommand(
     init {
         string("playerName") { playerName ->
             executeAsync("Check a player's playtime on 2b2t") {
-                UUIDManager.getByName(playerName.value)?.let {
-                    ConnectionUtils.requestRawJsonFrom("https://api.2b2t.vc/playtime?uuid=${it.uuid}") {
+                UUIDManager.getByName(playerName.value)?.let { profile ->
+                    ConnectionUtils.requestRawJsonFrom("https://api.2b2t.vc/playtime?uuid=${profile.uuid}") {
                         MessageSendHelper.sendChatMessage("Failed querying playtime data for player: ${it.message}")
                     }?.let {
                         val jsonElement = parser.parse(it)
                         val playtimeSeconds = jsonElement.asJsonObject["playtimeSeconds"].asInt
-                        MessageSendHelper.sendChatMessage("${playerName.value} has played for ${formatDuration(playtimeSeconds.toLong())}")
+                        MessageSendHelper.sendChatMessage("${profile.name} has played for ${formatDuration(playtimeSeconds.toLong())}")
                     } ?: run {
                         MessageSendHelper.sendChatMessage("Failed querying playtime data for player: ${playerName.value}")
                     }
