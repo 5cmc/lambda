@@ -20,12 +20,16 @@ object PlaytimeCommand: ClientCommand(
                     ConnectionUtils.requestRawJsonFrom("https://api.2b2t.vc/playtime?uuid=${profile.uuid}") {
                         MessageSendHelper.sendChatMessage("Failed querying playtime data for player: ${it.message}")
                     }?.let {
+                        if (it.isEmpty()) {
+                            MessageSendHelper.sendChatMessage("No data found for player: ${profile.name}")
+                            return@let
+                        }
                         val jsonElement = parser.parse(it)
                         val playtimeSeconds = jsonElement.asJsonObject["playtimeSeconds"].asInt
                         MessageSendHelper.sendChatMessage("${profile.name} has played for ${formatDuration(playtimeSeconds.toLong())}")
-                    } ?: run {
-                        MessageSendHelper.sendChatMessage("Failed querying playtime data for player: ${playerName.value}")
                     }
+                } ?: run{
+                    MessageSendHelper.sendChatMessage("Failed to find player with name ${playerName.value}")
                 }
             }
         }
@@ -40,7 +44,12 @@ object PlaytimeCommand: ClientCommand(
         val months = durationInSeconds / secondsInMonth
         val days = (durationInSeconds % secondsInMonth) / secondsInDay
         val hours = (durationInSeconds % secondsInDay) / secondsInHour
-
-        return "$months months, $days days, $hours hours"
+        return buildString {
+            append(if(months > 0) "$months month${if(months != 1L) "s" else ""}, " else "")
+            append(if(days > 0) "$days day${if(days != 1L) "s" else ""}, " else "")
+            append(hours)
+            append(" hour")
+            append(if(hours != 1L) "s" else "")
+        }
     }
 }

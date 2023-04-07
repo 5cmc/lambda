@@ -8,6 +8,8 @@ object ConnectionUtils {
 
     fun requestRawJsonFrom(url: String, catch: (Exception) -> Unit = { it.printStackTrace() }): String? {
         return runConnection(url, { connection ->
+            connection.setRequestProperty("User-Agent", "LambdaClient")
+            connection.setRequestProperty("Connection", "close")
             connection.setRequestProperty("Content-Type", "application/json; charset=UTF-8")
             if (Plugins.token.isNotBlank()) connection.setRequestProperty("Authorization", "token ${Plugins.token}")
             connection.requestMethod = "GET"

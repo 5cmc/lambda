@@ -24,14 +24,18 @@ object SeenCommand : ClientCommand(
                     ConnectionUtils.requestRawJsonFrom("https://api.2b2t.vc/seen?uuid=${profile.uuid}") {
                         MessageSendHelper.sendChatMessage("Failed querying seen data for player: ${it.message}")
                     }?.let {
+                        if (it.isEmpty()) {
+                            MessageSendHelper.sendChatMessage("No data found for player: ${profile.name}")
+                            return@let
+                        }
                         val jsonElement = parser.parse(it)
                         val dateRaw = jsonElement.asJsonObject["time"].asString
                         val parsedDate = ZonedDateTime.parse(dateRaw).withZoneSameInstant(ZoneId.systemDefault())
                         val dateFormatter = DateTimeFormatter.ofLocalizedDateTime(java.time.format.FormatStyle.LONG)
                         MessageSendHelper.sendChatMessage("${profile.name} was last seen on ${parsedDate.format(dateFormatter)}")
-                    } ?: run {
-                        MessageSendHelper.sendChatMessage("Failed querying seen data for player: ${playerName.value}")
                     }
+                } ?: run {
+                    MessageSendHelper.sendChatMessage("Failed to find player with name ${playerName.value}")
                 }
             }
         }
