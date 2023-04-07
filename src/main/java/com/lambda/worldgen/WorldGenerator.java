@@ -6,6 +6,7 @@ import com.mojang.authlib.yggdrasil.YggdrasilAuthenticationService;
 import com.mojang.authlib.yggdrasil.YggdrasilGameProfileRepository;
 import net.minecraft.client.ClientBrandRetriever;
 import net.minecraft.client.Minecraft;
+import net.minecraft.command.CommandBase;
 import net.minecraft.command.ServerCommandManager;
 import net.minecraft.crash.CrashReport;
 import net.minecraft.crash.ICrashReportDetail;
@@ -332,7 +333,56 @@ public class WorldGenerator extends MinecraftServer {
     public void stopServer()
     {
         initiateShutdown();
-        super.stopServer();
+        try {
+            LOGGER.info("Stopping server");
+
+            if (this.getNetworkSystem() != null)
+            {
+                this.getNetworkSystem().terminateEndpoints();
+            }
+
+            if (this.getPlayerList() != null)
+            {
+                LOGGER.info("Saving players");
+                this.getPlayerList().saveAllPlayerData();
+                this.getPlayerList().removeAllPlayers();
+            }
+
+            if (this.worlds != null)
+            {
+                LOGGER.info("Saving worlds");
+
+                for (WorldServer worldserver : this.worlds)
+                {
+                    if (worldserver != null)
+                    {
+                        worldserver.disableLevelSaving = false;
+                    }
+                }
+
+                this.saveAllWorlds(false);
+
+                for (WorldServer worldserver1 : this.worlds)
+                {
+                    if (worldserver1 != null)
+                    {
+                        // skip forge event here
+
+                        worldserver1.flush();
+                    }
+                }
+
+                WorldServer[] tmp = worlds;
+                for (WorldServer world : tmp)
+                {
+                    net.minecraftforge.common.DimensionManager.setWorld(world.provider.getDimension(), null, this);
+                }
+            }
+
+            CommandBase.setCommandListener(null); // Forge: fix MC-128561
+        } catch (final Exception e) {
+            LOGGER.warn("Failed shutting down server for some reason", e);
+        }
     }
 
     public void initiateShutdown()
