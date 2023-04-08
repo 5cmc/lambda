@@ -25,6 +25,9 @@ internal object Queue2B2T : LabelHud(
     private val hasShownWarning = setting("Has Shown Warning", false, { false })
     private val show by setting("Show", Show.BOTH)
     private val showUpdatedTime by setting("Show Updated Time", true)
+    private val textColor by setting("Text Color", primaryColor)
+    private val numberColor by setting("Number Color", secondaryColor)
+    private val shadow by setting("Text shadow", true)
 
     private enum class Show {
         BOTH, PRIORITY, REGULAR
@@ -55,6 +58,7 @@ internal object Queue2B2T : LabelHud(
     }
 
     override fun SafeClientEvent.updateText() {
+        textShadow = shadow
         if (!hasShownWarning.value) {
             sendWarning()
         }
@@ -66,21 +70,21 @@ internal object Queue2B2T : LabelHud(
         }
 
         if (NetworkManager.isOffline) {
-            displayText.addLine("Cannot connect to api.2b2t.vc", primaryColor)
-            displayText.add("Make sure your internet is working!", primaryColor)
+            displayText.addLine("Cannot connect to api.2b2t.vc", textColor)
+            displayText.add("Make sure your internet is working!", textColor)
         } else {
             if (showPriority) {
-                displayText.add("Priority: ", primaryColor)
-                displayText.add("${queueData.prio}", secondaryColor)
+                displayText.add("Priority: ", textColor)
+                displayText.add("${queueData.prio}", numberColor)
             }
 
             if (showRegular) {
-                displayText.add("Regular: ", primaryColor)
-                displayText.add("${queueData.regular}", secondaryColor)
+                displayText.add("Regular: ", textColor)
+                displayText.add("${queueData.regular}", numberColor)
             }
             if (showUpdatedTime) {
-                displayText.addLine("", primaryColor)
-                displayText.add("Last updated $lastUpdate ago", primaryColor)
+                displayText.addLine("", textColor)
+                displayText.add("Last updated $lastUpdate ago", textColor)
             }
         }
     }

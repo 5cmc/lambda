@@ -266,16 +266,18 @@ object SeedOverlay: Module(
         map.let { blockMap ->
             val playerBlockState: IBlockState = world.getBlockState(blockPos)
             blockMap.setBiome(world.getBiome(blockPos))
-            val generatedBlockState = generatedWorld!!.getBlockState(blockPos)
-            if (blockMap[playerBlockState.block] != blockMap[generatedBlockState.block]) {
-                if (!playerBlockState.material.isLiquid && !generatedBlockState.material.isLiquid &&
-                    !BlockFalling::class.java.isAssignableFrom(playerBlockState.block.javaClass) && !BlockFalling::class.java.isAssignableFrom(generatedBlockState.block.javaClass)) {
-                    return if (playerBlockState.block == Blocks.AIR) {
-                        BlockDifference.MISSING
-                    } else if (generatedBlockState.block == Blocks.AIR) {
-                        BlockDifference.NEW
-                    } else {
-                        BlockDifference.DIFFERENT
+            generatedWorld?.let {
+                val generatedBlockState = it.getBlockState(blockPos)
+                if (blockMap[playerBlockState.block] != blockMap[generatedBlockState.block]) {
+                    if (!playerBlockState.material.isLiquid && !generatedBlockState.material.isLiquid &&
+                        !BlockFalling::class.java.isAssignableFrom(playerBlockState.block.javaClass) && !BlockFalling::class.java.isAssignableFrom(generatedBlockState.block.javaClass)) {
+                        return if (playerBlockState.block == Blocks.AIR) {
+                            BlockDifference.MISSING
+                        } else if (generatedBlockState.block == Blocks.AIR) {
+                            BlockDifference.NEW
+                        } else {
+                            BlockDifference.DIFFERENT
+                        }
                     }
                 }
             }
