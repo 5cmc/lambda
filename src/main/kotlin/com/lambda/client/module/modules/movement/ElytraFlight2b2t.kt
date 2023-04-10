@@ -183,18 +183,16 @@ object ElytraFlight2b2t : Module(
                         currentState = State.FLYING
                         unequipedElytra = false
                         reEquipedElytra = false
-                    } else if (!enableHoverRedeploy && midairFallFly && mc.player.motionY < takeOffYVelocity - 0.05) {
+                    } else if (!enableHoverRedeploy && midairFallFly) {
                         if (mc.player.isElytraFlying) {
-                            // kicks us out of elytra flight
-                            // skips elytra swapping
-                            connection.sendPacket(CPacketEntityAction(player, CPacketEntityAction.Action.START_FALL_FLYING))
+                            connection.sendPacket(CPacketPlayer(true))
                         }
                     } else if (!unequipedElytra && (mc.player.isElytraFlying || notCloseToGround) && enableHoverRedeploy) {
                         shouldHover = true
                         if (mc.player.isElytraFlying) {
                             // kicks us out of elytra flight
                             // skips elytra swapping
-                            connection.sendPacket(CPacketEntityAction(player, CPacketEntityAction.Action.START_FALL_FLYING))
+                            connection.sendPacket(CPacketPlayer(true))
                         } else {
                             lastEquipTask = addInventoryTask(
                                 PlayerInventoryManager.ClickInfo(0, 6, type = ClickType.QUICK_MOVE)
