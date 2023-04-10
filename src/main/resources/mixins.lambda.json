@@ -53,6 +53,7 @@
     "gui.MixinGuiPlayerTabOverlay",
     "gui.MixinGuiScreen",
     "gui.MixinServerListEntryNormal",
+    "network.MixinC00Handshake",
     "network.MixinNetHandlerPlayClient",
     "network.MixinNetworkManager",
     "optifine.MixinConfig",
