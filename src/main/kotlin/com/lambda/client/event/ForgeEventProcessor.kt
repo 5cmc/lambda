@@ -16,6 +16,7 @@ import net.minecraft.client.gui.GuiMainMenu
 import net.minecraft.client.gui.GuiMultiplayer
 import net.minecraftforge.client.event.*
 import net.minecraftforge.event.entity.living.LivingEntityUseItemEvent
+import net.minecraftforge.event.entity.player.PlayerContainerEvent
 import net.minecraftforge.event.entity.player.PlayerInteractEvent
 import net.minecraftforge.event.world.BlockEvent
 import net.minecraftforge.event.world.WorldEvent
@@ -196,6 +197,11 @@ internal object ForgeEventProcessor {
 
     @SubscribeEvent
     fun onCameraSetupEvent(event: EntityViewRenderEvent.CameraSetup) {
+        LambdaEventBus.post(event)
+    }
+
+    @SubscribeEvent
+    fun onPlayerContainerEvent(event: PlayerContainerEvent) {
         LambdaEventBus.post(event)
     }
 }

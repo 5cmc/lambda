@@ -14,7 +14,7 @@ public class MixinGuiChest {
     @Inject(method = "<init>", at = @At("RETURN"))
     public void drawScreen(IInventory upperInv, IInventory lowerInv, CallbackInfo ci) {
         if (lowerInv.getName().equals("Ender Chest")) {
-            ContainerPreview.INSTANCE.setEnderChest(lowerInv);
+            ContainerPreview.setEnderChestInventory(lowerInv);
         }
     }
 }

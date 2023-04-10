@@ -6,7 +6,6 @@ import com.lambda.client.manager.Manager
 import com.lambda.client.module.modules.player.PacketLogger
 import com.lambda.client.module.modules.render.ContainerPreview.cacheContainers
 import com.lambda.client.util.FolderUtils
-import com.lambda.client.util.math.Direction
 import com.lambda.client.util.threads.defaultScope
 import com.lambda.client.util.threads.safeListener
 import kotlinx.coroutines.Dispatchers
@@ -16,34 +15,41 @@ import net.minecraft.item.ItemStack
 import net.minecraft.nbt.CompressedStreamTools
 import net.minecraft.nbt.NBTTagByte
 import net.minecraft.nbt.NBTTagCompound
-import net.minecraft.nbt.NBTTagInt
 import net.minecraft.nbt.NBTTagList
-import net.minecraft.tileentity.TileEntityChest
-import net.minecraft.tileentity.TileEntityDispenser
-import net.minecraft.tileentity.TileEntityHopper
-import net.minecraft.tileentity.TileEntityLockableLoot
-import net.minecraft.tileentity.TileEntityShulkerBox
+import net.minecraft.tileentity.*
 import net.minecraft.util.EnumFacing
 import net.minecraft.util.NonNullList
 import net.minecraft.util.math.BlockPos
 import net.minecraftforge.event.entity.player.PlayerContainerEvent
 import net.minecraftforge.event.entity.player.PlayerInteractEvent
 import net.minecraftforge.event.world.WorldEvent
-import java.io.*
+import java.io.File
+import java.io.IOException
 import java.nio.file.Paths
-import kotlin.collections.HashMap
 
 object CachedContainerManager : Manager {
     private val directory = Paths.get(FolderUtils.lambdaFolder, "cached-containers").toFile()
     private val containerWorlds = HashMap<File, NBTTagCompound>()
     private var currentFile: File? = null
-    private var currentTileEntityLockableLoot: TileEntityLockableLoot? = null
+    private var currentTileEntity: TileEntity? = null
 
     init {
         listener<WorldEvent.Load> {
             if (!cacheContainers) return@listener
 
-            val serverDirectory = mc.currentServerData?.serverIP?.replace(":", "_") ?: return@listener
+            val serverDirectory = if (mc.integratedServer != null && mc.integratedServer?.isServerRunning == true) {
+                mc.integratedServer?.folderName ?: run {
+                    LambdaMod.LOG.info("Failed to get SP directory")
+                    return@listener
+                }
+            } else {
+                mc.currentServerData?.serverIP?.replace(":", "_")
+                    ?: run {
+                        LambdaMod.LOG.info("Failed to get server directory")
+                        return@listener
+                    }
+            }
+
             val folder = File(directory, serverDirectory)
             currentFile = File(folder, "${it.world.provider.dimension}.nbt")
 
@@ -73,40 +79,43 @@ object CachedContainerManager : Manager {
 
         safeListener<PlayerInteractEvent.RightClickBlock> {
             if (!cacheContainers) return@safeListener
-
-            currentTileEntityLockableLoot = (world.getTileEntity(it.pos) as? TileEntityLockableLoot) ?: return@safeListener
+            world.getTileEntity(it.pos)?.let { tileEntity ->
+                if (tileEntity is TileEntityLockableLoot || tileEntity is TileEntityEnderChest) {
+                    currentTileEntity = tileEntity
+                }
+            }
         }
 
         safeListener<PlayerContainerEvent.Close> { event ->
             if (!cacheContainers) return@safeListener
 
-            val tileEntityLockableLoot = currentTileEntityLockableLoot ?: return@safeListener
-            currentTileEntityLockableLoot = null
+            val tileEntity = currentTileEntity ?: return@safeListener
+            currentTileEntity = null
 
-            val tileEntityTag = tileEntityLockableLoot.serializeNBT()
+            val tileEntityTag = tileEntity.serializeNBT()
 
-            val matrix = getContainerMatrix(tileEntityLockableLoot)
+            val matrix = getContainerMatrix(tileEntity)
 
-            if (tileEntityLockableLoot is TileEntityChest && event.container.inventory.size == 90) {
+            if (tileEntity is TileEntityChest && event.container.inventory.size == 90) {
                 var otherChest: TileEntityChest? = null
                 var facing: EnumFacing? = null
 
-                tileEntityLockableLoot.adjacentChestXNeg?.let {
+                tileEntity.adjacentChestXNeg?.let {
                     otherChest = it
                     facing = EnumFacing.WEST
                 }
 
-                tileEntityLockableLoot.adjacentChestXPos?.let {
+                tileEntity.adjacentChestXPos?.let {
                     otherChest = it
                     facing = EnumFacing.EAST
                 }
 
-                tileEntityLockableLoot.adjacentChestZNeg?.let {
+                tileEntity.adjacentChestZNeg?.let {
                     otherChest = it
                     facing = EnumFacing.NORTH
                 }
 
-                tileEntityLockableLoot.adjacentChestZPos?.let {
+                tileEntity.adjacentChestZPos?.let {
                     otherChest = it
                     facing = EnumFacing.SOUTH
                 }
@@ -116,7 +125,7 @@ object CachedContainerManager : Manager {
                         val slotCount = matrix.first * matrix.second * 2
                         val inventory = event.container.inventory.take(slotCount)
 
-                        safeInventoryToDB(inventory, tileEntityTag, tileEntityLockableLoot.pos, face)
+                        safeInventoryToDB(inventory, tileEntityTag, tileEntity.pos, face)
                         safeInventoryToDB(inventory, other.serializeNBT(), other.pos, face.opposite)
                     }
                 }
@@ -125,7 +134,7 @@ object CachedContainerManager : Manager {
                 val slotCount = matrix.first * matrix.second
                 val inventory = event.container.inventory.take(slotCount)
 
-                safeInventoryToDB(inventory, tileEntityTag, tileEntityLockableLoot.pos, null)
+                safeInventoryToDB(inventory, tileEntityTag, tileEntity.pos, null)
             }
         }
     }
@@ -180,12 +189,13 @@ object CachedContainerManager : Manager {
 
     fun getAllContainers() = containerWorlds[currentFile]?.getContainerList()?.filterIsInstance<NBTTagCompound>()
 
-    fun getContainerMatrix(type: TileEntityLockableLoot): Pair<Int, Int> {
+    fun getContainerMatrix(type: TileEntity): Pair<Int, Int> {
         return when (type) {
             is TileEntityChest -> Pair(9, 3)
             is TileEntityDispenser -> Pair(3, 3)
             is TileEntityHopper -> Pair(5, 1)
             is TileEntityShulkerBox -> Pair(9, 3)
+            is TileEntityEnderChest -> Pair(9, 3)
             else -> Pair(0, 0) // Should never happen
         }
     }

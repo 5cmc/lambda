@@ -1,16 +1,22 @@
 package com.lambda.client.module.modules.render
 
+import com.lambda.client.commons.extension.floorToInt
+import com.lambda.client.event.events.RenderOverlayEvent
+import com.lambda.client.manager.managers.CachedContainerManager
 import com.lambda.client.module.Category
 import com.lambda.client.module.Module
 import com.lambda.client.util.Bind
 import com.lambda.client.util.color.ColorHolder
 import com.lambda.client.util.graphics.GlStateUtils
+import com.lambda.client.util.graphics.ProjectionUtils
 import com.lambda.client.util.graphics.RenderUtils2D
 import com.lambda.client.util.graphics.VertexHelper
 import com.lambda.client.util.graphics.font.FontRenderAdapter
 import com.lambda.client.util.items.block
 import com.lambda.client.util.math.Vec2d
+import com.lambda.client.util.math.VectorUtils.toVec3dCenter
 import com.lambda.client.util.threads.safeListener
+import com.lambda.client.util.world.getHitVec
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.inventory.GuiContainer
 import net.minecraft.client.renderer.GlStateManager
@@ -23,7 +29,13 @@ import net.minecraft.inventory.ItemStackHelper
 import net.minecraft.inventory.Slot
 import net.minecraft.item.ItemShulkerBox
 import net.minecraft.item.ItemStack
+import net.minecraft.nbt.NBTTagByte
+import net.minecraft.tileentity.TileEntity
+import net.minecraft.tileentity.TileEntityEnderChest
+import net.minecraft.tileentity.TileEntityLockableLoot
+import net.minecraft.util.EnumFacing
 import net.minecraft.util.NonNullList
+import net.minecraft.util.math.BlockPos
 import net.minecraft.util.text.ITextComponent
 import net.minecraft.util.text.TextComponentString
 import net.minecraftforge.client.event.GuiOpenEvent
@@ -43,7 +55,8 @@ object ContainerPreview : Module(
      * Some inspiration for implementation taken from ForgeHax.
      * https://github.com/fr1kin/ForgeHax/blob/master/src/main/java/com/matt/forgehax/mods/ShulkerViewer.java
      */
-
+    val cacheContainers by setting("Cache Containers", true)
+    private val renderCachedContainers by setting("Render Cached Containers", true, { cacheContainers })
     private val useCustomFont by setting("Use Custom Font", false)
     private val backgroundColor by setting("Background Color", ColorHolder(16, 0, 16, 255))
     private val borderTopColor by setting("Top Border Color", ColorHolder(144, 101, 237, 54))
@@ -53,11 +66,7 @@ object ContainerPreview : Module(
     private const val x_offset = 8
     private const val y_offset = 0
     var locked = false
-    // todo: cache echest to disk
-    //  key: serverID + player UUID
-    //  value: echest contents as list of itemstacks
-    //  we don't have a great way to do this map in lambda config and need to (de)serialize itemstack with nbt
-    var enderChest: IInventory? = null
+    var enderChest: List<ItemStack>? = null
     private var isKeySet = false
     private var isMouseInPreviewGui = false
     private var isModGeneratedToolTip = false
@@ -65,6 +74,15 @@ object ContainerPreview : Module(
     private var lastY = -1
 
     private var stackContainer: GuiPreview? = null
+
+    @JvmStatic
+    fun setEnderChestInventory(inv: IInventory) {
+        val inventory = NonNullList.withSize(inv.sizeInventory, ItemStack.EMPTY)
+        for (i in 0 until inv.sizeInventory) {
+            inventory[i] = inv.getStackInSlot(i)
+        }
+        enderChest = inventory
+    }
 
     init {
 
@@ -133,6 +151,62 @@ object ContainerPreview : Module(
                 reset()
             }
         }
+
+        safeListener<RenderOverlayEvent> {
+            if (!renderCachedContainers) return@safeListener
+
+            var indexH = 0
+
+            // Preprocessing needs to be done in the manager to reduce strain on the render thread
+            CachedContainerManager.getAllContainers()?.forEach { tag ->
+                CachedContainerManager.getInventoryOfContainer(tag)?.let { container ->
+                    val thisPos = BlockPos(tag.getInteger("x"), tag.getInteger("y"), tag.getInteger("z"))
+                    val mockTileEntity = TileEntity.create(world, tag)
+                    var matrix = if (mockTileEntity is TileEntityLockableLoot || mockTileEntity is TileEntityEnderChest) {
+                        CachedContainerManager.getContainerMatrix(mockTileEntity)
+                    } else {
+                        return@safeListener
+                    }
+                    if (mockTileEntity is TileEntityEnderChest) {
+                        enderChest = container
+                    }
+
+                    var renderPos = thisPos.toVec3dCenter()
+
+                    (tag.getTag("adjacentChest") as? NBTTagByte)?.byte?.toInt()?.let { index ->
+                        renderPos = getHitVec(thisPos, EnumFacing.byIndex(index))
+                        matrix = Pair(9, 6)
+                    }
+
+                    val screenPos = ProjectionUtils.toScaledScreenPos(renderPos)
+
+                    val width = matrix.first * 16
+                    val height = matrix.second * 16
+
+                    val vertexHelper = VertexHelper(GlStateUtils.useVbo())
+
+                    val color = backgroundColor.clone().apply { a = 50 }
+
+                    val newX = screenPos.x - width / 2
+                    val newY = screenPos.y - height / 2
+
+                    RenderUtils2D.drawRoundedRectFilled(
+                        vertexHelper,
+                        Vec2d(newX, newY),
+                        Vec2d(newX + width, newY + height),
+                        1.0,
+                        color = color
+                    )
+
+                    container.forEachIndexed { index, itemStack ->
+                        val x = newX + (index % matrix.first) * 16
+                        val y = newY + (index / matrix.first) * 16
+                        RenderUtils2D.drawItem(itemStack, x.floorToInt(), y.floorToInt())
+                    }
+                }
+                indexH += 60
+            }
+        }
     }
 
     private fun reset() {
@@ -188,13 +262,7 @@ object ContainerPreview : Module(
     }
 
     private fun getEnderChestData(): MutableList<ItemStack> {
-        val itemStacks = Array(27) { ItemStack.EMPTY }
-        enderChest?.let {
-            for (i in 0..26) {
-                itemStacks[i] = it.getStackInSlot(i)
-            }
-        }
-        return itemStacks.toMutableList()
+        return enderChest?.toMutableList() ?: mutableListOf()
     }
 
     class GuiPreview(inventorySlotsIn: Container, val parentContainer: ItemStack) : GuiContainer(inventorySlotsIn) {
