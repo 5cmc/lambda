@@ -14,6 +14,7 @@ import com.lambda.client.util.graphics.VertexHelper
 import com.lambda.client.util.graphics.font.FontRenderAdapter
 import com.lambda.client.util.items.block
 import com.lambda.client.util.math.Vec2d
+import com.lambda.client.util.math.VectorUtils.distanceTo
 import com.lambda.client.util.math.VectorUtils.toVec3dCenter
 import com.lambda.client.util.threads.safeListener
 import com.lambda.client.util.world.getHitVec
@@ -35,7 +36,6 @@ import net.minecraft.tileentity.TileEntityEnderChest
 import net.minecraft.tileentity.TileEntityLockableLoot
 import net.minecraft.util.EnumFacing
 import net.minecraft.util.NonNullList
-import net.minecraft.util.math.BlockPos
 import net.minecraft.util.text.ITextComponent
 import net.minecraft.util.text.TextComponentString
 import net.minecraftforge.client.event.GuiOpenEvent
@@ -51,12 +51,9 @@ object ContainerPreview : Module(
     category = Category.RENDER
 ) {
 
-    /**
-     * Some inspiration for implementation taken from ForgeHax.
-     * https://github.com/fr1kin/ForgeHax/blob/master/src/main/java/com/matt/forgehax/mods/ShulkerViewer.java
-     */
-    val cacheContainers by setting("Cache Containers", true)
-    private val renderCachedContainers by setting("Render Cached Containers", true, { cacheContainers })
+    val cacheContainers = false // by setting("Cache Containers", false)
+    private val renderCachedContainers = false // by setting("Render Cached Containers", false, { cacheContainers })
+    val cacheEnderChests by setting("Cache Ender Chest", true)
     private val useCustomFont by setting("Use Custom Font", false)
     private val backgroundColor by setting("Background Color", ColorHolder(16, 0, 16, 255))
     private val borderTopColor by setting("Top Border Color", ColorHolder(144, 101, 237, 54))
@@ -66,7 +63,6 @@ object ContainerPreview : Module(
     private const val x_offset = 8
     private const val y_offset = 0
     var locked = false
-    var enderChest: List<ItemStack>? = null
     private var isKeySet = false
     private var isMouseInPreviewGui = false
     private var isModGeneratedToolTip = false
@@ -74,15 +70,6 @@ object ContainerPreview : Module(
     private var lastY = -1
 
     private var stackContainer: GuiPreview? = null
-
-    @JvmStatic
-    fun setEnderChestInventory(inv: IInventory) {
-        val inventory = NonNullList.withSize(inv.sizeInventory, ItemStack.EMPTY)
-        for (i in 0 until inv.sizeInventory) {
-            inventory[i] = inv.getStackInSlot(i)
-        }
-        enderChest = inventory
-    }
 
     init {
 
@@ -157,55 +144,61 @@ object ContainerPreview : Module(
 
             var indexH = 0
 
+            // todo: handle echest rendering
+
+            // todo: handle container breaking here and in manager
+
             // Preprocessing needs to be done in the manager to reduce strain on the render thread
-            CachedContainerManager.getAllContainers()?.forEach { tag ->
-                CachedContainerManager.getInventoryOfContainer(tag)?.let { container ->
-                    val thisPos = BlockPos(tag.getInteger("x"), tag.getInteger("y"), tag.getInteger("z"))
-                    val mockTileEntity = TileEntity.create(world, tag)
-                    var matrix = if (mockTileEntity is TileEntityLockableLoot || mockTileEntity is TileEntityEnderChest) {
-                        CachedContainerManager.getContainerMatrix(mockTileEntity)
-                    } else {
-                        return@safeListener
+            CachedContainerManager.containers
+                .filter { it.key.distanceTo(player.position) < 6 }
+                .forEach { entry ->
+                    CachedContainerManager.getInventoryOfContainer(entry.value)?.let { container ->
+                        val mockTileEntity = TileEntity.create(world, entry.value)
+                        var matrix = if (mockTileEntity is TileEntityLockableLoot || mockTileEntity is TileEntityEnderChest) {
+                            CachedContainerManager.getContainerMatrix(mockTileEntity)
+                        } else {
+                            return@safeListener
+                        }
+
+                        var renderPos = entry.key.toVec3dCenter()
+
+                        (entry.value.getTag("adjacentChest") as? NBTTagByte)?.byte?.toInt()?.let { index ->
+                            renderPos = getHitVec(entry.key, EnumFacing.byIndex(index))
+                            matrix = Pair(9, 6)
+                        }
+
+                        // todo: make this rendering less retarded
+                        //   we should draw a standard rect and items in a matrix. then translate those to the position we want
+                        //   should be able to increase the distance over which we render these
+
+                        val screenPos = ProjectionUtils.toScaledScreenPos(renderPos)
+
+                        val width = matrix.first * 16
+                        val height = matrix.second * 16
+
+                        val vertexHelper = VertexHelper(GlStateUtils.useVbo())
+
+                        val color = backgroundColor.clone().apply { a = 50 }
+
+                        val newX = screenPos.x - width / 2
+                        val newY = screenPos.y - height / 2
+
+                        RenderUtils2D.drawRoundedRectFilled(
+                            vertexHelper,
+                            Vec2d(newX, newY),
+                            Vec2d(newX + width, newY + height),
+                            1.0,
+                            color = color
+                        )
+
+                        container.forEachIndexed { index, itemStack ->
+                            val x = newX + (index % matrix.first) * 16
+                            val y = newY + (index / matrix.first) * 16
+                            RenderUtils2D.drawItem(itemStack, x.floorToInt(), y.floorToInt())
+                        }
                     }
-                    if (mockTileEntity is TileEntityEnderChest) {
-                        enderChest = container
-                    }
-
-                    var renderPos = thisPos.toVec3dCenter()
-
-                    (tag.getTag("adjacentChest") as? NBTTagByte)?.byte?.toInt()?.let { index ->
-                        renderPos = getHitVec(thisPos, EnumFacing.byIndex(index))
-                        matrix = Pair(9, 6)
-                    }
-
-                    val screenPos = ProjectionUtils.toScaledScreenPos(renderPos)
-
-                    val width = matrix.first * 16
-                    val height = matrix.second * 16
-
-                    val vertexHelper = VertexHelper(GlStateUtils.useVbo())
-
-                    val color = backgroundColor.clone().apply { a = 50 }
-
-                    val newX = screenPos.x - width / 2
-                    val newY = screenPos.y - height / 2
-
-                    RenderUtils2D.drawRoundedRectFilled(
-                        vertexHelper,
-                        Vec2d(newX, newY),
-                        Vec2d(newX + width, newY + height),
-                        1.0,
-                        color = color
-                    )
-
-                    container.forEachIndexed { index, itemStack ->
-                        val x = newX + (index % matrix.first) * 16
-                        val y = newY + (index / matrix.first) * 16
-                        RenderUtils2D.drawItem(itemStack, x.floorToInt(), y.floorToInt())
-                    }
+                    indexH += 60
                 }
-                indexH += 60
-            }
         }
     }
 
@@ -262,7 +255,8 @@ object ContainerPreview : Module(
     }
 
     private fun getEnderChestData(): MutableList<ItemStack> {
-        return enderChest?.toMutableList() ?: mutableListOf()
+//        return enderChest.toMutableList()
+        return CachedContainerManager.getEnderChestInventory().toMutableList()
     }
 
     class GuiPreview(inventorySlotsIn: Container, val parentContainer: ItemStack) : GuiContainer(inventorySlotsIn) {
