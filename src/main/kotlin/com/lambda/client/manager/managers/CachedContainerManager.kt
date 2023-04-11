@@ -200,10 +200,16 @@ object CachedContainerManager : Manager {
         echestFile?.let { eFile ->
             currentEnderChest?.let { return it }
             if (cacheEnderChests) {
-                CompressedStreamTools.read(eFile)?.let { nbt ->
-                    val inventory = NonNullList.withSize(27, ItemStack.EMPTY)
-                    ItemStackHelper.loadAllItems(nbt, inventory)
-                    return inventory
+                try {
+                    CompressedStreamTools.read(eFile)?.let { nbt ->
+                        val inventory = NonNullList.withSize(27, ItemStack.EMPTY)
+                        ItemStackHelper.loadAllItems(nbt, inventory)
+                        currentEnderChest = inventory
+                        return inventory
+                    }
+                } catch (e: IOException) {
+                    currentEnderChest = NonNullList.withSize(27, ItemStack.EMPTY)
+                    LambdaMod.LOG.warn("${PacketLogger.chatName} Failed loading echest!", e)
                 }
             }
         }
