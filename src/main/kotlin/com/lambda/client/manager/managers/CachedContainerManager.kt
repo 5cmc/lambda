@@ -54,7 +54,21 @@ object CachedContainerManager : Manager {
             }
 
             val folder = File(directory, serverDirectory)
-            echestFile = folder.toPath().resolve(mc.session.playerID).resolve("echest.nbt").toFile()
+            echestFile = folder.toPath().resolve(mc.session.profile.id.toString()).resolve("echest.nbt").toFile()
+            try {
+                if (!echestFile!!.exists()) {
+                    if (!echestFile!!.parentFile.exists()) echestFile!!.parentFile.mkdirs()
+                    echestFile!!.createNewFile()
+                }
+            } catch (e: IOException) {
+                LambdaMod.LOG.error("Failed to create ender chest file", e)
+            }
+        }
+
+        listener<WorldEvent.Unload> {
+            echestFile = null
+            currentEnderChest = null
+            containers.clear()
         }
 
         safeListener<PlayerInteractEvent.RightClickBlock> {
