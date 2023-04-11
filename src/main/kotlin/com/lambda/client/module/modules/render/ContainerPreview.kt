@@ -270,7 +270,7 @@ object ContainerPreview : Module(
         }
 
         override fun drawScreen(mouseX: Int, mouseY: Int, partialTicks: Float) {
-            drawPreview(posX, posY, parentContainer, inventorySlots.inventorySlots.map { it.stack })
+            drawPreview(posX, posY, parentContainer, inventorySlots.inventorySlots.map { it.stack }, 500)
 
             var hoveringOver: Slot? = null
             val rx = posX.toDouble() + 8
@@ -312,9 +312,10 @@ object ContainerPreview : Module(
                 -2130706433,
                 -2130706433)
             GlStateManager.colorMask(true, true, true, true)
+            GlStateManager.enableDepth()
 
             if (hoveringOver.stack.item is ItemShulkerBox || hoveringOver.stack.item.block == Blocks.ENDER_CHEST) {
-                drawPreview(drawX + 8, drawY + 8, hoveringOver.stack, getContainerContents(hoveringOver.stack))
+                drawPreview(drawX + 8, drawY + 8, hoveringOver.stack, getContainerContents(hoveringOver.stack), 700)
             } else {
                 // tool tip
                 GlStateManager.color(1f, 1f, 1f, 1.0f)
@@ -327,8 +328,8 @@ object ContainerPreview : Module(
             }
         }
 
-        private fun drawPreview(drawX: Int, drawY: Int, container: ItemStack, containerContents: List<ItemStack>) {
-            val depth = 500
+        private fun drawPreview(drawX: Int, drawY: Int, container: ItemStack, containerContents: List<ItemStack>, z: Int) {
+            val depth = z.toDouble()
             val x = drawX.toDouble()
             val y = drawY.toDouble()
             val previewWidth = 176
