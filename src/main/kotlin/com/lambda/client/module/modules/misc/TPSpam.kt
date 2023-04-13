@@ -12,7 +12,7 @@ import net.minecraftforge.fml.common.gameevent.TickEvent
 object TPSpam : Module(
     name = "TPSpam",
     description = "odpay debug module, do not use",
-    category = Category.MOVEMENT
+    category = Category.MISC
 ) {
     private val delay by setting("Delay", 5, 0..20, 1, unit = " ticks")
 
