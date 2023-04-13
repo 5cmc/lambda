@@ -53,13 +53,6 @@ object TPCancel : Module(
                 if (mc.world.getClosestPlayer(it.packet.x, it.packet.y - 1.0, it.packet.z, 3.0, false)?.equals(mc.player) == true) {
                     MessageSendHelper.sendChatMessage("Pearl thrown, EID: " + it.packet.entityID.toString())
 
-                    // do not allow movement
-                    mc.player.motionX = 0.0
-                    mc.player.motionY = 0.0
-                    mc.player.motionZ = 0.0
-
-                    mc.player.movementInput.moveForward = 0.0f
-                    mc.player.movementInput.moveStrafe = 0.0f
 
 
                     // send rubberband packet
@@ -136,6 +129,13 @@ object TPCancel : Module(
 
     private fun rubberband() {
         TPs += 1
+        // do not allow movement
+        mc.player.motionX = 0.0
+        mc.player.motionY = 0.0
+        mc.player.motionZ = 0.0
+
+        mc.player.movementInput.moveForward = 0.0f
+        mc.player.movementInput.moveStrafe = 0.0f
         mc.player.connection.sendPacket(CPacketPlayer.Position(mc.player.posX, mc.player.posY + 1.0, mc.player.posZ, false)) // TODO: port function to MovementUtils, calculate a legit tp location that the player can reach
     }
 }
