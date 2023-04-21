@@ -163,7 +163,7 @@ object CachedContainerManager : Manager {
         defaultScope.launch(Dispatchers.IO) {
             try {
                 CompressedStreamTools.write(nbt, currentEchestFile)
-            } catch (e: IOException) {
+            } catch (e: Throwable) {
                 LambdaMod.LOG.warn("${PacketLogger.chatName} Failed saving echest!", e)
             }
         }
