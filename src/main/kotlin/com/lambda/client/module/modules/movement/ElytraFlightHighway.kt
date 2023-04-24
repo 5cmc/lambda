@@ -39,6 +39,7 @@ object ElytraFlightHighway : Module(
         description = "Move to center of block before deployment")
     private val sneak by setting("Sneak", true,
         description = "Sneak whilst flying, allows travel through 1x2 tunnels (+ less block collision in general)")
+    private val viewLockConfigure by setting("Auto ViewLock Config", true, description = "Sets recommended viewlock config")
     private const val jumpDelay: Int = 10
 
     private var currentState = State.WALKING
@@ -192,6 +193,14 @@ object ElytraFlightHighway : Module(
     }
 
     private fun toggleAllOn() {
+        if (viewLockConfigure) {
+            ViewLock.yaw.value = true
+            ViewLock.autoYaw.value = true
+            ViewLock.hardAutoYaw.value = true
+            ViewLock.disableMouseYaw.value = true
+            ViewLock.yawSlice.value = 8
+            ViewLock.pitch.value = false
+        }
         ViewLock.enable()
         ElytraFlight2b2t.enable()
     }
