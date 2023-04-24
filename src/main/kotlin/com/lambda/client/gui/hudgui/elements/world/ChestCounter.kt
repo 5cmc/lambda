@@ -11,7 +11,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import net.minecraft.tileentity.TileEntityChest
 import net.minecraft.tileentity.TileEntityShulkerBox
-import net.minecraft.util.math.ChunkPos
 import net.minecraftforge.fml.common.gameevent.TickEvent
 import net.minecraftforge.fml.common.gameevent.TickEvent.ClientTickEvent
 
@@ -24,7 +23,7 @@ internal object ChestCounter : LabelHud(
     private val shulkers by setting("Count Shulkers", true, description = "Counts shulkers in the world")
     private val textColor by setting("Text Color", primaryColor, description = "Color of the main text")
     private val numberColor by setting("Number Color", secondaryColor, description = "Color of the number")
-    private val searchDelayTicks by setting("Search Delay", 20, 1..100, 1, description = "How many ticks to wait before searching for chests again")
+    private val searchDelayTicks by setting("Search Delay", 5, 1..100, 1, description = "How many ticks to wait before searching for chests again")
 
     private val delayTimer: TickTimer = TickTimer(TimeUnit.TICKS)
     private var chestCount = 0
@@ -54,29 +53,16 @@ internal object ChestCounter : LabelHud(
 
     private fun SafeClientEvent.searchChunks() {
         try {
-            val renderDist = mc.gameSettings.renderDistanceChunks
-            val playerChunkPos = ChunkPos(player.position)
-            val chunkPos1 = ChunkPos(playerChunkPos.x - renderDist, playerChunkPos.z - renderDist)
-            val chunkPos2 = ChunkPos(playerChunkPos.x + renderDist, playerChunkPos.z + renderDist)
             var chestC = 0
             var shulkC = 0
-            for (x in chunkPos1.x..chunkPos2.x) for (z in chunkPos1.z..chunkPos2.z) {
-                try {
-                    val chunk = world.getChunk(x, z)
-                    if (chunk == null || chunk.isEmpty || !chunk.isLoaded) continue
-                    for (tileEntity in chunk.tileEntityMap.values) {
-                        if (tileEntity is TileEntityChest) {
-                            if (dubs) {
-                                if (tileEntity.adjacentChestXPos != null || tileEntity.adjacentChestZPos != null) chestC++
-                            } else {
-                                chestC++
-                            }
-                        }
-                        if (shulkers && tileEntity is TileEntityShulkerBox) shulkC++
+            for (it in world.loadedTileEntityList) {
+                if (it is TileEntityChest) {
+                    if (dubs) {
+                        if (it.adjacentChestXPos != null || it.adjacentChestZPos != null) chestC++
+                    } else {
+                        chestC++
                     }
-                } catch (e: Exception) {
-                    LambdaMod.LOG.error("ChestCounter: Error searching chunk $x $z", e)
-                }
+                } else if (shulkers && it is TileEntityShulkerBox) shulkC++
             }
             chestCount = chestC
             shulkerCount = shulkC
