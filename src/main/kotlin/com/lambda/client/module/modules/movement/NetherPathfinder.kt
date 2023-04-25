@@ -3,6 +3,7 @@ package com.lambda.client.module.modules.movement
 import com.babbaj.pathfinder.PathFinder
 import com.lambda.client.LambdaMod
 import com.lambda.client.event.SafeClientEvent
+import com.lambda.client.event.events.PacketEvent
 import com.lambda.client.event.events.PlayerTravelEvent
 import com.lambda.client.event.events.RenderWorldEvent
 import com.lambda.client.mixin.extension.boostedEntity
@@ -26,6 +27,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import net.minecraft.client.renderer.GlStateManager
 import net.minecraft.entity.item.EntityFireworkRocket
+import net.minecraft.network.play.server.SPacketPlayerPosLook
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.MathHelper
 import net.minecraft.util.math.Vec3d
@@ -77,6 +79,7 @@ object NetherPathfinder: Module(
     private val pauseRotateBind by setting("Pause Rotate Bind", Bind(), description = "Pauses rotate mode while this key is held", visibility = { rotatePlayer })
     private val pauseRotateMode by setting("Pause Rotate Mode", PauseRotateMode.HOLD, visibility = { rotatePlayer })
     private val rotateDist by setting("Segment Reached Distance", 3, 1..10, 1, description = "How near you have to get to the next point before rotating to the next point. Y is ignored.", visibility = { rotatePlayer })
+    private val tpRepathDist by setting("Teleport Repath Distance", 5, 1..20, 1, description = "Repaths if server tp's you more than this distance away from your last position")
 
     private var pathJob: Job? = null
     private var scheduledExecutor: ScheduledExecutorService = Executors.newScheduledThreadPool(1)
@@ -200,6 +203,15 @@ object NetherPathfinder: Module(
                     rotatePaused = !rotatePaused
                     playerProgressIndex = Int.MIN_VALUE
                 }
+            }
+        }
+
+        safeListener<PacketEvent.Receive> {
+            if (it.packet !is SPacketPlayerPosLook) return@safeListener
+            if (playerProgressIndex == Int.MIN_VALUE) return@safeListener
+            if (path == null) return@safeListener
+            if (getDistance(player.posX, player.posY, player.posZ, it.packet.x, it.packet.y, it.packet.z) > tpRepathDist) {
+                playerProgressIndex = Int.MIN_VALUE
             }
         }
     }
