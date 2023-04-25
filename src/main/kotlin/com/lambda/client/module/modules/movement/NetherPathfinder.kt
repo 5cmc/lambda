@@ -297,7 +297,7 @@ object NetherPathfinder: Module(
     fun goto(x: Int, z: Int) {
         if (pathLock.compareAndSet(false, true) && isNull(pathJob)) {
             pathJob = defaultScope.launch { runSafe {
-                MessageSendHelper.sendChatMessage("Calculating path...")
+                MessageSendHelper.sendChatMessage("Calculating path to $x, $z...")
                 currentGoal = BlockPos(x.toDouble(), 64.0, z.toDouble())
                 multiSegmentPath = (abs(player.posX - x) > segmentDistance.toDouble() || abs(player.posZ - z) > segmentDistance.toDouble())
                 val t1 = System.currentTimeMillis()
