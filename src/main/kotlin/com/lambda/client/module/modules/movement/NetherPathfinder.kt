@@ -21,6 +21,7 @@ import com.lambda.client.util.math.VectorUtils.scalarMultiply
 import com.lambda.client.util.math.VectorUtils.toVec3d
 import com.lambda.client.util.text.MessageSendHelper
 import com.lambda.client.util.threads.defaultScope
+import com.lambda.client.util.threads.runSafe
 import com.lambda.client.util.threads.safeListener
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.isActive
@@ -62,6 +63,9 @@ object NetherPathfinder: Module(
     private val color by setting("Color", GuiColors.primary)
     private val throughBlocks by setting("Render Through Blocks", true)
     private val thickness by setting("Line Thickness", 1.0f, 0.25f..3.0f, 0.25f)
+    private val segmentDistance by setting("Segment Distance", 5000, 1..10000, 1)
+    private val segmentRepathDist by setting("Segment Goal Distance", 300, 1..1000, 1,
+        description = "Starts pathing for next segments if you are more than this distance away from the current end segment")
     private val rotatePlayer by setting("Rotate Player", false, consumer = { _, new ->
         playerProgressIndex = Int.MIN_VALUE
         return@setting new
@@ -78,8 +82,12 @@ object NetherPathfinder: Module(
     private val maxAdjustAngle by setting("Max Adjust Angle", 20.0, 1.0..90.0, 0.1, { rotatePlayer && (rotateYaw || rotatePitch) && (rotateYawAdjust || rotatePitchAdjust) })
     private val pauseRotateBind by setting("Pause Rotate Bind", Bind(), description = "Pauses rotate mode while this key is held", visibility = { rotatePlayer })
     private val pauseRotateMode by setting("Pause Rotate Mode", PauseRotateMode.HOLD, visibility = { rotatePlayer })
-    private val rotateDist by setting("Segment Reached Distance", 3, 1..10, 1, description = "How near you have to get to the next point before rotating to the next point. Y is ignored.", visibility = { rotatePlayer })
-    private val tpRepathDist by setting("Teleport Repath Distance", 5, 1..20, 1, description = "Repaths if server tp's you more than this distance away from your last position")
+    private val rotateDist by setting("Rotate Point Reached Distance", 3, 1..10, 1,
+        description = "How near you have to get to the next point before rotating to the next point. Y is ignored.", visibility = { rotatePlayer })
+    private val tpRetargetDist by setting("Teleport Retarget Distance", 5, 1..20, 1,
+        description = "Retargets the rotation if server tp's you more than this distance away from your last position", visibility = { rotatePlayer })
+    private val repathSchedulerDelay by setting("Scheduler Delay ms", 1000, 100..10000, 100,
+        description = "How often to check if we need to repath", visibility = { rotatePlayer })
 
     private var pathJob: Job? = null
     private var scheduledExecutor: ScheduledExecutorService = Executors.newScheduledThreadPool(1)
@@ -89,24 +97,12 @@ object NetherPathfinder: Module(
     private var path: List<BlockPos>? = null
     private var playerProgressIndex: Int = Int.MIN_VALUE
     private var rotatePaused: Boolean = false
+    private var currentGoal: BlockPos? = null
+    private var multiSegmentPath = false
 
     enum class PauseRotateMode {
         HOLD, TOGGLE
     }
-
-    /**
-     * todo: rework long goto paths into segments of shorter paths (2k or so)
-     * calculating a large path takes a long time and doesn't really minimize the calculated path that much
-     * it also causes additional strain on our distance and rotation calculations as well as rendering
-     *
-     * ideas for how this could be implemented:
-     *  1. store actual path that the user requested along with vec2d rotation
-     *  2. calculate path along vector with length = min(path_len, 2k)
-     *  3. when we are within N blocks of segment end, calculate the next segment. starting at current segment point - M blocks
-     *      (subtracting M blocks because sometimes our end point is not in an ideal location due to it not considering next movements)
-     *  4. when we've reached the end of segment 1, remove it from our path list and continue on
-     *
-     */
 
     /**
      * todo: make pathfinder path around features/structures it missed due to incomplete calculations
@@ -193,7 +189,6 @@ object NetherPathfinder: Module(
                     // just in case index op is out of bounds
                 }
             }
-
         }
 
         safeListener<InputEvent.KeyInputEvent> {
@@ -210,7 +205,7 @@ object NetherPathfinder: Module(
             if (it.packet !is SPacketPlayerPosLook) return@safeListener
             if (playerProgressIndex == Int.MIN_VALUE) return@safeListener
             if (path == null) return@safeListener
-            if (getDistance(player.posX, player.posY, player.posZ, it.packet.x, it.packet.y, it.packet.z) > tpRepathDist) {
+            if (getDistance(player.posX, player.posY, player.posZ, it.packet.x, it.packet.y, it.packet.z) > tpRetargetDist) {
                 playerProgressIndex = Int.MIN_VALUE
             }
         }
@@ -301,36 +296,54 @@ object NetherPathfinder: Module(
 
     fun goto(x: Int, z: Int) {
         if (pathLock.compareAndSet(false, true) && isNull(pathJob)) {
-            pathJob = defaultScope.launch {
+            pathJob = defaultScope.launch { runSafe {
                 MessageSendHelper.sendChatMessage("Calculating path...")
+                currentGoal = BlockPos(x.toDouble(), 64.0, z.toDouble())
+                multiSegmentPath = (abs(player.posX - x) > segmentDistance.toDouble() || abs(player.posZ - z) > segmentDistance.toDouble())
                 val t1 = System.currentTimeMillis()
                 var longs: LongArray? = null
+                val goalX = calculateGoalPoint(player.posX, x.toDouble(), segmentDistance.toDouble())
+                val goalZ = calculateGoalPoint(player.posZ, z.toDouble(), segmentDistance.toDouble())
                 try {
-                    longs = PathFinder.pathFind(seed, false, true, mc.player.posX.toInt(), mc.player.posY.toInt(), mc.player.posZ.toInt(), x, 64, z)
-                } catch (e: Throwable) {
-                    LambdaMod.LOG.error(e)
-                }
-                if (longs != null) {
-                    val t2 = System.currentTimeMillis()
-                    val path: MutableList<BlockPos> = Arrays.stream(longs).mapToObj { serialized: Long -> BlockPos.fromLong(serialized) }.collect(Collectors.toList())
-                    if (isActive) { // allow us to "cancel" pathfind
-                        mc.addScheduledTask {
-                            setPath(path)
-                            scheduledFuture?.cancel(true)
-                            scheduledFuture = scheduledExecutor.scheduleAtFixedRate({ scheduledGotoRepathCheck(path, x, z) }, 5000, 5000, TimeUnit.MILLISECONDS)
-                            MessageSendHelper.sendChatMessage(String.format("Found path in %.2f seconds", (t2 - t1) / 1000.0))
-                            pathJob = null
-                            pathLock.set(false)
-                        }
+                        longs = PathFinder.pathFind(seed, false, true, player.posX.toInt(), player.posY.toInt(), player.posZ.toInt(),
+                            goalX,
+                            64,
+                            goalZ
+                        )
+                    } catch (e: Throwable) {
+                        LambdaMod.LOG.error(e)
                     }
-                } else {
-                    pathJob = null
-                    pathLock.set(false)
-                }
-            }
+                    if (longs != null) {
+                        val t2 = System.currentTimeMillis()
+                        val path: MutableList<BlockPos> = Arrays.stream(longs).mapToObj { serialized: Long -> BlockPos.fromLong(serialized) }.collect(Collectors.toList())
+                        if (isActive) { // allow us to "cancel" pathfind
+                            mc.addScheduledTask {
+                                playerProgressIndex = Int.MIN_VALUE
+                                setPath(path)
+                                scheduledFuture?.cancel(true)
+                                scheduledFuture = scheduledExecutor.scheduleWithFixedDelay({ scheduledGotoRepathCheck(path, x, z) }, 5000, repathSchedulerDelay.toLong(), TimeUnit.MILLISECONDS)
+                                MessageSendHelper.sendChatMessage(String.format("Found path in %.2f seconds", (t2 - t1) / 1000.0))
+                                pathJob = null
+                                pathLock.set(false)
+                            }
+                        }
+                    } else {
+                        pathJob = null
+                        pathLock.set(false)
+                    }
+            } }
         } else {
             MessageSendHelper.sendChatMessage("Already pathing")
         }
+    }
+
+    private fun calculateGoalPoint(playerP: Double, targetP: Double, maxDistance: Double): Int {
+        val distance = abs(targetP - playerP)
+        if (distance > maxDistance) {
+            val direction = if (targetP > playerP) 1 else -1
+            return (playerP + maxDistance * direction).toInt()
+        }
+        return targetP.toInt()
     }
 
     private fun setPath(p: List<BlockPos>) {
@@ -367,13 +380,27 @@ object NetherPathfinder: Module(
         pathLock.set(false)
         playerProgressIndex = Int.MIN_VALUE
         rotatePaused = false
+        currentGoal = null
+        multiSegmentPath = false
     }
 
-    fun scheduledGotoRepathCheck(path: MutableList<BlockPos>, destX: Int, destZ: Int) {
+    private fun scheduledGotoRepathCheck(path: MutableList<BlockPos>, destX: Int, destZ: Int) {
         try {
-            if (!isInNether()) {
+            if (!isInNether() || pathLock.get()) {
                 return
             }
+            if (multiSegmentPath) {
+                currentGoal?.let { goal ->
+                    if (path.last() != goal
+                        && path.last().getDistance(mc.player.posX.toInt(), mc.player.posY.toInt(), mc.player.posZ.toInt()) < segmentRepathDist) {
+                        MessageSendHelper.sendChatMessage("Reached segment goal, pathing...")
+                        MessageSendHelper.sendLambdaCommand("npath goto ${goal.x} ${goal.z}")
+                        scheduledFuture?.cancel(true)
+                        return
+                    }
+                }
+            }
+
             val dist = minPlayerDistanceToPath(path)
             val playerFarFromPath: Boolean = dist > 100.0
             if (playerFarFromPath) {
