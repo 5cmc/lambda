@@ -99,7 +99,7 @@ object LambdaHudGui : AbstractLambdaGui<HudSettingWindow, AbstractHudElement>() 
 
     init {
         safeListener<RenderOverlayEvent>(0) {
-            if (Hud.isDisabled) return@safeListener
+            if (Hud.isDisabled || mc.currentScreen is LambdaHudGui) return@safeListener
 
             val vertexHelper = VertexHelper(GlStateUtils.useVbo())
             GlStateUtils.rescaleLambda()
