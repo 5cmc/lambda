@@ -89,6 +89,7 @@ object ElytraFlight2b2t : Module(
     private val redeploySpeedDecreaseFactor by setting("Redeploy Speed Dec Factor", 1.1, 1.0..5.0, 0.01,
         description = "Decreases speed by a set factor during redeploys. Value is a divisor on current speed.")
     val avoidUnloaded by setting("Avoid Unloaded", true, description = "Preserves speed while flying into unloaded chunks")
+    val elytraSounds by setting("Elytra Sounds", true, description = "Play elytra sounds while flying")
 
     private const val takeOffYVelocity: Double = -0.16976
     private var currentState = State.PAUSED

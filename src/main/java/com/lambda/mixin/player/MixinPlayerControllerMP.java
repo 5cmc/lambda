@@ -4,6 +4,7 @@ import com.lambda.client.event.LambdaEventBus;
 import com.lambda.client.event.events.PlayerAttackEvent;
 import com.lambda.client.event.events.WindowClickEvent;
 import com.lambda.client.module.modules.player.AutoEat;
+import com.lambda.client.module.modules.player.Reach;
 import com.lambda.client.module.modules.player.TpsSync;
 import com.lambda.client.util.TpsCalculator;
 import net.minecraft.block.state.IBlockState;
@@ -53,6 +54,13 @@ public class MixinPlayerControllerMP {
     public void onStoppedUsingItemMixin(EntityPlayer player, CallbackInfo ci) {
         if (AutoEat.INSTANCE.getEating()) {
             ci.cancel();
+        }
+    }
+
+    @Inject(method = "getBlockReachDistance", at = @At("RETURN"), cancellable = true)
+    public void onGetBlockReachDistance(CallbackInfoReturnable<Float> cir) {
+        if (Reach.INSTANCE.isEnabled()) {
+            cir.setReturnValue((float) Reach.INSTANCE.getDist());
         }
     }
 }

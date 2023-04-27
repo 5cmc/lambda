@@ -1,6 +1,7 @@
 package com.lambda.client.manager.managers
 
 import com.lambda.client.LambdaMod
+import com.lambda.client.event.events.ConnectionEvent
 import com.lambda.client.event.listener.listener
 import com.lambda.client.manager.Manager
 import com.lambda.client.module.modules.player.PacketLogger
@@ -25,7 +26,6 @@ import net.minecraft.util.NonNullList
 import net.minecraft.util.math.BlockPos
 import net.minecraftforge.event.entity.player.PlayerContainerEvent
 import net.minecraftforge.event.entity.player.PlayerInteractEvent
-import net.minecraftforge.event.world.WorldEvent
 import java.io.File
 import java.io.IOException
 import java.nio.file.Paths
@@ -39,7 +39,7 @@ object CachedContainerManager : Manager {
     private var currentEnderChest: NonNullList<ItemStack>? = null
 
     init {
-        listener<WorldEvent.Load> {
+        listener<ConnectionEvent.Connect> {
             val serverDirectory = if (mc.integratedServer != null && mc.integratedServer?.isServerRunning == true) {
                 mc.integratedServer?.folderName ?: run {
                     LambdaMod.LOG.info("Failed to get SP directory")
@@ -65,7 +65,7 @@ object CachedContainerManager : Manager {
             }
         }
 
-        listener<WorldEvent.Unload> {
+        listener<ConnectionEvent.Disconnect> {
             echestFile = null
             currentEnderChest = null
             containers.clear()
@@ -163,7 +163,7 @@ object CachedContainerManager : Manager {
         defaultScope.launch(Dispatchers.IO) {
             try {
                 CompressedStreamTools.write(nbt, currentEchestFile)
-            } catch (e: IOException) {
+            } catch (e: Throwable) {
                 LambdaMod.LOG.warn("${PacketLogger.chatName} Failed saving echest!", e)
             }
         }

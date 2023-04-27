@@ -9,6 +9,7 @@
     "MixinStateImplementation",
     "MixinTileEntityBeacon",
     "accessor.AccessorAnvilChunkLoader",
+    "accessor.AccessorBlock",
     "accessor.AccessorEntity",
     "accessor.AccessorEntityFireworkRocket",
     "accessor.AccessorItemTool",

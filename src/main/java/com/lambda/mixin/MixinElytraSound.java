@@ -1,6 +1,7 @@
 package com.lambda.mixin;
 
 import com.lambda.client.module.modules.movement.ElytraFlight;
+import com.lambda.client.module.modules.movement.ElytraFlight2b2t;
 import net.minecraft.client.audio.ElytraSound;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -12,6 +13,9 @@ public class MixinElytraSound {
     @Inject(method = "update", at = @At("HEAD"), cancellable = true)
     public void update(CallbackInfo ci) {
         if (ElytraFlight.INSTANCE.isEnabled() && !ElytraFlight.INSTANCE.getElytraSounds()) {
+            ci.cancel();
+        }
+        if (ElytraFlight2b2t.INSTANCE.isEnabled() && !ElytraFlight2b2t.INSTANCE.getElytraSounds()) {
             ci.cancel();
         }
     }
