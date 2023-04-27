@@ -1,6 +1,5 @@
 package com.lambda.client.module.modules.player
 
-import com.lambda.client.LambdaMod
 import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.event.events.PacketEvent
 import com.lambda.client.module.Category
