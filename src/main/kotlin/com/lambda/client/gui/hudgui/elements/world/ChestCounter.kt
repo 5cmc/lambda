@@ -21,8 +21,6 @@ internal object ChestCounter : LabelHud(
 ) {
     private val dubs by setting("Count Dubs", true, description = "Counts double chests instead of individual chests")
     private val shulkers by setting("Count Shulkers", true, description = "Counts shulkers in the world")
-    private val textColor by setting("Text Color", primaryColor, description = "Color of the main text")
-    private val numberColor by setting("Number Color", secondaryColor, description = "Color of the number")
     private val searchDelayTicks by setting("Search Delay", 5, 1..100, 1, description = "How many ticks to wait before searching for chests again")
 
     private val delayTimer: TickTimer = TickTimer(TimeUnit.TICKS)
@@ -31,11 +29,11 @@ internal object ChestCounter : LabelHud(
     private var blockSearchJob: Job? = null
 
     override fun SafeClientEvent.updateText() {
-        displayText.add( if (dubs) "Dubs: " else "Chests: ", textColor)
-        displayText.add("$chestCount", numberColor)
+        displayText.add( if (dubs) "Dubs: " else "Chests: ", primaryColor)
+        displayText.add("$chestCount", secondaryColor)
         if (shulkers) {
-            displayText.add(" Shulkers: ", textColor)
-            displayText.add("$shulkerCount", numberColor)
+            displayText.add(" Shulkers: ", primaryColor)
+            displayText.add("$shulkerCount", secondaryColor)
         }
     }
 

@@ -5,8 +5,6 @@ import com.lambda.client.commons.interfaces.DisplayEnum
 import com.lambda.client.gui.hudgui.HudElement
 import com.lambda.client.module.AbstractModule
 import com.lambda.client.module.ModuleManager
-import com.lambda.client.util.AsyncCachedValue
-import com.lambda.client.util.TimeUnit
 import com.lambda.client.util.color.ColorHolder
 import com.lambda.client.util.graphics.VertexHelper
 import com.lambda.client.util.graphics.font.FontRenderAdapter
@@ -25,8 +23,6 @@ internal object Bindings : HudElement(
     enabledByDefault = false
 ) {
     private val sortingMode by setting("Sorting Mode", SortingMode.LENGTH)
-    private val disabledColor by setting("Disabled Color", ColorHolder(255, 255, 255), false)
-    private val enabledColor by setting("Enabled Color", ColorHolder(0, 255, 0), false)
     private val textShadow by setting("Text Shadow", true)
     private val textVSpacing by setting("Line V Spacing", 2.0f, 0.0f..5.0f, 0.01f,
         consumer = { _, value ->
@@ -104,7 +100,7 @@ internal object Bindings : HudElement(
 
     private fun AbstractModule.newTextLine() =
         TextComponent.TextLine(" ").apply {
-            val lineColor: ColorHolder = if (isEnabled) enabledColor else disabledColor
+            val lineColor: ColorHolder = if (isEnabled) secondaryColor else primaryColor
             add(TextComponent.TextElement(name, lineColor))
             add(TextComponent.TextElement("[" + bind.value.toString() + "]", lineColor))
             if (dockingH == HAlign.RIGHT) reverse()

@@ -34,7 +34,13 @@ abstract class AbstractHudElement(
     val bind by setting("Bind", Bind())
     val scale by setting("Scale", 1.0f, 0.1f..4.0f, 0.05f)
     val default = setting("Default", false)
+    private val overridePrimaryColor by setting("Override Primary Color", false)
+    private val overridePrimaryColorValue by setting("Override Primary Color Value", Hud.primaryColor, visibility = { overridePrimaryColor })
+    private val overrideSecondaryColor by setting("Override Secondary Color", false)
+    private val overrideSecondaryColorValue by setting("Override Secondary Color Value", Hud.secondaryColor, visibility = { overrideSecondaryColor })
 
+    val primaryColor get() = if (overridePrimaryColor) overridePrimaryColorValue else Hud.primaryColor
+    val secondaryColor get() = if (overrideSecondaryColor) overridePrimaryColorValue else Hud.secondaryColor
     override val resizable = false
 
     final override val minWidth: Float get() = FontRenderAdapter.getFontHeight() * scale * 2.0f
@@ -110,11 +116,6 @@ abstract class AbstractHudElement(
         PLAYER("Player"),
         WORLD("World"),
         MISC("Misc")
-    }
-
-    protected companion object {
-        val primaryColor get() = Hud.primaryColor
-        val secondaryColor get() = Hud.secondaryColor
     }
 
 }
