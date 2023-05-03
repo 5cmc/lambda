@@ -18,10 +18,13 @@ import com.lambda.client.util.math.VectorUtils.distanceTo
 import com.lambda.client.util.math.VectorUtils.toVec3dCenter
 import com.lambda.client.util.threads.safeListener
 import com.lambda.client.util.world.getHitVec
+import net.minecraft.block.BlockEnderChest
+import net.minecraft.block.BlockShulkerBox
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.inventory.GuiContainer
 import net.minecraft.client.renderer.GlStateManager
 import net.minecraft.client.renderer.RenderHelper
+import net.minecraft.entity.item.EntityItemFrame
 import net.minecraft.entity.player.EntityPlayer
 import net.minecraft.init.Blocks
 import net.minecraft.inventory.Container
@@ -36,6 +39,7 @@ import net.minecraft.tileentity.TileEntityEnderChest
 import net.minecraft.tileentity.TileEntityLockableLoot
 import net.minecraft.util.EnumFacing
 import net.minecraft.util.NonNullList
+import net.minecraft.util.math.Vec3d
 import net.minecraft.util.text.ITextComponent
 import net.minecraft.util.text.TextComponentString
 import net.minecraftforge.client.event.GuiOpenEvent
@@ -59,6 +63,7 @@ object ContainerPreview : Module(
     private val borderTopColor by setting("Top Border Color", ColorHolder(144, 101, 237, 54))
     private val borderBottomColor by setting("Bottom Border Color", ColorHolder(40, 0, 127, 80))
     private val previewLock by setting("Preview Lock Bind", Bind())
+    private val itemFrames by setting("Item Frames", true)
     private const val CONTAINER_GUI_SIZE = 16 + 54 + 6
     private const val x_offset = 8
     private const val y_offset = 0
@@ -200,6 +205,57 @@ object ContainerPreview : Module(
                     indexH += 60
                 }
         }
+
+        safeListener<RenderOverlayEvent> {
+            if (!itemFrames) return@safeListener
+            mc.renderManager.pointedEntity?.let { pe ->
+                if (pe !is EntityItemFrame) return@safeListener
+                if (!(pe.displayedItem.item.block is BlockShulkerBox || pe.displayedItem.item.block is BlockEnderChest)) return@safeListener
+                val posX = pe.posX + (pe.facingDirection?.xOffset ?: 0) * 0.5
+                val posY = pe.posY + (pe.facingDirection?.yOffset ?: 0) * 0.5
+                val posZ = pe.posZ + (pe.facingDirection?.zOffset ?: 0) * 0.5
+                val screenPos = ProjectionUtils.toScaledScreenPos(Vec3d(posX, posY, posZ))
+
+                val width = 9 * 16
+                val height = 3 * 16
+
+                val newX = screenPos.x - width / 2
+                val newY = screenPos.y - height / 2
+
+                GlStateManager.pushMatrix()
+                val vertexHelper = VertexHelper(GlStateUtils.useVbo())
+
+                RenderUtils2D.drawRoundedRectFilled(
+                    vertexHelper,
+                    Vec2d(newX, newY),
+                    Vec2d(newX + width, newY + height),
+                    1.0,
+                    color = backgroundColor
+                )
+
+                drawRectOutline(vertexHelper, newX + 1, newY + 1, (width - 2).toDouble(), (height - 2).toDouble())
+                GlStateManager.enableDepth()
+
+                RenderHelper.enableGUIStandardItemLighting()
+                GlStateManager.enableRescaleNormal()
+                GlStateManager.enableColorMaterial()
+                GlStateManager.enableLighting()
+                val contents = if (pe.displayedItem.item.block is BlockShulkerBox && pe.displayedItem.hasTagCompound()) {
+                    getContainerContents(pe.displayedItem)
+                } else if (pe.displayedItem.item.block is BlockEnderChest) {
+                    getEnderChestData()
+                } else {
+                    return@safeListener
+                }
+                contents.forEachIndexed { index, itemStack ->
+                    val x = newX + (index % 9) * 16
+                    val y = newY + (index / 9) * 16
+                    RenderUtils2D.drawItem(itemStack, x.floorToInt(), y.floorToInt())
+                }
+
+                GlStateManager.popMatrix()
+            }
+        }
     }
 
     private fun reset() {
@@ -235,7 +291,7 @@ object ContainerPreview : Module(
         }
     }
 
-    private fun drawRectOutline(vertexHelper: VertexHelper, x: Double, y: Double, width: Int, height: Float) {
+    private fun drawRectOutline(vertexHelper: VertexHelper, x: Double, y: Double, width: Double, height: Double) {
         RenderUtils2D.prepareGl()
         glLineWidth(5.0f)
 
@@ -345,7 +401,7 @@ object ContainerPreview : Module(
                 color = backgroundColor
             )
 
-            drawRectOutline(vertexHelper, x + 1, y + 1, previewWidth - 2, previewHeight - 2.toFloat())
+            drawRectOutline(vertexHelper, x + 1, y + 1, (previewWidth - 2).toDouble(), (previewHeight - 2.toFloat()).toDouble())
 
             FontRenderAdapter.drawString(container.displayName, (x + 4).toFloat(), (y + 2).toFloat(), customFont = useCustomFont)
             GlStateManager.enableDepth()
