@@ -24,21 +24,21 @@ object ViewLock : Module(
     private val mode by setting("Mode", Mode.TRADITIONAL)
     private val page by setting("Page", Page.YAW, { mode == Mode.TRADITIONAL })
 
-    val yaw = setting("Yaw", true, { page == Page.YAW })
-    val autoYaw = setting("Auto Yaw", true, { page == Page.YAW && yaw.value })
-    val hardAutoYaw = setting("Hard Auto Yaw", true, { page == Page.YAW && yaw.value && autoYaw.value },
+    val yaw = setting("Yaw", true, { page == Page.YAW && mode == Mode.TRADITIONAL })
+    val autoYaw = setting("Auto Yaw", true, { page == Page.YAW && yaw.value && mode == Mode.TRADITIONAL })
+    val hardAutoYaw = setting("Hard Auto Yaw", true, { page == Page.YAW && yaw.value && autoYaw.value && mode == Mode.TRADITIONAL },
         description = "Disables mouse movement snapping")
-    val disableMouseYaw = setting("Disable Mouse Yaw", true, { page == Page.YAW && yaw.value })
-    private val specificYaw by setting("Specific Yaw", 180.0f, -180.0f..180.0f, 1.0f, { page == Page.YAW && !autoYaw.value && yaw.value })
-    val yawSlice = setting("Yaw Slice", 8, 2..32, 1, { page == Page.YAW && autoYaw.value && yaw.value })
+    val disableMouseYaw = setting("Disable Mouse Yaw", true, { page == Page.YAW && yaw.value && mode == Mode.TRADITIONAL })
+    private val specificYaw by setting("Specific Yaw", 180.0f, -180.0f..180.0f, 1.0f, { page == Page.YAW && !autoYaw.value && yaw.value && mode == Mode.TRADITIONAL })
+    val yawSlice = setting("Yaw Slice", 8, 2..32, 1, { page == Page.YAW && autoYaw.value && yaw.value && mode == Mode.TRADITIONAL })
 
-    val pitch = setting("Pitch", true, { page == Page.PITCH })
-    private val autoPitch = setting("Auto Pitch", true, { page == Page.PITCH && pitch.value })
-    private val hardAutoPitch by setting("Hard Auto Pitch", true, { page == Page.PITCH && pitch.value && autoPitch.value },
+    val pitch = setting("Pitch", true, { page == Page.PITCH && mode == Mode.TRADITIONAL })
+    private val autoPitch = setting("Auto Pitch", true, { page == Page.PITCH && pitch.value && mode == Mode.TRADITIONAL })
+    private val hardAutoPitch by setting("Hard Auto Pitch", true, { page == Page.PITCH && pitch.value && autoPitch.value && mode == Mode.TRADITIONAL },
         description = "Disables mouse movement snapping")
-    private val disableMousePitch by setting("Disable Mouse Pitch", true, { page == Page.PITCH && pitch.value })
-    private val specificPitch by setting("Specific Pitch", 0.0f, -90.0f..90.0f, 1.0f, { page == Page.PITCH && !autoPitch.value && pitch.value })
-    private val pitchSlice = setting("Pitch Slice", 5, 2..32, 1, { page == Page.PITCH && autoPitch.value && pitch.value })
+    private val disableMousePitch by setting("Disable Mouse Pitch", true, { page == Page.PITCH && pitch.value && mode == Mode.TRADITIONAL })
+    private val specificPitch by setting("Specific Pitch", 0.0f, -90.0f..90.0f, 1.0f, { page == Page.PITCH && !autoPitch.value && pitch.value && mode == Mode.TRADITIONAL })
+    private val pitchSlice = setting("Pitch Slice", 5, 2..32, 1, { page == Page.PITCH && autoPitch.value && pitch.value && mode == Mode.TRADITIONAL })
 
     private val xCoord by setting("X coordinate", "", { mode == Mode.COORDS })
     private val yCoord by setting("Y coordinate", "", { mode == Mode.COORDS })
