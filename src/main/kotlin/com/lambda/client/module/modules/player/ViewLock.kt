@@ -2,9 +2,12 @@ package com.lambda.client.module.modules.player
 
 import com.lambda.client.module.Category
 import com.lambda.client.module.Module
+import com.lambda.client.util.math.RotationUtils.getRotationTo
+import com.lambda.client.util.text.MessageSendHelper
 import com.lambda.client.util.threads.safeListener
 import net.minecraft.client.entity.EntityPlayerSP
 import net.minecraft.entity.Entity
+import net.minecraft.util.math.Vec3d
 import net.minecraftforge.fml.common.gameevent.TickEvent
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo
 import kotlin.math.abs
@@ -18,7 +21,8 @@ object ViewLock : Module(
     category = Category.PLAYER,
     alias = arrayOf("YawLock", "PitchLock")
 ) {
-    private val page by setting("Page", Page.YAW)
+    private val mode by setting("Mode", Mode.TRADITIONAL)
+    private val page by setting("Page", Page.YAW, { mode == Mode.TRADITIONAL })
 
     val yaw = setting("Yaw", true, { page == Page.YAW })
     val autoYaw = setting("Auto Yaw", true, { page == Page.YAW && yaw.value })
@@ -36,8 +40,16 @@ object ViewLock : Module(
     private val specificPitch by setting("Specific Pitch", 0.0f, -90.0f..90.0f, 1.0f, { page == Page.PITCH && !autoPitch.value && pitch.value })
     private val pitchSlice = setting("Pitch Slice", 5, 2..32, 1, { page == Page.PITCH && autoPitch.value && pitch.value })
 
+    private val xCoord by setting("X coordinate", "", { mode == Mode.COORDS })
+    private val yCoord by setting("Y coordinate", "", { mode == Mode.COORDS })
+    private val zCoord by setting("Z coordinate", "", { mode == Mode.COORDS })
+
     private enum class Page {
         YAW, PITCH
+    }
+
+    private enum class Mode {
+        TRADITIONAL, COORDS
     }
 
     private var yawSnap = 0
@@ -57,6 +69,22 @@ object ViewLock : Module(
         safeListener<TickEvent.ClientTickEvent> {
             if (it.phase != TickEvent.Phase.END) return@safeListener
 
+            if (mode == Mode.COORDS) {
+                val x = xCoord.toDoubleOrNull()
+                val y = yCoord.toDoubleOrNull()
+                val z = zCoord.toDoubleOrNull()
+                if (x == null || y == null || z == null) {
+                    MessageSendHelper.sendErrorMessage("Invalid coordinates")
+                    disable()
+                    return@safeListener
+                }
+
+                val rotation = getRotationTo(Vec3d(x, y, z))
+                player.rotationYaw = rotation.x
+                player.rotationPitch = rotation.y
+                return@safeListener
+            }
+
             if (autoYaw.value || autoPitch.value) {
                 snapToSlice()
             }
@@ -73,7 +101,7 @@ object ViewLock : Module(
 
     @JvmStatic
     fun handleTurn(entity: Entity, deltaX: Float, deltaY: Float, ci: CallbackInfo) {
-        if (isDisabled) return
+        if (isDisabled || mode == Mode.COORDS) return
         val player = mc.player ?: return
         if (entity != player) return
 
