@@ -40,7 +40,7 @@ abstract class AbstractHudElement(
     private val overrideSecondaryColorValue by setting("Override Secondary Color Value", Hud.secondaryColor, visibility = { overrideSecondaryColor })
 
     val primaryColor get() = if (overridePrimaryColor) overridePrimaryColorValue else Hud.primaryColor
-    val secondaryColor get() = if (overrideSecondaryColor) overridePrimaryColorValue else Hud.secondaryColor
+    val secondaryColor get() = if (overrideSecondaryColor) overrideSecondaryColorValue else Hud.secondaryColor
     override val resizable = false
 
     final override val minWidth: Float get() = FontRenderAdapter.getFontHeight() * scale * 2.0f
