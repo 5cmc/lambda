@@ -28,6 +28,8 @@ object ChestStealer : Module(
     private val ignoreEjectItem by setting("Ignores Eject Item", false, description = "Ignore AutoEject items in InventoryManager")
     private val delay by setting("Delay", 5, 0..20, 1, description = "Move stack delay", unit = " ticks")
     private val onlyShulkers by setting("Only Shulkers", false, description = "Only move shulker boxes")
+    private val storeOrderReverse by setting("Store Reverse Order", false, description = "Order to store items in")
+    private val stealOrderReverse by setting("Steal Reverse Order", false, description = "Order to steal items in")
 
     enum class Mode {
         ALWAYS, TOGGLE, MANUAL
@@ -133,8 +135,12 @@ object ChestStealer : Module(
 
     private fun SafeClientEvent.getStealingSlot(): Int? {
         val container = player.openContainer.inventory
-
-        for (slot in 0 until getContainerSlotSize()) {
+        val range = if (stealOrderReverse) {
+            getContainerSlotSize() - 1 downTo 0
+        } else {
+            0 until getContainerSlotSize()
+        }
+        for (slot in range) {
             val item = container[slot].item
             if (item == Items.AIR) continue
             if (ignoreEjectItem && InventoryManager.ejectList.contains(item.registryName.toString())) continue
@@ -149,8 +155,14 @@ object ChestStealer : Module(
     private fun SafeClientEvent.getStoringSlot(): Int? {
         val container = player.openContainer.inventory
         val size = getContainerSlotSize()
+        val endSize = size + 36
+        val range = if (storeOrderReverse) {
+            endSize - 1 downTo size
+        } else {
+            size until endSize
+        }
 
-        for (slot in size until size + 36) {
+        for (slot in range) {
             val item = container[slot].item
             if (item == Items.AIR) continue
             if (player.openContainer is ContainerShulkerBox && item is ItemShulkerBox) continue
