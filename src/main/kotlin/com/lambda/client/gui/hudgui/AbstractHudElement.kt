@@ -40,8 +40,6 @@ abstract class AbstractHudElement(
     private val overridePrimaryColorValue by setting("Override Primary Color Value", Hud.primaryColor, visibility = { overridePrimaryColor })
     private val overrideSecondaryColor by setting("Override Secondary Color", false)
     private val overrideSecondaryColorValue by setting("Override Secondary Color Value", Hud.secondaryColor, visibility = { overrideSecondaryColor })
-    private val chatSnap by setting("Chat Snap", true)
-    private val collisionSnapping by setting("Collision Snapping", true)
 
     val primaryColor get() = if (overridePrimaryColor) overridePrimaryColorValue else Hud.primaryColor
     val secondaryColor get() = if (overrideSecondaryColor) overrideSecondaryColorValue else Hud.secondaryColor
@@ -67,7 +65,7 @@ abstract class AbstractHudElement(
             if (it.phase != TickEvent.Phase.END || !visible) return@safeListener
             width = maxWidth
             height = maxHeight
-            if (chatSnap) {
+            if (Hud.chatSnap) {
                 if (mc.currentScreen is GuiChat && !chatSnapping) {
                     val screenH = (mc.currentScreen as GuiChat).height
                     if (posY >= screenH - height - 3 && posX <= 3) {
@@ -92,7 +90,7 @@ abstract class AbstractHudElement(
 
     private fun chatSnapCheck(thisElement: String, prevSnapY: Float) {
         for (element in GuiManager.hudElements) {
-            if (!snappedElements.contains(element) && element.componentName != thisElement && element.chatSnap && element.visible && element.posY + element.height >= prevSnapY - 3 && element.posX <= 3) {
+            if (!snappedElements.contains(element) && element.componentName != thisElement && element.visible && element.posY + element.height >= prevSnapY - 3 && element.posX <= 3) {
                 snappedElements.add(element)
                 chatSnapCheck(element.componentName, element.posY)
                 element.posY = element.posY - chatSnapY
@@ -102,9 +100,9 @@ abstract class AbstractHudElement(
 
     override fun onReposition() {
         super.onReposition()
-        if (collisionSnapping) {
+        if (Hud.collisionSnapping) {
             for (element in GuiManager.hudElements) {
-                if (element.componentName != componentName && element.collisionSnapping && element.visible && element.posY + element.height >= posY && element.posY <= posY + height && element.posX + element.width >= posX && element.posX <= posX + width) {
+                if (element.componentName != componentName && element.visible && element.posY + element.height >= posY && element.posY <= posY + height && element.posX + element.width >= posX && element.posX <= posX + width) {
                     if (posY + height / 2 <= element.posY + element.height / 2) {
                         posY = element.posY - height
                     } else {
