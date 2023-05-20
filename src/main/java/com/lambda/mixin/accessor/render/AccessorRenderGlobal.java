@@ -1,6 +1,7 @@
 package com.lambda.mixin.accessor.render;
 
 import net.minecraft.client.renderer.RenderGlobal;
+import net.minecraft.client.renderer.ViewFrustum;
 import net.minecraft.client.shader.ShaderGroup;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
@@ -10,5 +11,7 @@ public interface AccessorRenderGlobal {
 
     @Accessor("entityOutlineShader")
     ShaderGroup getEntityOutlineShader();
+    @Accessor("viewFrustum")
+    ViewFrustum getViewFrustum();
 
 }

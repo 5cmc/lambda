@@ -14,6 +14,7 @@ import net.minecraft.client.shader.ShaderGroup
 import net.minecraft.util.math.BlockPos
 
 val RenderGlobal.entityOutlineShader: ShaderGroup get() = (this as AccessorRenderGlobal).entityOutlineShader
+val RenderGlobal.viewFrustum: ViewFrustum get() = (this as AccessorRenderGlobal).viewFrustum
 
 val RenderManager.renderPosX: Double get() = (this as AccessorRenderManager).renderPosX
 val RenderManager.renderPosY: Double get() = (this as AccessorRenderManager).renderPosY
