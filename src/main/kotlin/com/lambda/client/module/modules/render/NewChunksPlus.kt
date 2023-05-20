@@ -61,6 +61,7 @@ object NewChunksPlus : Module(
     private val timer by setting("Chunk timer constant in ms", -200, -300..300, 1, description = "A lower timer means chunks have less time to load before being marked")
     private val distanceFactor by setting("Chunk distance timer factor", 35, 0..100, 1, description = "Apply a multiplier to timer, closer chunks are loaded first")
     private val distanceExponent by setting("Chunk distance timer exponent", 1.6, 1.0..3.0, 0.1, description = "Apply an exponent to player distance from chunks")
+    val noRender by setting("NewChunk NoRender", false, description = "Prevent world chunks from rendering if identified as NewChunks")
 
     private val packetChunks = LinkedHashSet<ChunkPos>()
     private val timeChunks = LinkedHashSet<ChunkPos>()
@@ -277,5 +278,23 @@ object NewChunksPlus : Module(
             BlockPos(mc.player.posX - (xSpeed * ping), 0.0, mc.player.posZ - (zSpeed * ping)))
 
         return hypot((correctedChunkPos.x - (chunk.x)).toDouble(), (correctedChunkPos.z - (chunk.z)).toDouble())
+    }
+
+    @JvmStatic
+    fun isNewChunk(pos: BlockPos): Boolean {
+        val chunkPos = ChunkPos(pos)
+        return when (mode) {
+            DetectionMode.BOTH -> {
+                packetChunks.contains(chunkPos) || timeChunks.contains(chunkPos)
+            }
+
+            DetectionMode.PACKET -> {
+                packetChunks.contains(chunkPos)
+            }
+
+            DetectionMode.TIMER -> {
+                timeChunks.contains(chunkPos)
+            }
+        }
     }
 }

@@ -4,14 +4,18 @@ import com.lambda.client.event.LambdaEventBus;
 import com.lambda.client.event.events.BlockBreakEvent;
 import com.lambda.client.event.events.RenderEntityEvent;
 import com.lambda.client.module.modules.player.Freecam;
+import com.lambda.client.module.modules.render.NewChunksPlus;
 import com.lambda.client.module.modules.render.SelectionHighlight;
 import com.lambda.client.util.Wrapper;
 import net.minecraft.client.entity.EntityPlayerSP;
+import net.minecraft.client.renderer.ChunkRenderContainer;
 import net.minecraft.client.renderer.RenderGlobal;
 import net.minecraft.client.renderer.ViewFrustum;
+import net.minecraft.client.renderer.chunk.RenderChunk;
 import net.minecraft.client.renderer.culling.ICamera;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.util.BlockRenderLayer;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.RayTraceResult;
 import org.spongepowered.asm.mixin.Mixin;
@@ -65,5 +69,18 @@ public abstract class MixinRenderGlobal {
             }
         }
         viewFrustum.updateChunkPositions(viewEntityX, viewEntityZ);
+    }
+
+    @Redirect(method = "renderBlockLayer(Lnet/minecraft/util/BlockRenderLayer;DILnet/minecraft/entity/Entity;)I",
+        at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/client/renderer/ChunkRenderContainer;addRenderChunk(Lnet/minecraft/client/renderer/chunk/RenderChunk;Lnet/minecraft/util/BlockRenderLayer;)V"))
+    public void redirectAddRenderChunk(final ChunkRenderContainer instance, final RenderChunk renderChunkIn, final BlockRenderLayer layer) {
+        if (NewChunksPlus.INSTANCE.isEnabled() && NewChunksPlus.INSTANCE.getNoRender()) {
+            if (NewChunksPlus.isNewChunk(renderChunkIn.getPosition())) {
+                return;
+            }
+        }
+        instance.addRenderChunk(renderChunkIn, layer);
     }
 }

@@ -59,6 +59,8 @@ public class MixinGuiPlayerTabOverlay {
             EntityPlayer playerEntityByUUID = instance.getPlayerEntityByUUID(uuid);
             if (playerEntityByUUID == null) {
                 return Minecraft.getMinecraft().player;
+            } else {
+                return playerEntityByUUID;
             }
         }
         return instance.getPlayerEntityByUUID(uuid);
