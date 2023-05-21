@@ -20,10 +20,19 @@ apply plugin: 'net.minecraftforge.gradle'
 apply plugin: 'org.spongepowered.mixin'
 apply plugin: 'com.github.johnrengelman.shadow'
 
-version project.modVersion
+version project.modVersion + "-" + 'git rev-parse --short HEAD'.execute().text.trim()
 group project.modGroup
 
 archivesBaseName = "lambda"
+
+tasks.register('writeVersion') {
+    group 'build'
+    description 'Write version to file'
+
+    doLast {
+        file('build/resources/main/lambda_version.txt').write(project.version)
+    }
+}
 
 compileJava {
     sourceCompatibility = targetCompatibility = '1.8'
@@ -31,6 +40,7 @@ compileJava {
     // Disables Gradle build caching for this task
     // If build caching is enabled this can cause the refmap to not be built and included
     outputs.upToDateWhen { false }
+    dependsOn 'writeVersion'
 }
 
 compileKotlin.kotlinOptions {

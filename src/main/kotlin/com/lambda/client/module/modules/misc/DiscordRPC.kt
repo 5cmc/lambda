@@ -144,7 +144,7 @@ object DiscordRPC : Module(
     private fun getLine(line: LineInfo): String {
         return when (line) {
             LineInfo.VERSION -> {
-                LambdaMod.VERSION
+                LambdaMod.FULL_VERSION
             }
             LineInfo.WORLD -> {
                 when {

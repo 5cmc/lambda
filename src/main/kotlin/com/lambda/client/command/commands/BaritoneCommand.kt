@@ -149,7 +149,7 @@ object BaritoneCommand : ClientCommand(
         literal("version") {
             executeSafe {
                 exec("version")
-                MessageSendHelper.sendBaritoneMessage("Running on Lambda ${LambdaMod.VERSION}")
+                MessageSendHelper.sendBaritoneMessage("Running on Lambda ${LambdaMod.FULL_VERSION}")
             }
         }
 

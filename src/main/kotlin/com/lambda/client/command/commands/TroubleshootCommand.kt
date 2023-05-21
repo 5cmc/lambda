@@ -19,7 +19,7 @@ object TroubleshootCommand : ClientCommand(
         execute("Print troubleshooting information") {
             MessageSendHelper.sendErrorMessage("&l&cSend a screenshot of all information below this line!")
             MessageSendHelper.sendChatMessage("Enabled Modules:\n" + ModuleManager.modules.filter { it.isEnabled }.joinToString { it.name })
-            MessageSendHelper.sendChatMessage("${LambdaMod.NAME} ${LambdaMod.LAMBDA} ${LambdaMod.VERSION}")
+            MessageSendHelper.sendChatMessage("${LambdaMod.NAME} ${LambdaMod.LAMBDA} ${LambdaMod.FULL_VERSION}")
             MessageSendHelper.sendChatMessage("Forge ${ForgeVersion.getMajorVersion()}.${ForgeVersion.getMinorVersion()}.${ForgeVersion.getRevisionVersion()}.${ForgeVersion.getBuildVersion()}")
             MessageSendHelper.sendChatMessage("Operating System: ${System.getProperty("os.name").lowercase().capitalize()} ${System.getProperty("os.version")} ")
             MessageSendHelper.sendChatMessage("JVM: ${System.getProperty("java.version")} ${System.getProperty("java.vendor")}")
