@@ -30,7 +30,9 @@ tasks.register('writeVersion') {
     description 'Write version to file'
 
     doLast {
-        file('build/resources/main/lambda_version.txt').write(project.version)
+        var f = file('build/resources/main/lambda_version.txt')
+        f.parentFile.mkdirs()
+        f.write(project.version)
     }
 }
 
