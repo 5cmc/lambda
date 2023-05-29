@@ -44,7 +44,7 @@ object PacketLogger : Module(
     private val absoluteTime by setting("Absolute Time", true, description = "Show absolute time.", visibility = { page == Page.GENERAL })
     private val startDelta by setting("Start Time Delta", false, visibility = { page == Page.GENERAL })
     private val lastDelta by setting("Last Time Delta", false, visibility = { page == Page.GENERAL })
-    private val showClientTicks by setting("Show Client Ticks", true, description = "Show timestamps of client ticks.", visibility = { page == Page.GENERAL })
+    private val showClientTicks by setting("Show Client Ticks", false, description = "Show timestamps of client ticks.", visibility = { page == Page.GENERAL })
     private val ignoreCancelled by setting("Ignore Cancelled", true, description = "Ignore cancelled packets.", visibility = { page == Page.GENERAL })
     val logMode by setting("Log Mode", LogMode.ALL, description = "Log to chat, to a file, HUD, or both.", visibility = { page == Page.GENERAL })
     private val captureTiming by setting("Capture Timing", CaptureTiming.POST, description = "Sets point of time for scan event.", visibility = { page == Page.GENERAL })
@@ -414,7 +414,18 @@ object PacketLogger : Module(
             if (showClientTicks) {
                 synchronized(this@PacketLogger) {
                     val current = System.currentTimeMillis()
-                    lines.add("Tick Pulse,,${current - start},${current - lastTick}\n")
+                    val line = "Tick Pulse: Start Delta: ${current - start}, Last Tick Delta: ${current - lastTick}\n"
+                    if (logMode == LogMode.CHAT_AND_FILE || logMode == LogMode.FILE || logMode == LogMode.ALL) {
+                        lines.add(line)
+                    }
+                    if (logMode == LogMode.CHAT_AND_FILE || logMode == LogMode.CHAT || logMode == LogMode.ALL) {
+                        MessageSendHelper.sendChatMessage(line)
+                    }
+                    if (logMode == LogMode.ONLY_HUD || logMode == LogMode.ALL) {
+                        if (PacketLogViewer.visible) {
+                            PacketLogViewer.addPacketLog(line.replace("\n", ""))
+                        }
+                    }
                     lastTick = current
                 }
             }
@@ -577,6 +588,7 @@ object PacketLogger : Module(
                     if (!cPacketPlaceRecipe.value) return
                     logClient(packet) {
                         "windowID" to packet.func_194318_a()
+                        @Suppress("DEPRECATION")
                         "recipe" to CraftingManager.getIDForRecipe(packet.func_194317_b())
                         "shift" to packet.func_194319_c()
                     }
@@ -655,6 +667,7 @@ object PacketLogger : Module(
                     if (!cPacketRecipeInfo.value) return
                     logClient(packet) {
                         "purpose" to packet.purpose.name
+                        @Suppress("DEPRECATION")
                         "recipe" to CraftingManager.getIDForRecipe(packet.recipe)
                         "guiOpen" to packet.isGuiOpen
                         "filteringCraftable" to packet.isFilteringCraftable
@@ -1163,6 +1176,7 @@ object PacketLogger : Module(
                                 append(changedBlock.offset)
 
                                 append("blockState: ")
+                                @Suppress("DEPRECATION")
                                 append(Block.BLOCK_STATE_IDS.get(changedBlock.blockState))
 
                                 append(' ')
@@ -1201,6 +1215,7 @@ object PacketLogger : Module(
                     if (!sPacketPlaceGhostRecipe.value) return
                     logServer(packet) {
                         "windowId" to packet.func_194313_b()
+                        @Suppress("DEPRECATION")
                         "recipeId" to CraftingManager.getIDForRecipe(packet.func_194311_a())
                     }
                 }
@@ -1227,6 +1242,7 @@ object PacketLogger : Module(
                     logServer(packet) {
                         "action" to packet.action.name
                         "entries" to buildString {
+                            @Suppress("UNNECESSARY_SAFE_CALL")
                             for (entry in packet.entries) {
                                 append("> displayName: ")
                                 append(entry.displayName)
@@ -1265,6 +1281,7 @@ object PacketLogger : Module(
                 }
                 is SPacketRecipeBook -> {
                     if (!sPacketRecipeBook.value) return
+                    @Suppress("DEPRECATION")
                     logServer(packet) {
                         "state" to packet.state.name
                         "recipes" to buildString {
@@ -1577,6 +1594,7 @@ object PacketLogger : Module(
                 }
                 is SPacketUseBed -> {
                     if (!sPacketUseBed.value) return
+                    @Suppress("UNNECESSARY_SAFE_CALL")
                     logServer(packet) {
                         mc.world?.let { world ->
                             "player" to packet.getPlayer(world)?.name
@@ -1630,7 +1648,10 @@ object PacketLogger : Module(
 
 
     private fun write() {
-        if (logMode != LogMode.FILE && logMode != LogMode.CHAT_AND_FILE && logMode != LogMode.ALL) return
+        if (logMode != LogMode.FILE && logMode != LogMode.CHAT_AND_FILE && logMode != LogMode.ALL) {
+            lines.clear()
+            return
+        }
 
         val lines = synchronized(this) {
             val cache = lines

@@ -3,7 +3,7 @@ package com.lambda.client.gui.hudgui.elements.misc
 import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.gui.hudgui.LabelHud
 import com.lambda.client.module.modules.player.PacketLogger
-import java.util.Collections
+import java.util.*
 
 internal object PacketLogViewer: LabelHud(
     name = "PacketLogViewer",
@@ -32,20 +32,26 @@ internal object PacketLogViewer: LabelHud(
         if (onlyWhenLoggerEnabled && PacketLogger.isDisabled) return
         if (logs.isNotEmpty() && (PacketLogger.logMode == PacketLogger.LogMode.ALL || PacketLogger.logMode == PacketLogger.LogMode.ONLY_HUD)) {
             displayText.addLine("PacketLog Viewer", secondaryColor)
-            logs.forEach { log ->
-                displayText.addLine(log, primaryColor)
+            synchronized(logs) {
+                logs.forEach { log ->
+                    displayText.addLine(log, primaryColor)
+                }
             }
         }
     }
 
     fun addPacketLog(log: String) {
-        logs.add(log)
-        if (logs.size > maxLines) {
-            logs.removeAt(0)
+        synchronized(logs) {
+            logs.add(log)
+            if (logs.size > maxLines) {
+                logs.removeAt(0)
+            }
         }
     }
 
     fun clear() {
-        logs.clear()
+        synchronized(logs) {
+            logs.clear()
+        }
     }
 }
