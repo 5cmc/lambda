@@ -97,6 +97,11 @@ open class Slider(
         visibility?.let { visible = it.invoke() }
     }
 
+    override fun onGuiInit() {
+        super.onGuiInit()
+        visibility?.let { visible = it.invoke() }
+    }
+
     override fun onRender(vertexHelper: VertexHelper, absolutePos: Vec2f) {
         // Slider bar
         if (renderProgress > 0.0) RenderUtils2D.drawRectFilled(vertexHelper, Vec2d(0.0, 0.0), Vec2d(renderWidth * renderProgress, renderHeight.toDouble()), GuiColors.primary)
