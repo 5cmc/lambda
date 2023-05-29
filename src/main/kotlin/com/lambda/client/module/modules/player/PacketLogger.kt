@@ -58,94 +58,94 @@ object PacketLogger : Module(
      */
     private val toggleAllClientPackets by setting("Toggle All Client Packets", false, visibility = { page == Page.CLIENT }, consumer = { _, _ ->
         val toggleValue = anyClientPacketDisabled()
-        cPacketAnimation.value = toggleValue
-        cPacketChatMessage.value = toggleValue
-        cPacketClickWindow.value = toggleValue
-        cPacketClientSettings.value = toggleValue
-        cPacketClientStatus.value = toggleValue
-        cPacketCloseWindow.value = toggleValue
-        cPacketConfirmTeleport.value = toggleValue
-        cPacketConfirmTransaction.value = toggleValue
-        cPacketCreativeInventoryAction.value = toggleValue
-        cPacketCustomPayload.value = toggleValue
-        cPacketEnchantItem.value = toggleValue
-        cPacketEntityAction.value = toggleValue
-        cPacketHeldItemChange.value = toggleValue
-        cPacketInput.value = toggleValue
-        cPacketKeepAlive.value = toggleValue
-        cPacketPlaceRecipe.value = toggleValue
-        cPacketPlayerRotation.value = toggleValue
-        cPacketPlayerPosition.value = toggleValue
-        cPacketPlayerPositionRotation.value = toggleValue
-        cPacketPlayer.value = toggleValue
-        cPacketPlayerAbilities.value = toggleValue
-        cPacketPlayerDigging.value = toggleValue
-        cPacketPlayerTryUseItem.value = toggleValue
-        cPacketPlayerTryUseItemOnBlock.value = toggleValue
-        cPacketRecipeInfo.value = toggleValue
-        cPacketResourcePackStatus.value = toggleValue
-        cPacketSeenAdvancements.value = toggleValue
-        cPacketSpectate.value = toggleValue
-        cPacketSteerBoat.value = toggleValue
-        cPacketTabComplete.value = toggleValue
-        cPacketUpdateSign.value = toggleValue
-        cPacketUseEntity.value = toggleValue
-        cPacketVehicleMove.value = toggleValue
+        cPacketAnimation = toggleValue
+        cPacketChatMessage = toggleValue
+        cPacketClickWindow = toggleValue
+        cPacketClientSettings = toggleValue
+        cPacketClientStatus = toggleValue
+        cPacketCloseWindow = toggleValue
+        cPacketConfirmTeleport = toggleValue
+        cPacketConfirmTransaction = toggleValue
+        cPacketCreativeInventoryAction = toggleValue
+        cPacketCustomPayload = toggleValue
+        cPacketEnchantItem = toggleValue
+        cPacketEntityAction = toggleValue
+        cPacketHeldItemChange = toggleValue
+        cPacketInput = toggleValue
+        cPacketKeepAlive = toggleValue
+        cPacketPlaceRecipe = toggleValue
+        cPacketPlayerRotation = toggleValue
+        cPacketPlayerPosition = toggleValue
+        cPacketPlayerPositionRotation = toggleValue
+        cPacketPlayer = toggleValue
+        cPacketPlayerAbilities = toggleValue
+        cPacketPlayerDigging = toggleValue
+        cPacketPlayerTryUseItem = toggleValue
+        cPacketPlayerTryUseItemOnBlock = toggleValue
+        cPacketRecipeInfo = toggleValue
+        cPacketResourcePackStatus = toggleValue
+        cPacketSeenAdvancements = toggleValue
+        cPacketSpectate = toggleValue
+        cPacketSteerBoat = toggleValue
+        cPacketTabComplete = toggleValue
+        cPacketUpdateSign = toggleValue
+        cPacketUseEntity = toggleValue
+        cPacketVehicleMove = toggleValue
         false
     })
 
     private fun anyClientPacketDisabled(): Boolean {
-        return !cPacketAnimation.value || !cPacketChatMessage.value || !cPacketClickWindow.value || !cPacketClientSettings.value || !cPacketClientStatus.value || !cPacketCloseWindow.value
-            || !cPacketConfirmTeleport.value || !cPacketConfirmTransaction.value || !cPacketCreativeInventoryAction.value || !cPacketCustomPayload.value || !cPacketEnchantItem.value
-            || !cPacketEntityAction.value || !cPacketHeldItemChange.value || !cPacketInput.value || !cPacketKeepAlive.value || !cPacketPlaceRecipe.value
-            || !cPacketPlayerRotation.value || !cPacketPlayerPosition.value || !cPacketPlayerPositionRotation.value || !cPacketPlayer.value
-            || !cPacketPlayerAbilities.value || !cPacketPlayerDigging.value || !cPacketPlayerTryUseItem.value || !cPacketPlayerTryUseItemOnBlock.value || !cPacketRecipeInfo.value
-            || !cPacketResourcePackStatus.value || !cPacketSeenAdvancements.value || !cPacketSpectate.value || !cPacketSteerBoat.value || !cPacketTabComplete.value
-            || !cPacketUpdateSign.value || !cPacketUseEntity.value || !cPacketVehicleMove.value
+        return !cPacketAnimation || !cPacketChatMessage || !cPacketClickWindow || !cPacketClientSettings || !cPacketClientStatus || !cPacketCloseWindow
+            || !cPacketConfirmTeleport || !cPacketConfirmTransaction || !cPacketCreativeInventoryAction || !cPacketCustomPayload || !cPacketEnchantItem
+            || !cPacketEntityAction || !cPacketHeldItemChange || !cPacketInput || !cPacketKeepAlive || !cPacketPlaceRecipe
+            || !cPacketPlayerRotation || !cPacketPlayerPosition || !cPacketPlayerPositionRotation || !cPacketPlayer
+            || !cPacketPlayerAbilities || !cPacketPlayerDigging || !cPacketPlayerTryUseItem || !cPacketPlayerTryUseItemOnBlock || !cPacketRecipeInfo
+            || !cPacketResourcePackStatus || !cPacketSeenAdvancements || !cPacketSpectate || !cPacketSteerBoat || !cPacketTabComplete
+            || !cPacketUpdateSign || !cPacketUseEntity || !cPacketVehicleMove
     }
 
     /** Player **/
-    private val cPacketAnimation = setting("CPacketAnimation", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.PLAYER })
-    private val cPacketConfirmTeleport = setting("CPacketConfirmTeleport", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.PLAYER })
-    private val cPacketInput = setting("CPacketInput", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.PLAYER })
-    private val cPacketPlayerRotation = setting("CPacketPlayer.Rotation", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.PLAYER })
-    private val cPacketPlayerPosition = setting("CPacketPlayer.Position", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.PLAYER })
-    private val cPacketPlayerPositionRotation = setting("CPacketPlayer.PositionRotation", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.PLAYER })
-    private val cPacketPlayer = setting("CPacketPlayer", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.PLAYER })
-    private val cPacketPlayerAbilities = setting("CPacketPlayerAbilities", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.PLAYER })
-    private val cPacketPlayerDigging = setting("CPacketPlayerDigging", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.PLAYER })
-    private val cPacketPlayerTryUseItem = setting("CPacketPlayerTryUseItem", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.PLAYER })
-    private val cPacketPlayerTryUseItemOnBlock = setting("CPacketPlayerTryUseItemOnBlock", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.PLAYER })
-    private val cPacketSpectate = setting("CPacketSpectate", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.PLAYER })
+    private var cPacketAnimation by setting("CPacketAnimation", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.PLAYER })
+    private var cPacketConfirmTeleport by setting("CPacketConfirmTeleport", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.PLAYER })
+    private var cPacketInput by setting("CPacketInput", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.PLAYER })
+    private var cPacketPlayerRotation by setting("CPacketPlayer.Rotation", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.PLAYER })
+    private var cPacketPlayerPosition by setting("CPacketPlayer.Position", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.PLAYER })
+    private var cPacketPlayerPositionRotation by setting("CPacketPlayer.PositionRotation", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.PLAYER })
+    private var cPacketPlayer by setting("CPacketPlayer", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.PLAYER })
+    private var cPacketPlayerAbilities by setting("CPacketPlayerAbilities", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.PLAYER })
+    private var cPacketPlayerDigging by setting("CPacketPlayerDigging", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.PLAYER })
+    private var cPacketPlayerTryUseItem by setting("CPacketPlayerTryUseItem", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.PLAYER })
+    private var cPacketPlayerTryUseItemOnBlock by setting("CPacketPlayerTryUseItemOnBlock", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.PLAYER })
+    private var cPacketSpectate by setting("CPacketSpectate", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.PLAYER })
 
     /** Inventory **/
-    private val cPacketClickWindow = setting("CPacketClickWindow", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.INVENTORY })
-    private val cPacketCloseWindow = setting("CPacketCloseWindow", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.INVENTORY })
-    private val cPacketConfirmTransaction = setting("CPacketConfirmTransaction", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.INVENTORY })
-    private val cPacketCreativeInventoryAction = setting("CPacketCreativeInventoryAction", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.INVENTORY })
-    private val cPacketEnchantItem = setting("CPacketEnchantItem", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.INVENTORY })
-    private val cPacketHeldItemChange = setting("CPacketHeldItemChange", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.INVENTORY })
-    private val cPacketPlaceRecipe = setting("CPacketPlaceRecipe", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.INVENTORY })
-    private val cPacketRecipeInfo = setting("CPacketRecipeInfo", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.INVENTORY })
+    private var cPacketClickWindow by setting("CPacketClickWindow", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.INVENTORY })
+    private var cPacketCloseWindow by setting("CPacketCloseWindow", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.INVENTORY })
+    private var cPacketConfirmTransaction by setting("CPacketConfirmTransaction", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.INVENTORY })
+    private var cPacketCreativeInventoryAction by setting("CPacketCreativeInventoryAction", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.INVENTORY })
+    private var cPacketEnchantItem by setting("CPacketEnchantItem", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.INVENTORY })
+    private var cPacketHeldItemChange by setting("CPacketHeldItemChange", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.INVENTORY })
+    private var cPacketPlaceRecipe by setting("CPacketPlaceRecipe", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.INVENTORY })
+    private var cPacketRecipeInfo by setting("CPacketRecipeInfo", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.INVENTORY })
 
     /** System **/
-    private val cPacketChatMessage = setting("CPacketChatMessage", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.SYSTEM })
-    private val cPacketClientSettings = setting("CPacketClientSettings", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.SYSTEM })
-    private val cPacketClientStatus = setting("CPacketClientStatus", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.SYSTEM })
-    private val cPacketCustomPayload = setting("CPacketCustomPayload", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.SYSTEM })
-    private val cPacketKeepAlive = setting("CPacketKeepAlive", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.SYSTEM })
-    private val cPacketResourcePackStatus = setting("CPacketResourcePackStatus", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.SYSTEM })
-    private val cPacketSeenAdvancements = setting("CPacketSeenAdvancements", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.SYSTEM })
-    private val cPacketTabComplete = setting("CPacketTabComplete", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.SYSTEM })
+    private var cPacketChatMessage by setting("CPacketChatMessage", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.SYSTEM })
+    private var cPacketClientSettings by setting("CPacketClientSettings", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.SYSTEM })
+    private var cPacketClientStatus by setting("CPacketClientStatus", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.SYSTEM })
+    private var cPacketCustomPayload by setting("CPacketCustomPayload", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.SYSTEM })
+    private var cPacketKeepAlive by setting("CPacketKeepAlive", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.SYSTEM })
+    private var cPacketResourcePackStatus by setting("CPacketResourcePackStatus", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.SYSTEM })
+    private var cPacketSeenAdvancements by setting("CPacketSeenAdvancements", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.SYSTEM })
+    private var cPacketTabComplete by setting("CPacketTabComplete", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.SYSTEM })
 
     /** World **/
-    private val cPacketUpdateSign = setting("CPacketUpdateSign", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.WORLD })
+    private var cPacketUpdateSign by setting("CPacketUpdateSign", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.WORLD })
 
     /** Entity **/
-    private val cPacketEntityAction = setting("CPacketEntityAction", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.ENTITY })
-    private val cPacketSteerBoat = setting("CPacketSteerBoat", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.ENTITY })
-    private val cPacketUseEntity = setting("CPacketUseEntity", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.ENTITY })
-    private val cPacketVehicleMove = setting("CPacketVehicleMove", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.ENTITY })
+    private var cPacketEntityAction by setting("CPacketEntityAction", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.ENTITY })
+    private var cPacketSteerBoat by setting("CPacketSteerBoat", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.ENTITY })
+    private var cPacketUseEntity by setting("CPacketUseEntity", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.ENTITY })
+    private var cPacketVehicleMove by setting("CPacketVehicleMove", true, visibility = { page == Page.CLIENT && categorySetting == CategorySlider.ENTITY })
 
 
     /**
@@ -154,209 +154,197 @@ object PacketLogger : Module(
 
     private val toggleAllServerPackets by setting("Toggle All Server Packets", false, visibility = { page == Page.SERVER }, consumer = { _, _ ->
         val toggleValue = anyServerPacketDisabled()
-        sPacketAdvancementInfo.value = toggleValue
-        sPacketAnimation.value = toggleValue
-        sPacketBlockAction.value = toggleValue
-        sPacketBlockBreakAnim.value = toggleValue
-        sPacketBlockChange.value = toggleValue
-        sPacketCamera.value = toggleValue
-        sPacketChangeGameState.value = toggleValue
-        sPacketChat.value = toggleValue
-        sPacketChunkData.value = toggleValue
-        sPacketCloseWindow.value = toggleValue
-        sPacketCollectItem.value = toggleValue
-        sPacketCombatEvent.value = toggleValue
-        sPacketConfirmTransaction.value = toggleValue
-        sPacketCooldown.value = toggleValue
-        sPacketCustomPayload.value = toggleValue
-        sPacketCustomSound.value = toggleValue
-        sPacketDestroyEntities.value = toggleValue
-        sPacketDisconnect.value = toggleValue
-        sPacketDisplayObjective.value = toggleValue
-        sPacketEffect.value = toggleValue
-        s15PacketEntityRelMove.value = toggleValue
-        s16PacketEntityLook.value = toggleValue
-        s17PacketEntityLookMove.value = toggleValue
-        sPacketEntity.value = toggleValue
-        sPacketEntityAttach.value = toggleValue
-        sPacketEntityEffect.value = toggleValue
-        sPacketEntityEquipment.value = toggleValue
-        sPacketEntityHeadLook.value = toggleValue
-        sPacketEntityMetadata.value = toggleValue
-        sPacketEntityProperties.value = toggleValue
-        sPacketEntityStatus.value = toggleValue
-        sPacketEntityTeleport.value = toggleValue
-        sPacketEntityVelocity.value = toggleValue
-        sPacketExplosion.value = toggleValue
-        sPacketHeldItemChange.value = toggleValue
-        sPacketJoinGame.value = toggleValue
-        sPacketKeepAlive.value = toggleValue
-        sPacketMaps.value = toggleValue
-        sPacketMoveVehicle.value = toggleValue
-        sPacketMultiBlockChange.value = toggleValue
-        sPacketOpenWindow.value = toggleValue
-        sPacketParticles.value = toggleValue
-        sPacketPlaceGhostRecipe.value = toggleValue
-        sPacketPlayerAbilities.value = toggleValue
-        sPacketPlayerListHeaderFooter.value = toggleValue
-        sPacketPlayerListItem.value = toggleValue
-        sPacketPlayerPosLook.value = toggleValue
-        sPacketRecipeBook.value = toggleValue
-        sPacketRemoveEntityEffect.value = toggleValue
-        sPacketResourcePackSend.value = toggleValue
-        sPacketRespawn.value = toggleValue
-        sPacketScoreboardObjective.value = toggleValue
-        sPacketSelectAdvancementsTab.value = toggleValue
-        sPacketServerDifficulty.value = toggleValue
-        sPacketSetExperience.value = toggleValue
-        sPacketSetPassengers.value = toggleValue
-        sPacketSetSlot.value = toggleValue
-        sPacketSignEditorOpen.value = toggleValue
-        sPacketSoundEffect.value = toggleValue
-        sPacketSpawnExperienceOrb.value = toggleValue
-        sPacketSpawnGlobalEntity.value = toggleValue
-        sPacketSpawnMob.value = toggleValue
-        sPacketSpawnObject.value = toggleValue
-        sPacketSpawnPainting.value = toggleValue
-        sPacketSpawnPlayer.value = toggleValue
-        sPacketSpawnPosition.value = toggleValue
-        sPacketStatistics.value = toggleValue
-        sPacketTabComplete.value = toggleValue
-        sPacketTeams.value = toggleValue
-        sPacketTimeUpdate.value = toggleValue
-        sPacketTitle.value = toggleValue
-        sPacketUnloadChunk.value = toggleValue
-        sPacketUpdateBossInfo.value = toggleValue
-        sPacketUpdateHealth.value = toggleValue
-        sPacketUpdateScore.value = toggleValue
-        sPacketUpdateTileEntity.value = toggleValue
-        sPacketUseBed.value = toggleValue
-        sPacketWindowItems.value = toggleValue
-        sPacketWindowProperty.value = toggleValue
-        sPacketWorldBorder.value = toggleValue
+        sPacketAdvancementInfo = toggleValue
+        sPacketAnimation = toggleValue
+        sPacketBlockAction = toggleValue
+        sPacketBlockBreakAnim = toggleValue
+        sPacketBlockChange = toggleValue
+        sPacketCamera = toggleValue
+        sPacketChangeGameState = toggleValue
+        sPacketChat = toggleValue
+        sPacketChunkData = toggleValue
+        sPacketCloseWindow = toggleValue
+        sPacketCollectItem = toggleValue
+        sPacketCombatEvent = toggleValue
+        sPacketConfirmTransaction = toggleValue
+        sPacketCooldown = toggleValue
+        sPacketCustomPayload = toggleValue
+        sPacketCustomSound = toggleValue
+        sPacketDestroyEntities = toggleValue
+        sPacketDisconnect = toggleValue
+        sPacketDisplayObjective = toggleValue
+        sPacketEffect = toggleValue
+        s15PacketEntityRelMove = toggleValue
+        s16PacketEntityLook = toggleValue
+        s17PacketEntityLookMove = toggleValue
+        sPacketEntity = toggleValue
+        sPacketEntityAttach = toggleValue
+        sPacketEntityEffect = toggleValue
+        sPacketEntityEquipment = toggleValue
+        sPacketEntityHeadLook = toggleValue
+        sPacketEntityMetadata = toggleValue
+        sPacketEntityProperties = toggleValue
+        sPacketEntityStatus = toggleValue
+        sPacketEntityTeleport = toggleValue
+        sPacketEntityVelocity = toggleValue
+        sPacketExplosion = toggleValue
+        sPacketHeldItemChange = toggleValue
+        sPacketJoinGame = toggleValue
+        sPacketKeepAlive = toggleValue
+        sPacketMaps = toggleValue
+        sPacketMoveVehicle = toggleValue
+        sPacketMultiBlockChange = toggleValue
+        sPacketOpenWindow = toggleValue
+        sPacketParticles = toggleValue
+        sPacketPlaceGhostRecipe = toggleValue
+        sPacketPlayerAbilities = toggleValue
+        sPacketPlayerListHeaderFooter = toggleValue
+        sPacketPlayerListItem = toggleValue
+        sPacketPlayerPosLook = toggleValue
+        sPacketRecipeBook = toggleValue
+        sPacketRemoveEntityEffect = toggleValue
+        sPacketResourcePackSend = toggleValue
+        sPacketRespawn = toggleValue
+        sPacketScoreboardObjective = toggleValue
+        sPacketSelectAdvancementsTab = toggleValue
+        sPacketServerDifficulty = toggleValue
+        sPacketSetExperience = toggleValue
+        sPacketSetPassengers = toggleValue
+        sPacketSetSlot = toggleValue
+        sPacketSignEditorOpen = toggleValue
+        sPacketSoundEffect = toggleValue
+        sPacketSpawnExperienceOrb = toggleValue
+        sPacketSpawnGlobalEntity = toggleValue
+        sPacketSpawnMob = toggleValue
+        sPacketSpawnObject = toggleValue
+        sPacketSpawnPainting = toggleValue
+        sPacketSpawnPlayer = toggleValue
+        sPacketSpawnPosition = toggleValue
+        sPacketStatistics = toggleValue
+        sPacketTabComplete = toggleValue
+        sPacketTeams = toggleValue
+        sPacketTimeUpdate = toggleValue
+        sPacketTitle = toggleValue
+        sPacketUnloadChunk = toggleValue
+        sPacketUpdateBossInfo = toggleValue
+        sPacketUpdateHealth = toggleValue
+        sPacketUpdateScore = toggleValue
+        sPacketUpdateTileEntity = toggleValue
+        sPacketUseBed = toggleValue
+        sPacketWindowItems = toggleValue
+        sPacketWindowProperty = toggleValue
+        sPacketWorldBorder = toggleValue
         false
     })
 
     private fun anyServerPacketDisabled() : Boolean {
-        return !sPacketAdvancementInfo.value || !sPacketAnimation.value || !sPacketBlockAction.value || !sPacketBlockBreakAnim.value || !sPacketBlockChange.value
-            || !sPacketCamera.value || !sPacketChangeGameState.value || !sPacketChat.value || !sPacketChunkData.value || !sPacketCloseWindow.value || !sPacketCollectItem.value
-            || !sPacketCombatEvent.value || !sPacketConfirmTransaction.value || !sPacketCooldown.value || !sPacketCustomPayload.value || !sPacketCustomSound.value
-            || !sPacketDestroyEntities.value || !sPacketDisconnect.value || !sPacketDisplayObjective.value || !sPacketEffect.value
-            || !s15PacketEntityRelMove.value || !s16PacketEntityLook.value || !s17PacketEntityLookMove.value || !sPacketEntity.value || !sPacketEntityAttach.value
-            || !sPacketEntityEffect.value || !sPacketEntityEquipment.value || !sPacketEntityHeadLook.value || !sPacketEntityMetadata.value || !sPacketEntityProperties.value
-            || !sPacketEntityStatus.value || !sPacketEntityTeleport.value || !sPacketEntityVelocity.value || !sPacketExplosion.value || !sPacketHeldItemChange.value
-            || !sPacketJoinGame.value || !sPacketKeepAlive.value || !sPacketMaps.value || !sPacketMoveVehicle.value || !sPacketMultiBlockChange.value || !sPacketOpenWindow.value
-            || !sPacketParticles.value || !sPacketPlaceGhostRecipe.value || !sPacketPlayerAbilities.value || !sPacketPlayerListHeaderFooter.value || !sPacketPlayerListItem.value
-            || !sPacketPlayerPosLook.value || !sPacketRecipeBook.value || !sPacketRemoveEntityEffect.value || !sPacketResourcePackSend.value || !sPacketRespawn.value
-            || !sPacketScoreboardObjective.value || !sPacketSelectAdvancementsTab.value || !sPacketServerDifficulty.value || !sPacketSetExperience.value || !sPacketSetPassengers.value
-            || !sPacketSetSlot.value || !sPacketSignEditorOpen.value || !sPacketSoundEffect.value || !sPacketSpawnExperienceOrb.value || !sPacketSpawnGlobalEntity.value
-            || !sPacketSpawnMob.value || !sPacketSpawnObject.value || !sPacketSpawnPainting.value || !sPacketSpawnPlayer.value || !sPacketSpawnPosition.value || !sPacketStatistics.value
-            || !sPacketTabComplete.value || !sPacketTeams.value || !sPacketTimeUpdate.value || !sPacketTitle.value || !sPacketUnloadChunk.value || !sPacketUpdateBossInfo.value
-            || !sPacketUpdateHealth.value || !sPacketUpdateScore.value || !sPacketUpdateTileEntity.value || !sPacketUseBed.value || !sPacketWindowItems.value || !sPacketWindowProperty.value
-            || !sPacketWorldBorder.value
+        return !sPacketAdvancementInfo || !sPacketAnimation || !sPacketBlockAction || !sPacketBlockBreakAnim || !sPacketBlockChange
+            || !sPacketCamera || !sPacketChangeGameState || !sPacketChat || !sPacketChunkData || !sPacketCloseWindow || !sPacketCollectItem
+            || !sPacketCombatEvent || !sPacketConfirmTransaction || !sPacketCooldown || !sPacketCustomPayload || !sPacketCustomSound
+            || !sPacketDestroyEntities || !sPacketDisconnect || !sPacketDisplayObjective || !sPacketEffect
+            || !s15PacketEntityRelMove || !s16PacketEntityLook || !s17PacketEntityLookMove || !sPacketEntity || !sPacketEntityAttach
+            || !sPacketEntityEffect || !sPacketEntityEquipment || !sPacketEntityHeadLook || !sPacketEntityMetadata || !sPacketEntityProperties
+            || !sPacketEntityStatus || !sPacketEntityTeleport || !sPacketEntityVelocity || !sPacketExplosion || !sPacketHeldItemChange
+            || !sPacketJoinGame || !sPacketKeepAlive || !sPacketMaps || !sPacketMoveVehicle || !sPacketMultiBlockChange || !sPacketOpenWindow
+            || !sPacketParticles || !sPacketPlaceGhostRecipe || !sPacketPlayerAbilities || !sPacketPlayerListHeaderFooter || !sPacketPlayerListItem
+            || !sPacketPlayerPosLook || !sPacketRecipeBook || !sPacketRemoveEntityEffect || !sPacketResourcePackSend || !sPacketRespawn
+            || !sPacketScoreboardObjective || !sPacketSelectAdvancementsTab || !sPacketServerDifficulty || !sPacketSetExperience || !sPacketSetPassengers
+            || !sPacketSetSlot || !sPacketSignEditorOpen || !sPacketSoundEffect || !sPacketSpawnExperienceOrb || !sPacketSpawnGlobalEntity
+            || !sPacketSpawnMob || !sPacketSpawnObject || !sPacketSpawnPainting || !sPacketSpawnPlayer || !sPacketSpawnPosition || !sPacketStatistics
+            || !sPacketTabComplete || !sPacketTeams || !sPacketTimeUpdate || !sPacketTitle || !sPacketUnloadChunk || !sPacketUpdateBossInfo
+            || !sPacketUpdateHealth || !sPacketUpdateScore || !sPacketUpdateTileEntity || !sPacketUseBed || !sPacketWindowItems || !sPacketWindowProperty
+            || !sPacketWorldBorder
     }
 
     /** Player **/
-    private val sPacketAdvancementInfo = setting("SPacketAdvancementInfo", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.PLAYER })
-    private val sPacketAnimation = setting("SPacketAnimation", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.PLAYER })
-    private val sPacketBlockAction = setting("SPacketBlockAction", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.PLAYER })
-    private val sPacketBlockBreakAnim = setting("SPacketBlockBreakAnim", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.PLAYER })
-    private val sPacketCamera = setting("SPacketCamera", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.PLAYER })
-    private val sPacketChangeGameState = setting("SPacketChangeGameState", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.PLAYER })
-    private val sPacketCombatEvent = setting("SPacketCombatEvent", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.PLAYER })
-    private val sPacketCooldown = setting("SPacketCooldown", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.PLAYER })
-    private val sPacketPlayerAbilities = setting("SPacketPlayerAbilities", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.PLAYER })
-    private val sPacketPlayerPosLook = setting("SPacketPlayerPosLook", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.PLAYER })
-    private val sPacketRespawn = setting("SPacketRespawn", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.PLAYER })
-    private val sPacketSetExperience = setting("SPacketSetExperience", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.PLAYER })
-    private val sPacketUpdateHealth = setting("SPacketUpdateHealth", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.PLAYER })
-    private val sPacketUpdateScore = setting("SPacketUpdateScore", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.PLAYER })
-    private val sPacketUseBed = setting("SPacketUseBed", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.PLAYER })
+    private var sPacketAdvancementInfo by setting("SPacketAdvancementInfo", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.PLAYER })
+    private var sPacketAnimation by setting("SPacketAnimation", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.PLAYER })
+    private var sPacketBlockAction by setting("SPacketBlockAction", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.PLAYER })
+    private var sPacketBlockBreakAnim by setting("SPacketBlockBreakAnim", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.PLAYER })
+    private var sPacketCamera by setting("SPacketCamera", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.PLAYER })
+    private var sPacketChangeGameState by setting("SPacketChangeGameState", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.PLAYER })
+    private var sPacketCombatEvent by setting("SPacketCombatEvent", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.PLAYER })
+    private var sPacketCooldown by setting("SPacketCooldown", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.PLAYER })
+    private var sPacketPlayerAbilities by setting("SPacketPlayerAbilities", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.PLAYER })
+    private var sPacketPlayerPosLook by setting("SPacketPlayerPosLook", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.PLAYER })
+    private var sPacketRespawn by setting("SPacketRespawn", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.PLAYER })
+    private var sPacketSetExperience by setting("SPacketSetExperience", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.PLAYER })
+    private var sPacketUpdateHealth by setting("SPacketUpdateHealth", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.PLAYER })
+    private var sPacketUpdateScore by setting("SPacketUpdateScore", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.PLAYER })
+    private var sPacketUseBed by setting("SPacketUseBed", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.PLAYER })
 
     /** Inventory **/
-    private val sPacketCloseWindow = setting("SPacketCloseWindow", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.INVENTORY })
-    private val sPacketConfirmTransaction = setting("SPacketConfirmTransaction", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.INVENTORY })
-    private val sPacketHeldItemChange = setting("SPacketHeldItemChange", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.INVENTORY })
-    private val sPacketOpenWindow = setting("SPacketOpenWindow", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.INVENTORY })
-    private val sPacketPlaceGhostRecipe = setting("SPacketPlaceGhostRecipe", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.INVENTORY })
-    private val sPacketRecipeBook = setting("SPacketRecipeBook", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.INVENTORY })
-    private val sPacketSetSlot = setting("SPacketSetSlot", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.INVENTORY })
-    private val sPacketWindowItems = setting("SPacketWindowItems", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.INVENTORY })
-    private val sPacketWindowProperty = setting("SPacketWindowProperty", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.INVENTORY })
+    private var sPacketCloseWindow by setting("SPacketCloseWindow", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.INVENTORY })
+    private var sPacketConfirmTransaction by setting("SPacketConfirmTransaction", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.INVENTORY })
+    private var sPacketHeldItemChange by setting("SPacketHeldItemChange", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.INVENTORY })
+    private var sPacketOpenWindow by setting("SPacketOpenWindow", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.INVENTORY })
+    private var sPacketPlaceGhostRecipe by setting("SPacketPlaceGhostRecipe", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.INVENTORY })
+    private var sPacketRecipeBook by setting("SPacketRecipeBook", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.INVENTORY })
+    private var sPacketSetSlot by setting("SPacketSetSlot", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.INVENTORY })
+    private var sPacketWindowItems by setting("SPacketWindowItems", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.INVENTORY })
+    private var sPacketWindowProperty by setting("SPacketWindowProperty", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.INVENTORY })
 
     /** System **/
-    private val sPacketChat = setting("SPacketChat", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.SYSTEM })
-    private val sPacketCustomPayload = setting("SPacketCustomPayload", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.SYSTEM })
-    private val sPacketCustomSound = setting("SPacketCustomSound", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.SYSTEM })
-    private val sPacketDisconnect = setting("SPacketDisconnect", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.SYSTEM })
-    private val sPacketDisplayObjective = setting("SPacketDisplayObjective", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.SYSTEM })
-    private val sPacketJoinGame = setting("SPacketJoinGame", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.SYSTEM })
-    private val sPacketKeepAlive = setting("SPacketKeepAlive", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.SYSTEM })
-    private val sPacketPlayerListHeaderFooter = setting("SPacketPlayerListHeaderFooter", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.SYSTEM })
-    private val sPacketPlayerListItem = setting("SPacketPlayerListItem", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.SYSTEM })
-    private val sPacketResourcePackSend = setting("SPacketResourcePackSend", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.SYSTEM })
-    private val sPacketScoreboardObjective = setting("SPacketScoreboardObjective", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.SYSTEM })
-    private val sPacketSelectAdvancementsTab = setting("SPacketSelectAdvancementsTab", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.SYSTEM })
-    private val sPacketStatistics = setting("SPacketStatistics", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.SYSTEM })
-    private val sPacketTabComplete = setting("SPacketTabComplete", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.SYSTEM })
-    private val sPacketTeams = setting("SPacketTeams", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.SYSTEM })
-    private val sPacketTitle = setting("SPacketTitle", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.SYSTEM })
+    private var sPacketChat by setting("SPacketChat", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.SYSTEM })
+    private var sPacketCustomPayload by setting("SPacketCustomPayload", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.SYSTEM })
+    private var sPacketCustomSound by setting("SPacketCustomSound", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.SYSTEM })
+    private var sPacketDisconnect by setting("SPacketDisconnect", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.SYSTEM })
+    private var sPacketDisplayObjective by setting("SPacketDisplayObjective", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.SYSTEM })
+    private var sPacketJoinGame by setting("SPacketJoinGame", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.SYSTEM })
+    private var sPacketKeepAlive by setting("SPacketKeepAlive", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.SYSTEM })
+    private var sPacketPlayerListHeaderFooter by setting("SPacketPlayerListHeaderFooter", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.SYSTEM })
+    private var sPacketPlayerListItem by setting("SPacketPlayerListItem", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.SYSTEM })
+    private var sPacketResourcePackSend by setting("SPacketResourcePackSend", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.SYSTEM })
+    private var sPacketScoreboardObjective by setting("SPacketScoreboardObjective", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.SYSTEM })
+    private var sPacketSelectAdvancementsTab by setting("SPacketSelectAdvancementsTab", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.SYSTEM })
+    private var sPacketStatistics by setting("SPacketStatistics", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.SYSTEM })
+    private var sPacketTabComplete by setting("SPacketTabComplete", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.SYSTEM })
+    private var sPacketTeams by setting("SPacketTeams", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.SYSTEM })
+    private var sPacketTitle by setting("SPacketTitle", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.SYSTEM })
 
     /** World **/
-    private val sPacketBlockChange = setting("SPacketBlockChange", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.WORLD })
-    private val sPacketChunkData = setting("SPacketChunkData", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.WORLD })
-    private val sPacketEffect = setting("SPacketEffect", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.WORLD })
-    private val sPacketExplosion = setting("SPacketExplosion", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.WORLD })
-    private val sPacketMaps = setting("SPacketMaps", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.WORLD })
-    private val sPacketMultiBlockChange = setting("SPacketMultiBlockChange", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.WORLD })
-    private val sPacketParticles = setting("SPacketParticles", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.WORLD })
-    private val sPacketServerDifficulty = setting("SPacketServerDifficulty", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.WORLD })
-    private val sPacketSignEditorOpen = setting("SPacketSignEditorOpen", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.WORLD })
-    private val sPacketSoundEffect = setting("SPacketSoundEffect", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.WORLD })
-    private val sPacketSpawnPosition = setting("SPacketSpawnPosition", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.WORLD })
-    private val sPacketTimeUpdate = setting("SPacketTimeUpdate", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.WORLD })
-    private val sPacketUnloadChunk = setting("SPacketUnloadChunk", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.WORLD })
-    private val sPacketUpdateBossInfo = setting("SPacketUpdateBossInfo", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.WORLD })
-    private val sPacketUpdateTileEntity = setting("SPacketUpdateTileEntity", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.WORLD })
-    private val sPacketWorldBorder = setting("SPacketWorldBorder", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.WORLD })
+    private var sPacketBlockChange by setting("SPacketBlockChange", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.WORLD })
+    private var sPacketChunkData by setting("SPacketChunkData", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.WORLD })
+    private var sPacketEffect by setting("SPacketEffect", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.WORLD })
+    private var sPacketExplosion by setting("SPacketExplosion", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.WORLD })
+    private var sPacketMaps by setting("SPacketMaps", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.WORLD })
+    private var sPacketMultiBlockChange by setting("SPacketMultiBlockChange", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.WORLD })
+    private var sPacketParticles by setting("SPacketParticles", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.WORLD })
+    private var sPacketServerDifficulty by setting("SPacketServerDifficulty", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.WORLD })
+    private var sPacketSignEditorOpen by setting("SPacketSignEditorOpen", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.WORLD })
+    private var sPacketSoundEffect by setting("SPacketSoundEffect", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.WORLD })
+    private var sPacketSpawnPosition by setting("SPacketSpawnPosition", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.WORLD })
+    private var sPacketTimeUpdate by setting("SPacketTimeUpdate", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.WORLD })
+    private var sPacketUnloadChunk by setting("SPacketUnloadChunk", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.WORLD })
+    private var sPacketUpdateBossInfo by setting("SPacketUpdateBossInfo", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.WORLD })
+    private var sPacketUpdateTileEntity by setting("SPacketUpdateTileEntity", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.WORLD })
+    private var sPacketWorldBorder by setting("SPacketWorldBorder", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.WORLD })
 
     /** Entity **/
-    private val sPacketCollectItem = setting("SPacketCollectItem", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.ENTITY })
-    private val sPacketDestroyEntities = setting("SPacketDestroyEntities", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.ENTITY })
-    private val s15PacketEntityRelMove = setting("S15PacketEntityRelMove", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.ENTITY })
-    private val s16PacketEntityLook = setting("S16PacketEntityLook", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.ENTITY })
-    private val s17PacketEntityLookMove = setting("S17PacketEntityLookMove", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.ENTITY })
-    private val sPacketEntity = setting("SPacketEntity", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.ENTITY })
-    private val sPacketEntityAttach = setting("SPacketEntityAttach", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.ENTITY })
-    private val sPacketEntityEffect = setting("SPacketEntityEffect", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.ENTITY })
-    private val sPacketEntityEquipment = setting("SPacketEntityEquipment", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.ENTITY })
-    private val sPacketEntityHeadLook = setting("SPacketEntityHeadLook", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.ENTITY })
-    private val sPacketEntityMetadata = setting("SPacketEntityMetadata", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.ENTITY })
-    private val sPacketEntityProperties = setting("SPacketEntityProperties", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.ENTITY })
-    private val sPacketEntityStatus = setting("SPacketEntityStatus", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.ENTITY })
-    private val sPacketEntityTeleport = setting("SPacketEntityTeleport", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.ENTITY })
-    private val sPacketEntityVelocity = setting("SPacketEntityVelocity", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.ENTITY })
-    private val sPacketMoveVehicle = setting("SPacketMoveVehicle", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.ENTITY })
-    private val sPacketRemoveEntityEffect = setting("SPacketRemoveEntityEffect", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.ENTITY })
-    private val sPacketSetPassengers = setting("SPacketSetPassengers", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.ENTITY })
-    private val sPacketSpawnExperienceOrb = setting("SPacketSpawnExperienceOrb", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.ENTITY })
-    private val sPacketSpawnGlobalEntity = setting("SPacketSpawnGlobalEntity", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.ENTITY })
-    private val sPacketSpawnMob = setting("SPacketSpawnMob", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.ENTITY })
-    private val sPacketSpawnObject = setting("SPacketSpawnObject", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.ENTITY })
-    private val sPacketSpawnPainting = setting("SPacketSpawnPainting", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.ENTITY })
-    private val sPacketSpawnPlayer = setting("SPacketSpawnPlayer", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.ENTITY })
-
-
-
-
-
-
-
-
-
-
-
-
+    private var sPacketCollectItem by setting("SPacketCollectItem", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.ENTITY })
+    private var sPacketDestroyEntities by setting("SPacketDestroyEntities", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.ENTITY })
+    private var s15PacketEntityRelMove by setting("S15PacketEntityRelMove", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.ENTITY })
+    private var s16PacketEntityLook by setting("S16PacketEntityLook", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.ENTITY })
+    private var s17PacketEntityLookMove by setting("S17PacketEntityLookMove", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.ENTITY })
+    private var sPacketEntity by setting("SPacketEntity", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.ENTITY })
+    private var sPacketEntityAttach by setting("SPacketEntityAttach", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.ENTITY })
+    private var sPacketEntityEffect by setting("SPacketEntityEffect", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.ENTITY })
+    private var sPacketEntityEquipment by setting("SPacketEntityEquipment", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.ENTITY })
+    private var sPacketEntityHeadLook by setting("SPacketEntityHeadLook", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.ENTITY })
+    private var sPacketEntityMetadata by setting("SPacketEntityMetadata", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.ENTITY })
+    private var sPacketEntityProperties by setting("SPacketEntityProperties", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.ENTITY })
+    private var sPacketEntityStatus by setting("SPacketEntityStatus", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.ENTITY })
+    private var sPacketEntityTeleport by setting("SPacketEntityTeleport", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.ENTITY })
+    private var sPacketEntityVelocity by setting("SPacketEntityVelocity", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.ENTITY })
+    private var sPacketMoveVehicle by setting("SPacketMoveVehicle", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.ENTITY })
+    private var sPacketRemoveEntityEffect by setting("SPacketRemoveEntityEffect", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.ENTITY })
+    private var sPacketSetPassengers by setting("SPacketSetPassengers", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.ENTITY })
+    private var sPacketSpawnExperienceOrb by setting("SPacketSpawnExperienceOrb", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.ENTITY })
+    private var sPacketSpawnGlobalEntity by setting("SPacketSpawnGlobalEntity", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.ENTITY })
+    private var sPacketSpawnMob by setting("SPacketSpawnMob", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.ENTITY })
+    private var sPacketSpawnObject by setting("SPacketSpawnObject", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.ENTITY })
+    private var sPacketSpawnPainting by setting("SPacketSpawnPainting", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.ENTITY })
+    private var sPacketSpawnPlayer by setting("SPacketSpawnPlayer", true, visibility = { page == Page.SERVER && categorySetting == CategorySlider.ENTITY })
 
     private val fileTimeFormatter = DateTimeFormatter.ofPattern("HH-mm-ss_SSS")
 
@@ -478,19 +466,19 @@ object PacketLogger : Module(
         if (packetSide == PacketSide.CLIENT || packetSide == PacketSide.BOTH) {
             when (packet) {
                 is CPacketAnimation -> {
-                    if (!cPacketAnimation.value) return
+                    if (!cPacketAnimation) return
                     logClient(packet) {
                         "hand" to packet.hand
                     }
                 }
                 is CPacketChatMessage -> {
-                    if (!cPacketChatMessage.value) return
+                    if (!cPacketChatMessage) return
                     logClient(packet) {
                         "message" to packet.message
                     }
                 }
                 is CPacketClickWindow -> {
-                    if (!cPacketClickWindow.value) return
+                    if (!cPacketClickWindow) return
                     logClient(packet) {
                         "windowId" to packet.windowId
                         "slotID" to packet.slotId
@@ -501,7 +489,7 @@ object PacketLogger : Module(
                     }
                 }
                 is CPacketClientSettings -> {
-                    if (!cPacketClientSettings.value) return
+                    if (!cPacketClientSettings) return
                     logClient(packet) {
                         "lang" to packet.lang
                         "view" to packet.view
@@ -512,7 +500,7 @@ object PacketLogger : Module(
                     }
                 }
                 is CPacketClientStatus -> {
-                    if (!cPacketClientStatus.value) return
+                    if (!cPacketClientStatus) return
                     logClient(packet) {
                         "action" to packet.status.name
                     }
@@ -528,7 +516,7 @@ object PacketLogger : Module(
                     }
                 }
                 is CPacketConfirmTransaction -> {
-                    if (!cPacketConfirmTransaction.value) return
+                    if (!cPacketConfirmTransaction) return
                     logClient(packet) {
                         "windowID" to packet.windowId
                         "actionNumber" to packet.uid
@@ -536,41 +524,41 @@ object PacketLogger : Module(
                     }
                 }
                 is CPacketCreativeInventoryAction -> {
-                    if (!cPacketCreativeInventoryAction.value) return
+                    if (!cPacketCreativeInventoryAction) return
                     logClient(packet) {
                         "slotID" to packet.slotId
                         "clickedItem" to packet.stack
                     }
                 }
                 is CPacketCustomPayload -> {
-                    if (!cPacketCustomPayload.value) return
+                    if (!cPacketCustomPayload) return
                     logClient(packet) {
                         "channel" to packet.channelName
                         "data" to packet.bufferData
                     }
                 }
                 is CPacketEnchantItem -> {
-                    if (!cPacketEnchantItem.value) return
+                    if (!cPacketEnchantItem) return
                     logClient(packet) {
                         "windowID" to packet.windowId
                         "button" to packet.button
                     }
                 }
                 is CPacketEntityAction -> {
-                    if (!cPacketEntityAction.value) return
+                    if (!cPacketEntityAction) return
                     logClient(packet) {
                         "action" to packet.action.name
                         "auxData" to packet.auxData
                     }
                 }
                 is CPacketHeldItemChange -> {
-                    if (!cPacketHeldItemChange.value) return
+                    if (!cPacketHeldItemChange) return
                     logClient(packet) {
                         "slotID" to packet.slotId
                     }
                 }
                 is CPacketInput -> {
-                    if (!cPacketInput.value) return
+                    if (!cPacketInput) return
                     logClient(packet) {
                         "forward" to packet.forwardSpeed
                         "strafe" to packet.strafeSpeed
@@ -579,13 +567,13 @@ object PacketLogger : Module(
                     }
                 }
                 is CPacketKeepAlive -> {
-                    if (!cPacketKeepAlive.value) return
+                    if (!cPacketKeepAlive) return
                     logClient(packet) {
                         "ket" to packet.key
                     }
                 }
                 is CPacketPlaceRecipe -> {
-                    if (!cPacketPlaceRecipe.value) return
+                    if (!cPacketPlaceRecipe) return
                     logClient(packet) {
                         "windowID" to packet.func_194318_a()
                         @Suppress("DEPRECATION")
@@ -595,7 +583,7 @@ object PacketLogger : Module(
                 }
 
                 is CPacketPlayer.Rotation -> {
-                    if (!cPacketPlayerRotation.value) return
+                    if (!cPacketPlayerRotation) return
                     logClient(packet) {
                         "yaw" to packet.playerYaw
                         "pitch" to packet.playerPitch
@@ -603,7 +591,7 @@ object PacketLogger : Module(
                     }
                 }
                 is CPacketPlayer.Position -> {
-                    if (!cPacketPlayerPosition.value) return
+                    if (!cPacketPlayerPosition) return
                     logClient(packet) {
                         "x" to packet.playerX
                         "y" to packet.playerY
@@ -612,7 +600,7 @@ object PacketLogger : Module(
                     }
                 }
                 is CPacketPlayer.PositionRotation -> {
-                    if (!cPacketPlayerPositionRotation.value) return
+                    if (!cPacketPlayerPositionRotation) return
                     logClient(packet) {
                         "x" to packet.playerX
                         "y" to packet.playerY
@@ -623,13 +611,13 @@ object PacketLogger : Module(
                     }
                 }
                 is CPacketPlayer -> {
-                    if (!cPacketPlayer.value) return
+                    if (!cPacketPlayer) return
                     logClient(packet) {
                         "onGround" to packet.isOnGround
                     }
                 }
                 is CPacketPlayerAbilities -> {
-                    if (!cPacketPlayerAbilities.value) return
+                    if (!cPacketPlayerAbilities) return
                     logClient(packet) {
                         "invulnerable" to packet.isInvulnerable
                         "flying" to packet.isFlying
@@ -640,7 +628,7 @@ object PacketLogger : Module(
                     }
                 }
                 is CPacketPlayerDigging -> {
-                    if (!cPacketPlayerDigging.value) return
+                    if (!cPacketPlayerDigging) return
                     logClient(packet) {
                         "pos" to packet.position
                         "facing" to packet.facing.name
@@ -648,13 +636,13 @@ object PacketLogger : Module(
                     }
                 }
                 is CPacketPlayerTryUseItem -> {
-                    if (!cPacketPlayerTryUseItem.value) return
+                    if (!cPacketPlayerTryUseItem) return
                     logClient(packet) {
                         "hand" to packet.hand
                     }
                 }
                 is CPacketPlayerTryUseItemOnBlock -> {
-                    if (!cPacketPlayerTryUseItemOnBlock.value) return
+                    if (!cPacketPlayerTryUseItemOnBlock) return
                     logClient(packet) {
                         "pos" to packet.pos
                         "side" to packet.direction.name
@@ -664,7 +652,7 @@ object PacketLogger : Module(
                     }
                 }
                 is CPacketRecipeInfo -> {
-                    if (!cPacketRecipeInfo.value) return
+                    if (!cPacketRecipeInfo) return
                     logClient(packet) {
                         "purpose" to packet.purpose.name
                         @Suppress("DEPRECATION")
@@ -674,13 +662,13 @@ object PacketLogger : Module(
                     }
                 }
                 is CPacketResourcePackStatus -> {
-                    if (!cPacketResourcePackStatus.value) return
+                    if (!cPacketResourcePackStatus) return
                     logClient(packet) {
                         "action" to packet.action.name
                     }
                 }
                 is CPacketSeenAdvancements -> {
-                    if (!cPacketSeenAdvancements.value) return
+                    if (!cPacketSeenAdvancements) return
                     logClient(packet) {
                         "action" to packet.action.name
                         @Suppress("UNNECESSARY_SAFE_CALL")
@@ -691,20 +679,20 @@ object PacketLogger : Module(
                     }
                 }
                 is CPacketSpectate -> {
-                    if (!cPacketSpectate.value) return
+                    if (!cPacketSpectate) return
                     logClient(packet) {
                         "uuid" to packet.uuid
                     }
                 }
                 is CPacketSteerBoat -> {
-                    if (!cPacketSteerBoat.value) return
+                    if (!cPacketSteerBoat) return
                     logClient(packet) {
                         "left" to packet.left
                         "right" to packet.right
                     }
                 }
                 is CPacketTabComplete -> {
-                    if (!cPacketTabComplete.value) return
+                    if (!cPacketTabComplete) return
                     logClient(packet) {
                         "text" to packet.message
                         "hasTarget" to packet.hasTargetBlock()
@@ -714,7 +702,7 @@ object PacketLogger : Module(
                     }
                 }
                 is CPacketUpdateSign -> {
-                    if (!cPacketUpdateSign.value) return
+                    if (!cPacketUpdateSign) return
                     logClient(packet) {
                         "x" to packet.position.x
                         "y" to packet.position.y
@@ -726,7 +714,7 @@ object PacketLogger : Module(
                     }
                 }
                 is CPacketUseEntity -> {
-                    if (!cPacketUseEntity.value) return
+                    if (!cPacketUseEntity) return
                     @Suppress("UNNECESSARY_SAFE_CALL")
                     logClient(packet) {
                         "entityId" to packet.useEntityId
@@ -738,7 +726,7 @@ object PacketLogger : Module(
                     }
                 }
                 is CPacketVehicleMove -> {
-                    if (!cPacketVehicleMove.value) return
+                    if (!cPacketVehicleMove) return
                     logClient(packet) {
                         "x" to packet.x
                         "y" to packet.y
@@ -760,7 +748,7 @@ object PacketLogger : Module(
         if (packetSide == PacketSide.SERVER || packetSide == PacketSide.BOTH) {
             when (packet) {
                 is SPacketAdvancementInfo -> {
-                    if (!sPacketAdvancementInfo.value) return
+                    if (!sPacketAdvancementInfo) return
                     logServer(packet) {
                         "isFirstSync" to packet.isFirstSync
                         "advancementsToAdd" to buildString {
@@ -801,14 +789,14 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketAnimation -> {
-                    if (!sPacketAnimation.value) return
+                    if (!sPacketAnimation) return
                     logServer(packet) {
                         "entityId" to packet.entityID
                         "animationType" to packet.animationType
                     }
                 }
                 is SPacketBlockAction -> {
-                    if (!sPacketBlockAction.value) return
+                    if (!sPacketBlockAction) return
                     logServer(packet) {
                         "blockPosition" to packet.blockPosition
                         "instrument" to packet.data1
@@ -817,7 +805,7 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketBlockBreakAnim -> {
-                    if (!sPacketBlockBreakAnim.value) return
+                    if (!sPacketBlockBreakAnim) return
                     logServer(packet) {
                         "breakerId" to packet.breakerId
                         "position" to packet.position
@@ -825,27 +813,27 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketBlockChange -> {
-                    if (!sPacketBlockChange.value) return
+                    if (!sPacketBlockChange) return
                     logServer(packet) {
                         "blockPosition" to packet.blockPosition
                         "block" to packet.blockState.block.localizedName
                     }
                 }
                 is SPacketCamera -> {
-                    if (!sPacketCamera.value) return
+                    if (!sPacketCamera) return
                     logServer(packet) {
                         "entityId" to packet.entityId
                     }
                 }
                 is SPacketChangeGameState -> {
-                    if (!sPacketChangeGameState.value) return
+                    if (!sPacketChangeGameState) return
                     logServer(packet) {
                         "value" to packet.value
                         "gameState" to packet.gameState
                     }
                 }
                 is SPacketChat -> {
-                    if (!sPacketChat.value) return
+                    if (!sPacketChat) return
                     logServer(packet) {
                         "unformattedText" to packet.chatComponent.unformattedText
                         "type" to packet.type
@@ -853,7 +841,7 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketChunkData -> {
-                    if (!sPacketChunkData.value) return
+                    if (!sPacketChunkData) return
                     logServer(packet) {
                         "chunkX" to packet.chunkX
                         "chunkZ" to packet.chunkZ
@@ -861,13 +849,13 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketCloseWindow -> {
-                    if (!sPacketCloseWindow.value) return
+                    if (!sPacketCloseWindow) return
                     logServer(packet) {
                         "windowId" to packet.windowId
                     }
                 }
                 is SPacketCollectItem -> {
-                    if (!sPacketCollectItem.value) return
+                    if (!sPacketCollectItem) return
                     logServer(packet) {
                         "amount" to packet.amount
                         "collectedItemEntityID" to packet.collectedItemEntityID
@@ -875,7 +863,7 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketCombatEvent -> {
-                    if (!sPacketCombatEvent.value) return
+                    if (!sPacketCombatEvent) return
                     logServer(packet) {
                         "eventType" to packet.eventType.name
                         "playerId" to packet.playerId
@@ -885,7 +873,7 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketConfirmTransaction -> {
-                    if (!sPacketConfirmTransaction.value) return
+                    if (!sPacketConfirmTransaction) return
                     logServer(packet) {
                         "windowId" to packet.windowId
                         "transactionID" to packet.actionNumber
@@ -893,21 +881,21 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketCooldown -> {
-                    if (!sPacketCooldown.value) return
+                    if (!sPacketCooldown) return
                     logServer(packet) {
                         "item" to packet.item.registryName
                         "ticks" to packet.ticks
                     }
                 }
                 is SPacketCustomPayload -> {
-                    if (!sPacketCustomPayload.value) return
+                    if (!sPacketCustomPayload) return
                     logServer(packet) {
                         "channelName" to packet.channelName
                         "bufferData" to packet.bufferData
                     }
                 }
                 is SPacketCustomSound -> {
-                    if (!sPacketCustomSound.value) return
+                    if (!sPacketCustomSound) return
                     logServer(packet) {
                         "x" to packet.x
                         "y" to packet.y
@@ -919,7 +907,7 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketDestroyEntities -> {
-                    if (!sPacketDestroyEntities.value) return
+                    if (!sPacketDestroyEntities) return
                     logServer(packet) {
                         "entityIDs" to buildString {
                             for (entry in packet.entityIDs) {
@@ -931,20 +919,20 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketDisconnect -> {
-                    if (!sPacketDisconnect.value) return
+                    if (!sPacketDisconnect) return
                     logServer(packet) {
                         "reason" to packet.reason.unformattedText
                     }
                 }
                 is SPacketDisplayObjective -> {
-                    if (!sPacketDisplayObjective.value) return
+                    if (!sPacketDisplayObjective) return
                     logServer(packet) {
                         "position" to packet.position
                         "name" to packet.name
                     }
                 }
                 is SPacketEffect -> {
-                    if (!sPacketEffect.value) return
+                    if (!sPacketEffect) return
                     logServer(packet) {
                         "soundData" to packet.soundData
                         "soundPos" to packet.soundPos
@@ -953,7 +941,7 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketEntity.S15PacketEntityRelMove -> {
-                    if (!s15PacketEntityRelMove.value) return
+                    if (!s15PacketEntityRelMove) return
                     logServer(packet) {
                         "entityId" to packet.entityId
                         "x" to packet.x
@@ -963,7 +951,7 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketEntity.S16PacketEntityLook -> {
-                    if (!s16PacketEntityLook.value) return
+                    if (!s16PacketEntityLook) return
                     logServer(packet) {
                         "entityId" to packet.entityId
                         "yaw" to packet.yaw
@@ -973,7 +961,7 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketEntity.S17PacketEntityLookMove -> {
-                    if(!s17PacketEntityLookMove.value) return
+                    if(!s17PacketEntityLookMove) return
                     logServer(packet) {
                         "entityId" to packet.entityId
                         "x" to packet.x
@@ -986,7 +974,7 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketEntity -> {
-                    if (!sPacketEntity.value) return
+                    if (!sPacketEntity) return
                     logServer(packet) {
                         "entityId" to packet.entityId
                         "x" to packet.x
@@ -999,14 +987,14 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketEntityAttach -> {
-                    if (!sPacketEntityAttach.value) return
+                    if (!sPacketEntityAttach) return
                     logServer(packet) {
                         "entityId" to packet.entityId
                         "vehicleEntityId" to packet.vehicleEntityId
                     }
                 }
                 is SPacketEntityEffect -> {
-                    if (!sPacketEntityEffect.value) return
+                    if (!sPacketEntityEffect) return
                     logServer(packet) {
                         "entityId" to packet.entityId
                         "duration" to packet.duration
@@ -1017,7 +1005,7 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketEntityEquipment -> {
-                    if (!sPacketEntityEquipment.value) return
+                    if (!sPacketEntityEquipment) return
                     logServer(packet) {
                         "entityId" to packet.entityID
                         "slot" to packet.equipmentSlot.name
@@ -1025,14 +1013,14 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketEntityHeadLook -> {
-                    if (!sPacketEntityHeadLook.value) return
+                    if (!sPacketEntityHeadLook) return
                     logServer(packet) {
                         "entityId" to packet.entityHeadLookEntityId
                         "yaw" to packet.yaw
                     }
                 }
                 is SPacketEntityMetadata -> {
-                    if (!sPacketEntityMetadata.value) return
+                    if (!sPacketEntityMetadata) return
                     logServer(packet) {
                         "dataEntries" to buildString {
                             for (entry in packet.dataManagerEntries) {
@@ -1051,20 +1039,20 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketEntityProperties -> {
-                    if (!sPacketEntityProperties.value) return
+                    if (!sPacketEntityProperties) return
                     logServer(packet) {
                         "entityId" to packet.entityId
                         "snapshots" to packet.snapshots
                     }
                 }
                 is SPacketEntityStatus -> {
-                    if (!sPacketEntityStatus.value) return
+                    if (!sPacketEntityStatus) return
                     logServer(packet) {
                         "opCode" to packet.opCode
                     }
                 }
                 is SPacketEntityTeleport -> {
-                    if (!sPacketEntityTeleport.value) return
+                    if (!sPacketEntityTeleport) return
                     logServer(packet) {
                         "entityID" to packet.entityId
                         "x" to packet.x
@@ -1075,7 +1063,7 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketEntityVelocity -> {
-                    if (!sPacketEntityVelocity.value) return
+                    if (!sPacketEntityVelocity) return
                     logServer(packet) {
                         "entityID" to packet.entityID
                         "motionX" to packet.motionX
@@ -1084,7 +1072,7 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketExplosion -> {
-                    if (!sPacketExplosion.value) return
+                    if (!sPacketExplosion) return
                     logServer(packet) {
                         "strength" to packet.strength
                         "x" to packet.x
@@ -1110,13 +1098,13 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketHeldItemChange -> {
-                    if (!sPacketHeldItemChange.value) return
+                    if (!sPacketHeldItemChange) return
                     logServer(packet) {
                         "heldItemHotbarIndex" to packet.heldItemHotbarIndex
                     }
                 }
                 is SPacketJoinGame -> {
-                    if (!sPacketJoinGame.value) return
+                    if (!sPacketJoinGame) return
                     logServer(packet) {
                         "playerId" to packet.playerId
                         "difficulty" to packet.difficulty.name
@@ -1129,13 +1117,13 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketKeepAlive -> {
-                    if (!sPacketKeepAlive.value) return
+                    if (!sPacketKeepAlive) return
                     logServer(packet) {
                         "id" to packet.id
                     }
                 }
                 is SPacketMaps -> {
-                    if (!sPacketMaps.value) return
+                    if (!sPacketMaps) return
                     logServer(packet) {
                         "mapId" to packet.mapId
                         "mapScale" to packet.mapScale
@@ -1149,7 +1137,7 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketMoveVehicle -> {
-                    if (!sPacketMoveVehicle.value) return
+                    if (!sPacketMoveVehicle) return
                     logServer(packet) {
                         "x" to packet.x
                         "y" to packet.y
@@ -1159,7 +1147,7 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketMultiBlockChange -> {
-                    if (!sPacketMultiBlockChange.value) return
+                    if (!sPacketMultiBlockChange) return
                     logServer(packet) {
                         "changedBlocks" to buildString {
                             for (changedBlock in packet.changedBlocks) {
@@ -1185,7 +1173,7 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketOpenWindow -> {
-                    if (!sPacketOpenWindow.value) return
+                    if (!sPacketOpenWindow) return
                     logServer(packet) {
                         "entityId" to packet.entityId
                         "windowTitle" to packet.windowTitle
@@ -1195,7 +1183,7 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketParticles -> {
-                    if (!sPacketParticles.value) return
+                    if (!sPacketParticles) return
                     logServer(packet) {
                         "particleType" to packet.particleType.name
                         "isLongDistance" to packet.isLongDistance
@@ -1212,7 +1200,7 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketPlaceGhostRecipe -> {
-                    if (!sPacketPlaceGhostRecipe.value) return
+                    if (!sPacketPlaceGhostRecipe) return
                     logServer(packet) {
                         "windowId" to packet.func_194313_b()
                         @Suppress("DEPRECATION")
@@ -1220,7 +1208,7 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketPlayerAbilities -> {
-                    if (!sPacketPlayerAbilities.value) return
+                    if (!sPacketPlayerAbilities) return
                     logServer(packet) {
                         "isInvulnerable" to packet.isInvulnerable
                         "isFlying" to packet.isFlying
@@ -1231,14 +1219,14 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketPlayerListHeaderFooter -> {
-                    if (!sPacketPlayerListHeaderFooter.value) return
+                    if (!sPacketPlayerListHeaderFooter) return
                     logServer(packet) {
                         "header" to ITextComponent.Serializer.componentToJson(packet.header)
                         "footer" to ITextComponent.Serializer.componentToJson(packet.footer)
                     }
                 }
                 is SPacketPlayerListItem -> {
-                    if (!sPacketPlayerListItem.value) return
+                    if (!sPacketPlayerListItem) return
                     logServer(packet) {
                         "action" to packet.action.name
                         "entries" to buildString {
@@ -1262,7 +1250,7 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketPlayerPosLook -> {
-                    if (!sPacketPlayerPosLook.value) return
+                    if (!sPacketPlayerPosLook) return
                     logServer(packet) {
                         "x" to packet.x
                         "y" to packet.y
@@ -1280,7 +1268,7 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketRecipeBook -> {
-                    if (!sPacketRecipeBook.value) return
+                    if (!sPacketRecipeBook) return
                     @Suppress("DEPRECATION")
                     logServer(packet) {
                         "state" to packet.state.name
@@ -1303,7 +1291,7 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketRemoveEntityEffect -> {
-                    if (!sPacketRemoveEntityEffect.value) return
+                    if (!sPacketRemoveEntityEffect) return
                     logServer(packet) {
                         mc.world?.let { world ->
                             packet.getEntity(world)?.let {
@@ -1314,14 +1302,14 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketResourcePackSend -> {
-                    if (!sPacketResourcePackSend.value) return
+                    if (!sPacketResourcePackSend) return
                     logServer(packet) {
                         "url" to packet.url
                         "hash" to packet.hash
                     }
                 }
                 is SPacketRespawn -> {
-                    if (!sPacketRespawn.value) return
+                    if (!sPacketRespawn) return
                     logServer(packet) {
                         "dimensionID" to packet.dimensionID
                         "difficulty" to packet.difficulty.name
@@ -1330,7 +1318,7 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketScoreboardObjective -> {
-                    if (!sPacketScoreboardObjective.value) return
+                    if (!sPacketScoreboardObjective) return
                     logServer(packet) {
                         "name" to packet.objectiveName
                         "value" to packet.objectiveValue
@@ -1339,7 +1327,7 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketSelectAdvancementsTab -> {
-                    if (!sPacketSelectAdvancementsTab.value) return
+                    if (!sPacketSelectAdvancementsTab) return
                     logServer(packet) {
                         packet.tab?.let {
                             "name" to it.namespace
@@ -1351,14 +1339,14 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketServerDifficulty -> {
-                    if (!sPacketServerDifficulty.value) return
+                    if (!sPacketServerDifficulty) return
                     logServer(packet) {
                         "difficulty" to packet.difficulty.name
                         "difficultyLocked" to packet.isDifficultyLocked
                     }
                 }
                 is SPacketSetExperience -> {
-                    if (!sPacketSetExperience.value) return
+                    if (!sPacketSetExperience) return
                     logServer(packet) {
                         "experienceBar" to packet.experienceBar
                         "totalExperience" to packet.totalExperience
@@ -1366,7 +1354,7 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketSetPassengers -> {
-                    if (!sPacketSetPassengers.value) return
+                    if (!sPacketSetPassengers) return
                     logServer(packet) {
                         "entityID" to packet.entityId
                         "passengers" to buildString {
@@ -1379,7 +1367,7 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketSetSlot -> {
-                    if (!sPacketSetSlot.value) return
+                    if (!sPacketSetSlot) return
                     logServer(packet) {
                         "slot" to packet.slot
                         "stack" to packet.stack.displayName
@@ -1387,7 +1375,7 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketSignEditorOpen -> {
-                    if (!sPacketSignEditorOpen.value) return
+                    if (!sPacketSignEditorOpen) return
                     logServer(packet) {
                         "posX" to packet.signPosition.x
                         "posY" to packet.signPosition.y
@@ -1395,7 +1383,7 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketSoundEffect -> {
-                    if (!sPacketSoundEffect.value) return
+                    if (!sPacketSoundEffect) return
                     logServer(packet) {
                         "sound" to packet.sound.soundName
                         "category" to packet.category
@@ -1407,7 +1395,7 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketSpawnExperienceOrb -> {
-                    if (!sPacketSpawnExperienceOrb.value) return
+                    if (!sPacketSpawnExperienceOrb) return
                     logServer(packet) {
                         "entityID" to packet.entityID
                         "x" to packet.x
@@ -1417,7 +1405,7 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketSpawnGlobalEntity -> {
-                    if (!sPacketSpawnGlobalEntity.value) return
+                    if (!sPacketSpawnGlobalEntity) return
                     logServer(packet) {
                         "entityID" to packet.entityId
                         "type" to packet.type
@@ -1427,7 +1415,7 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketSpawnMob -> {
-                    if (!sPacketSpawnMob.value) return
+                    if (!sPacketSpawnMob) return
                     logServer(packet) {
                         "entityID" to packet.entityID
                         "uuid" to packet.uniqueId
@@ -1455,7 +1443,7 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketSpawnObject -> {
-                    if (!sPacketSpawnObject.value) return
+                    if (!sPacketSpawnObject) return
                     logServer(packet) {
                         "entityID" to packet.entityID
                         "uuid" to packet.uniqueId
@@ -1472,7 +1460,7 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketSpawnPainting -> {
-                    if (!sPacketSpawnPainting.value) return
+                    if (!sPacketSpawnPainting) return
                     logServer(packet) {
                         "entityID" to packet.entityID
                         "uuid" to packet.uniqueId
@@ -1504,25 +1492,25 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketSpawnPosition -> {
-                    if (!sPacketSpawnPosition.value) return
+                    if (!sPacketSpawnPosition) return
                     logServer(packet) {
                         "pos" to packet.spawnPos
                     }
                 }
                 is SPacketStatistics -> {
-                    if (!sPacketStatistics.value) return
+                    if (!sPacketStatistics) return
                     logServer(packet) {
                         "statistics" to packet.statisticMap
                     }
                 }
                 is SPacketTabComplete -> {
-                    if (!sPacketTabComplete.value) return
+                    if (!sPacketTabComplete) return
                     logServer(packet) {
                         "matches" to packet.matches
                     }
                 }
                 is SPacketTeams -> {
-                    if (!sPacketTeams.value) return
+                    if (!sPacketTeams) return
                     logServer(packet) {
                         "action" to packet.action
                         "type" to packet.displayName
@@ -1530,14 +1518,14 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketTimeUpdate -> {
-                    if (!sPacketTimeUpdate.value) return
+                    if (!sPacketTimeUpdate) return
                     logServer(packet) {
                         "totalWorldTime" to packet.totalWorldTime
                         "worldTime" to packet.worldTime
                     }
                 }
                 is SPacketTitle -> {
-                    if (!sPacketTitle.value) return
+                    if (!sPacketTitle) return
                     logServer(packet) {
                         "action" to packet.type
                         "text" to packet.message
@@ -1547,14 +1535,14 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketUnloadChunk -> {
-                    if (!sPacketUnloadChunk.value) return
+                    if (!sPacketUnloadChunk) return
                     logServer(packet) {
                         "x" to packet.x
                         "z" to packet.z
                     }
                 }
                 is SPacketUpdateBossInfo -> {
-                    if (!sPacketUpdateBossInfo.value) return
+                    if (!sPacketUpdateBossInfo) return
                     logServer(packet) {
                         "uuid" to packet.uniqueId
                         "operation" to packet.operation.name
@@ -1568,7 +1556,7 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketUpdateHealth -> {
-                    if (!sPacketUpdateHealth.value) return
+                    if (!sPacketUpdateHealth) return
                     logServer(packet) {
                         "health" to packet.health
                         "foodLevel" to packet.foodLevel
@@ -1576,7 +1564,7 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketUpdateScore -> {
-                    if (!sPacketUpdateScore.value) return
+                    if (!sPacketUpdateScore) return
                     logServer(packet) {
                         "playerName" to packet.playerName
                         "objective" to packet.objectiveName
@@ -1585,7 +1573,7 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketUpdateTileEntity -> {
-                    if (!sPacketUpdateTileEntity.value) return
+                    if (!sPacketUpdateTileEntity) return
                     logServer(packet) {
                         "pos" to packet.pos
                         "type" to packet.tileEntityType
@@ -1593,7 +1581,7 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketUseBed -> {
-                    if (!sPacketUseBed.value) return
+                    if (!sPacketUseBed) return
                     @Suppress("UNNECESSARY_SAFE_CALL")
                     logServer(packet) {
                         mc.world?.let { world ->
@@ -1603,7 +1591,7 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketWindowItems -> {
-                    if (!sPacketWindowItems.value) return
+                    if (!sPacketWindowItems) return
                     logServer(packet) {
                         "windowId" to packet.windowId
                         "itemStacks" to buildString {
@@ -1616,7 +1604,7 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketWindowProperty -> {
-                    if (!sPacketWindowProperty.value) return
+                    if (!sPacketWindowProperty) return
                     logServer(packet) {
                         "windowId" to packet.windowId
                         "property" to packet.property
@@ -1624,7 +1612,7 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketWorldBorder -> {
-                    if (!sPacketWorldBorder.value) return
+                    if (!sPacketWorldBorder) return
                     logServer(packet) {
                         "action" to packet.action.name
                         "size" to packet.size
