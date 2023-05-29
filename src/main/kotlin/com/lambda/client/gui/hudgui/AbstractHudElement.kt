@@ -56,7 +56,6 @@ abstract class AbstractHudElement(
 
     val settingList get() = GuiConfig.getSettings(this)
     private var chatSnapping = false
-    private var prevPosYSnap = 0f
     private val snappedElements = mutableListOf<AbstractHudElement>()
     private val chatSnapY = 15f
 
@@ -68,18 +67,18 @@ abstract class AbstractHudElement(
             if (Hud.chatSnap) {
                 if (mc.currentScreen is GuiChat && !chatSnapping) {
                     val screenH = (mc.currentScreen as GuiChat).height
-                    if (posY >= screenH - height - 3 && posX <= 3) {
-                        prevPosYSnap = posY
-                        posY -= chatSnapY
+                    if (posY >= screenH - height - 3 && posX <= 3 && yShift == 0.0f) {
+                        val prevPosYSnap = posY
+                        yShift = -chatSnapY
                         snappedElements.clear()
                         GuiManager.getHudElementOrNull(componentName)?.let { snappedElements.add(it) }
                         chatSnapCheck(componentName, prevPosYSnap)
                         chatSnapping = true
                     }
                 } else if (mc.currentScreen !is GuiChat && chatSnapping) {
-                    posY = prevPosYSnap
+                    yShift = 0.0f
                     for (element in snappedElements) {
-                        element.posY = element.posY + chatSnapY
+                        element.yShift = 0.0f
                     }
                     snappedElements.clear()
                     chatSnapping = false
@@ -90,10 +89,14 @@ abstract class AbstractHudElement(
 
     private fun chatSnapCheck(thisElement: String, prevSnapY: Float) {
         for (element in GuiManager.hudElements) {
-            if (!snappedElements.contains(element) && element.componentName != thisElement && element.visible && element.posY + element.height >= prevSnapY - 3 && element.posX <= 3) {
+            if (!snappedElements.contains(element)
+                && element.componentName != thisElement
+                && element.visible
+                && element.posY + element.height >= prevSnapY - 3
+                && element.posX <= 3) {
                 snappedElements.add(element)
                 chatSnapCheck(element.componentName, element.posY)
-                element.posY = element.posY - chatSnapY
+                element.yShift = -chatSnapY
             }
         }
     }
