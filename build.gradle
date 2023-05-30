@@ -30,9 +30,14 @@ tasks.register('writeVersion') {
     description 'Write version to file'
 
     doLast {
-        var f = file('build/resources/main/lambda_version.txt')
-        f.parentFile.mkdirs()
-        f.write(project.version)
+        if (project.version.length() > 8) {
+            var f = file('build/resources/main/lambda_version.txt')
+            f.parentFile.mkdirs()
+            println "Writing version: " + project.version
+            f.write(project.version)
+        } else {
+            println "Unable to determine full version"
+        }
     }
     outputs.upToDateWhen { false }
 }
