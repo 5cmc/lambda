@@ -22,8 +22,11 @@ jobs:
       - name: Elevate wrapper permissions
         run: chmod +x ./gradlew
 
+      - name: Echo version
+        run: echo | git rev-parse --short HEAD
+
       - name: Create version file
-        run: mkdir build/resources/main -p && echo | git rev-parse --short HEAD >> testfile.txt
+        run: mkdir build/resources/main -p && echo | git rev-parse --short HEAD >> lambda_version.txt
 
       - name: Build lambda mod
         run: ./gradlew --no-build-cache build
