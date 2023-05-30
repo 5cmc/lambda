@@ -34,6 +34,7 @@ tasks.register('writeVersion') {
         f.parentFile.mkdirs()
         f.write(project.version)
     }
+    outputs.upToDateWhen { false }
 }
 
 compileJava {

@@ -419,7 +419,7 @@ object PacketLogger : Module(
             }
 
             /* Don't let lines get too big, write periodically to the file */
-            if (lines.size >= 500 || timer.tick(15L)) {
+            if (lines.size >= 500) {
                 write()
             }
         }
