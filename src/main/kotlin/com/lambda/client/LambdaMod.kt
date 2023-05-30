@@ -81,9 +81,6 @@ class LambdaMod {
         ConfigUtils.loadAll()
 
         BackgroundScope.start()
-        BackgroundScope.launchLooping("RealWorldTick", 50L) {
-            LambdaEventBus.post(RealWorldTickEvent())
-        }
 //        LambdaClickGui.populateRemotePlugins()
 
         KamiCheck.runCheck()
@@ -94,6 +91,9 @@ class LambdaMod {
     @Mod.EventHandler
     fun postInit(event: FMLPostInitializationEvent) {
         ready = true
+        BackgroundScope.launchLooping("RealWorldTick", 50L) {
+            LambdaEventBus.post(RealWorldTickEvent())
+        }
     }
 
     private fun pathFinderInit() {
