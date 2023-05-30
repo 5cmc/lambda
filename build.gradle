@@ -31,7 +31,7 @@ tasks.register('writeVersion') {
 
     doLast {
         if (project.version.length() > 8) {
-            var f = file('build/resources/main/lambda_version.txt')
+            var f = file(project.buildDir.absolutePath + '/resources/main/lambda_version.txt')
             f.parentFile.mkdirs()
             println "Writing version: " + project.version
             f.write(project.version)
@@ -48,7 +48,6 @@ compileJava {
     // Disables Gradle build caching for this task
     // If build caching is enabled this can cause the refmap to not be built and included
     outputs.upToDateWhen { false }
-    dependsOn 'writeVersion'
 }
 
 compileKotlin.kotlinOptions {
@@ -167,6 +166,7 @@ processResources {
         include 'mcmod.info'
         expand version: version, 'mcversion': minecraftVersion
     }
+    finalizedBy 'writeVersion'
 }
 
 tasks.register('buildApiSource', Jar) { // Generate sources
