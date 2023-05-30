@@ -117,6 +117,8 @@ object LambdaHudGui : AbstractLambdaGui<HudSettingWindow, AbstractHudElement>() 
     }
 
     private fun renderHudElement(vertexHelper: VertexHelper, window: AbstractHudElement) {
+        window.updatePrevPos()
+        window.updatePrevSize()
         glPushMatrix()
         glTranslatef(window.renderPosX, window.renderPosY, 0.0f)
 

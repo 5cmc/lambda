@@ -80,7 +80,6 @@ class LambdaMod {
         ConfigUtils.moveAllLegacyConfigs()
         ConfigUtils.loadAll()
 
-        BackgroundScope.start()
 //        LambdaClickGui.populateRemotePlugins()
 
         KamiCheck.runCheck()
@@ -94,6 +93,7 @@ class LambdaMod {
         BackgroundScope.launchLooping("RealWorldTick", 50L) {
             LambdaEventBus.post(RealWorldTickEvent())
         }
+        BackgroundScope.start()
     }
 
     private fun pathFinderInit() {
