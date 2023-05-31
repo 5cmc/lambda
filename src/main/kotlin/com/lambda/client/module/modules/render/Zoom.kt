@@ -2,6 +2,8 @@ package com.lambda.client.module.modules.render
 
 import com.lambda.client.module.Category
 import com.lambda.client.module.Module
+import com.lambda.client.util.threads.safeListener
+import net.minecraftforge.fml.common.gameevent.TickEvent
 
 object Zoom : Module(
     name = "Zoom",
@@ -16,13 +18,13 @@ object Zoom : Module(
     private val modifySensitivity = setting("Modify Sensitivity", true)
     private val sensitivityMultiplier = setting("Sensitivity Multiplier", 1.0f, 0.25f..2.0f, 0.25f, { modifySensitivity.value })
     private val smoothCamera = setting("Cinematic Camera", false)
+    private val f5Only = setting("3rd Person Only", false)
 
     init {
         onEnable {
             fov = mc.gameSettings.fovSetting
             sensi = mc.gameSettings.mouseSensitivity
 
-            mc.gameSettings.fovSetting = fovChange.value
             if (modifySensitivity.value) mc.gameSettings.mouseSensitivity = sensi * sensitivityMultiplier.value
             mc.gameSettings.smoothCamera = smoothCamera.value
         }
@@ -31,6 +33,15 @@ object Zoom : Module(
             mc.gameSettings.fovSetting = fov
             mc.gameSettings.mouseSensitivity = sensi
             mc.gameSettings.smoothCamera = false
+        }
+
+        safeListener<TickEvent.ClientTickEvent>(){
+            if(f5Only.value){
+                if(mc.gameSettings.thirdPersonView == 1) mc.gameSettings.fovSetting = fovChange.value else mc.gameSettings.fovSetting = fov
+            }else{
+                mc.gameSettings.fovSetting = fovChange.value
+            }
+            return@safeListener
         }
 
         fovChange.listeners.add {
