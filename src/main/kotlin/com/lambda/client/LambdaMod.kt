@@ -45,6 +45,7 @@ class LambdaMod {
         }
 
         const val VERSION = "3.3.0"
+        const val DEEZ_VERSION = "xXB0ngR1pXx"
 
         const val APP_ID = 835368493150502923 // DiscordIPC
         const val DEPENDENCIES = "required-after:forge@[14.23.5.2860,);"

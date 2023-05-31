@@ -147,10 +147,25 @@ internal object ModuleList : HudElement(
         }
 
     private fun AbstractModule.newTextLine(color: ColorHolder = primary) =
-        TextComponent.TextLine(" ").apply {
+        TextComponent.TextLine("").apply {
+            if(dockingH == HAlign.RIGHT) {
+                add(TextComponent.TextElement("<", secondary))
+            }else{
+                add(TextComponent.TextElement(">", secondary))
+            }
             add(TextComponent.TextElement(name, color))
             getHudInfo().let {
-                if (it.isNotBlank()) add(TextComponent.TextElement(it, secondary))
+                if (it.isNotBlank()) {
+                    if(dockingH == HAlign.RIGHT) {
+                        add(TextComponent.TextElement("] ", secondary))
+                        add(TextComponent.TextElement(it, primary))
+                        add(TextComponent.TextElement("[", secondary))
+                    }else{
+                        add(TextComponent.TextElement(" [", secondary))
+                        add(TextComponent.TextElement(it, primary))
+                        add(TextComponent.TextElement("]", secondary))
+                    }
+                }
             }
             if (dockingH == HAlign.RIGHT) reverse()
         }

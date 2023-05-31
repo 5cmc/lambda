@@ -37,6 +37,10 @@ abstract class AbstractLabelHud(
         }
     }
 
+    open fun getChestCount(): String{
+        return ""
+    }
+
     abstract fun SafeClientEvent.updateText()
 
     override fun renderHud(vertexHelper: VertexHelper) {

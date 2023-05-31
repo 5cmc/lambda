@@ -14,6 +14,7 @@ import com.lambda.client.util.graphics.font.VAlign
 import com.lambda.client.util.threads.safeAsyncListener
 import net.minecraft.client.renderer.GlStateManager
 import net.minecraftforge.fml.common.gameevent.TickEvent
+import java.awt.Color
 import kotlin.math.max
 
 internal object Bindings : HudElement(

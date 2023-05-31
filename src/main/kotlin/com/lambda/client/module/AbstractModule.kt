@@ -6,6 +6,7 @@ import com.lambda.client.event.LambdaEventBus
 import com.lambda.client.event.events.ModuleToggleEvent
 import com.lambda.client.event.events.RealWorldTickEvent
 import com.lambda.client.gui.clickgui.LambdaClickGui
+import com.lambda.client.gui.hudgui.AbstractLabelHud
 import com.lambda.client.manager.managers.NotificationManager
 import com.lambda.client.module.modules.client.ClickGUI
 import com.lambda.client.setting.configs.NameableConfig
@@ -98,6 +99,10 @@ abstract class AbstractModule(
 
     open fun isActive(): Boolean {
         return isEnabled || alwaysListening
+    }
+
+    open fun getChestCount(): String {
+        return ""
     }
 
     open fun getHudInfo(): String {

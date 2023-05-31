@@ -37,6 +37,10 @@ internal object ChestCounter : LabelHud(
         }
     }
 
+    override fun getChestCount(): String {
+        return (if(dubs) "Dubs: " else "Chests: " + "$chestCount")
+    }
+
     init {
         safeListener<ClientTickEvent> {
             if (it.phase != TickEvent.Phase.START) return@safeListener

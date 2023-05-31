@@ -9,7 +9,7 @@ internal object Username : LabelHud(
     description = "Player username"
 ) {
 
-    private val prefix = setting("Prefix", "Welcome")
+    private val prefix = setting("Prefix", "Account:")
     private val suffix = setting("Suffix", "")
 
     override fun SafeClientEvent.updateText() {

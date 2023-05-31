@@ -75,7 +75,7 @@ object SeedOverlay: Module(
     }
 
     override fun getHudInfo(): String {
-        return differences.size.toString()
+        return "Difference: " + differences.size.toString()
     }
 
     init {

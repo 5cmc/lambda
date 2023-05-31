@@ -1,18 +1,26 @@
 package com.lambda.client.module.modules.render
 
+import com.lambda.client.LambdaMod
 import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.event.events.RenderWorldEvent
 import com.lambda.client.event.listener.listener
+import com.lambda.client.gui.hudgui.elements.world.ChestCounter
+import com.lambda.client.gui.hudgui.elements.world.ChestCounter.setting
 import com.lambda.client.module.Category
 import com.lambda.client.module.Module
+import com.lambda.client.util.TickTimer
+import com.lambda.client.util.TimeUnit
 import com.lambda.client.util.color.ColorHolder
 import com.lambda.client.util.color.DyeColors
 import com.lambda.client.util.color.HueCycler
 import com.lambda.client.util.graphics.ESPRenderer
 import com.lambda.client.util.graphics.GeometryMasks
 import com.lambda.client.util.math.VectorUtils.distanceTo
+import com.lambda.client.util.threads.defaultScope
 import com.lambda.client.util.threads.safeAsyncListener
+import com.lambda.client.util.threads.safeListener
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import net.minecraft.entity.Entity
@@ -39,7 +47,7 @@ object StorageESP : Module(
     private val dispenser by setting("Dispenser", false, { page == Page.TYPE })
     private val hopper by setting("Hopper", false, { page == Page.TYPE })
     private val cart by setting("Minecart", false, { page == Page.TYPE })
-    private val infinite by setting("Infinite Range", true) // To avoid a hard to control range slider
+    private val infinite by setting("Infinite Range", true, { page == Page.TYPE}) // To avoid a hard to control range slider
     private val range by setting("Range", 64, 8..512, 1, { page == Page.TYPE && !infinite }, unit = " blocks")
 
     /* Color settings */
@@ -61,12 +69,23 @@ object StorageESP : Module(
     private val aTracer by setting("Tracer Alpha", 200, 0..255, 1, { page == Page.RENDER && tracer })
     private val thickness by setting("Line Thickness", 2.0f, 0.25f..5.0f, 0.25f, { page == Page.RENDER })
 
-    private enum class Page {
-        TYPE, COLOR, RENDER
-    }
+    /* Count settings */
+    private val count by setting("Count", true, { page == Page.COUNT })
+    private val searchDelayTicks by setting("Search Delay", 5, 1..100, 1,visibility = { count && page == Page.COUNT})
+    private val dubs by setting("Dubs", true, visibility = { count && page == Page.COUNT})
+
+    private val delayTimer: TickTimer = TickTimer(TimeUnit.TICKS)
+    private var chestCount = 0
+    private var shulkerCount = 0
+    private var blockSearchJob: Job? = null
 
     override fun getHudInfo(): String {
-        return renderer.size.toString()
+        if(!count) return ""
+        return (if(dubs) "Dubs: " + "$chestCount" else "Chests: " + "$chestCount")
+    }
+
+    private enum class Page {
+        TYPE, COLOR, RENDER, COUNT
     }
 
     private var cycler = HueCycler(600)
@@ -75,6 +94,16 @@ object StorageESP : Module(
     init {
         listener<RenderWorldEvent> {
             renderer.render(false)
+        }
+
+        safeListener<TickEvent.ClientTickEvent> {
+            if (it.phase != TickEvent.Phase.START) return@safeListener
+            if (blockSearchJob?.isActive == true) return@safeListener
+            if (delayTimer.tick(searchDelayTicks.toLong())) {
+                blockSearchJob = defaultScope.launch {
+                    searchChunks()
+                }
+            }
         }
 
         safeAsyncListener<TickEvent.ClientTickEvent> {
@@ -104,6 +133,27 @@ object StorageESP : Module(
         renderer.aOutline = if (outline) aOutline else 0
         renderer.aTracer = if (tracer) aTracer else 0
         renderer.thickness = thickness
+    }
+
+    private fun SafeClientEvent.searchChunks() {
+        try {
+            var chestC = 0
+            var shulkC = 0
+            for (it in world.loadedTileEntityList) {
+                if (it is TileEntityChest) {
+                    if (dubs) {
+                        if (it.adjacentChestXPos != null || it.adjacentChestZPos != null) chestC++
+                    } else {
+                        chestC++
+                    }
+                }
+            }
+            chestCount = chestC
+            shulkerCount = shulkC
+
+        } catch (e: Exception) {
+            LambdaMod.LOG.error("ChestCounter: Error searching chunks", e)
+        }
     }
 
     private fun SafeClientEvent.updateTileEntities(list: MutableList<Triple<AxisAlignedBB, ColorHolder, Int>>) {
