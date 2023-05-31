@@ -194,6 +194,15 @@ tasks.register('buildAll') {
     dependsOn 'build'
 }
 
+tasks.register('clearLibs') {
+    group 'build'
+    description 'Clears the libs folder'
+
+    doLast {
+        file(project.buildDir.absolutePath + "/libs").deleteDir()
+    }
+}
+
 shadowJar {
     // Don't put baritone mixin here please c:
     manifest.attributes(
@@ -221,6 +230,7 @@ shadowJar {
     relocate 'kotlinx', 'com.lambda.shadow.kotlinx'
     finalizedBy 'configureReobfTaskForReobfShadowJar', 'reobfShadowJar'
     mustRunAfter 'jar'
+    dependsOn 'clearLibs'
 }
 
 reobf {
