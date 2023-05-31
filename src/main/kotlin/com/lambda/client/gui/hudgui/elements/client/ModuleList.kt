@@ -5,6 +5,7 @@ import com.lambda.client.commons.interfaces.DisplayEnum
 import com.lambda.client.gui.hudgui.HudElement
 import com.lambda.client.module.AbstractModule
 import com.lambda.client.module.ModuleManager
+import com.lambda.client.module.modules.client.Hud
 import com.lambda.client.util.AsyncCachedValue
 import com.lambda.client.util.TimeUnit
 import com.lambda.client.util.TimedFlag
@@ -30,14 +31,15 @@ internal object ModuleList : HudElement(
 ) {
 
     private val sortingMode by setting("Sorting Mode", SortingMode.LENGTH)
+    private val styleMode by setting("Style Mode", StyleMode.ARROW)
     private val showInvisible by setting("Show Invisible", false)
     private val rainbow by setting("Rainbow", true)
     private val rainbowLength by setting("Rainbow Length", 10.0f, 1.0f..20.0f, 0.5f, { rainbow })
     private val indexedHue by setting("Indexed Hue", 0.5f, 0.0f..1.0f, 0.05f, { rainbow })
     private val saturation by setting("Saturation", 1.0f, 0.0f..1.0f, 0.05f, { rainbow })
     private val brightness by setting("Brightness", 1.0f, 0.0f..1.0f, 0.05f, { rainbow })
-    private val primary by setting("Primary Color", ColorHolder(155, 144, 255), false)
-    private val secondary by setting("Secondary Color", ColorHolder(255, 255, 255), false)
+    private val primary by setting("Primary Color", Hud.primaryColor, false)
+    private val secondary by setting("Secondary Color", Hud.secondaryColor, false)
 
     @Suppress("UNUSED")
     private enum class SortingMode(
@@ -47,6 +49,10 @@ internal object ModuleList : HudElement(
         LENGTH("Length", compareByDescending { it.textLine.getWidth() }),
         ALPHABET("Alphabet", compareBy { it.name }),
         CATEGORY("Category", compareBy { it.category.ordinal })
+    }
+
+    private enum class StyleMode(override val displayName: String) : DisplayEnum {
+        CLEAN("Clean"), ARROW("Arrow")
     }
 
     private var cacheWidth = 20.0f
@@ -147,10 +153,17 @@ internal object ModuleList : HudElement(
         }
 
     private fun AbstractModule.newTextLine(color: ColorHolder = primary) =
-        TextComponent.TextLine(" ").apply {
+        TextComponent.TextLine("").apply {
+            if (styleMode == StyleMode.ARROW) {
+                add(TextComponent.TextElement(if (dockingH == HAlign.RIGHT) "<" else ">", secondary))
+            }
             add(TextComponent.TextElement(name, color))
             getHudInfo().let {
-                if (it.isNotBlank()) add(TextComponent.TextElement(it, secondary))
+                if (it.isNotBlank()) {
+                    add(TextComponent.TextElement(if (dockingH == HAlign.RIGHT) "] " else " [", secondary))
+                    add(TextComponent.TextElement(it, primary))
+                    add(TextComponent.TextElement(if (dockingH == HAlign.RIGHT) " [" else "] ", secondary))
+                }
             }
             if (dockingH == HAlign.RIGHT) reverse()
         }
