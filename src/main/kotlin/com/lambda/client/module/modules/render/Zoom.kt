@@ -36,17 +36,18 @@ object Zoom : Module(
         }
 
         safeListener<TickEvent.ClientTickEvent>(){
-            if(f5Only.value){
-                if(mc.gameSettings.thirdPersonView == 1) mc.gameSettings.fovSetting = fovChange.value else mc.gameSettings.fovSetting = fov
-            }else{
+            if (it.phase != TickEvent.Phase.END) return@safeListener
+            if (f5Only.value) {
+                mc.gameSettings.fovSetting = if (mc.gameSettings.thirdPersonView == 1) {
+                    fovChange.value
+                } else {
+                    fov
+                }
+            } else {
                 mc.gameSettings.fovSetting = fovChange.value
             }
-            return@safeListener
         }
 
-        fovChange.listeners.add {
-            if (isEnabled) mc.gameSettings.fovSetting = fovChange.value
-        }
         modifySensitivity.listeners.add {
             if (isEnabled) if (modifySensitivity.value) mc.gameSettings.mouseSensitivity = sensi * sensitivityMultiplier.value
             else mc.gameSettings.mouseSensitivity = sensi
