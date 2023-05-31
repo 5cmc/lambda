@@ -4,6 +4,7 @@ import com.lambda.client.commons.extension.sumByFloat
 import com.lambda.client.gui.AbstractLambdaGui
 import com.lambda.client.gui.rgui.Component
 import com.lambda.client.gui.rgui.InteractiveComponent
+import com.lambda.client.gui.rgui.component.Slider
 import com.lambda.client.module.modules.client.ClickGUI
 import com.lambda.client.module.modules.client.CustomFont
 import com.lambda.client.module.modules.client.GuiColors
@@ -194,7 +195,10 @@ open class ListWindow(
         )
         glEnable(GL_SCISSOR_TEST)
         glTranslatef(0.0f, -renderScrollProgress, 0.0f)
-
+        children.forEach {
+            it.updatePrevSize()
+            it.updatePrevPos()
+        }
         children.filter {
             it.visible
                 && it.renderPosY + it.renderHeight - renderScrollProgress > draggableHeight

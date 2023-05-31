@@ -21,7 +21,7 @@ open class Slider(
     name: String,
     valueIn: Double,
     private val description: String = "",
-    private val visibility: (() -> Boolean)?
+    val visibility: (() -> Boolean)?
 ) : InteractiveComponent(name, 0.0f, 0.0f, 40.0f, 10.0f, SettingGroup.NONE) {
     protected var value = valueIn
         set(value) {
@@ -93,12 +93,12 @@ open class Slider(
 
     override fun onTick() {
         super.onTick()
-        height = maxHeight
         visibility?.let { visible = it.invoke() }
     }
 
     override fun onGuiInit() {
         super.onGuiInit()
+        height = maxHeight
         visibility?.let { visible = it.invoke() }
     }
 
