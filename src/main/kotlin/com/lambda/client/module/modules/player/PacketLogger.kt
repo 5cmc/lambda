@@ -1472,6 +1472,7 @@ object PacketLogger : Module(
                     }
                 }
                 is SPacketSpawnPlayer -> {
+                    if (!sPacketSpawnPlayer) return
                     logServer(packet) {
                         "entityID" to packet.entityID
                         "uniqueID" to packet.uniqueId
