@@ -2,6 +2,7 @@ package com.lambda.client.manager.managers
 
 import com.lambda.client.LambdaMod
 import com.lambda.client.event.events.ConnectionEvent
+import com.lambda.client.event.events.RightClickBlockEvent
 import com.lambda.client.event.listener.listener
 import com.lambda.client.manager.Manager
 import com.lambda.client.module.modules.player.PacketLogger
@@ -25,7 +26,6 @@ import net.minecraft.util.EnumFacing
 import net.minecraft.util.NonNullList
 import net.minecraft.util.math.BlockPos
 import net.minecraftforge.event.entity.player.PlayerContainerEvent
-import net.minecraftforge.event.entity.player.PlayerInteractEvent
 import java.io.File
 import java.io.IOException
 import java.nio.file.Paths
@@ -71,7 +71,7 @@ object CachedContainerManager : Manager {
             containers.clear()
         }
 
-        safeListener<PlayerInteractEvent.RightClickBlock> {
+        safeListener<RightClickBlockEvent> {
             if (!cacheContainers) return@safeListener
             world.getTileEntity(it.pos)?.let { tileEntity ->
                 if (tileEntity is TileEntityLockableLoot) {
