@@ -569,7 +569,7 @@ object PacketLogger : Module(
                 is CPacketKeepAlive -> {
                     if (!cPacketKeepAlive) return
                     logClient(packet) {
-                        "ket" to packet.key
+                        "key" to packet.key
                     }
                 }
                 is CPacketPlaceRecipe -> {
