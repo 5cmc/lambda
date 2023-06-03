@@ -10,9 +10,11 @@ import com.lambda.client.module.Category
 import com.lambda.client.module.Module
 import com.lambda.client.module.modules.client.Hud
 import com.lambda.client.setting.settings.impl.collection.CollectionSetting
+import com.lambda.client.util.EntityUtils
 import com.lambda.client.util.color.ColorHolder
 import com.lambda.client.util.graphics.ESPRenderer
 import com.lambda.client.util.graphics.GeometryMasks
+import com.lambda.client.util.graphics.LambdaTessellator
 import com.lambda.client.util.graphics.ShaderHelper
 import com.lambda.client.util.math.VectorUtils.distanceTo
 import com.lambda.client.util.text.MessageSendHelper
@@ -199,16 +201,12 @@ object Search : Module(
                     entitySearchDimensionFilter.value.find { dimFilter -> dimFilter.searchKey == entityName }?.dim
                 }?.contains(player.dimension) ?: true
             }
-            .sortedBy {
-                it.distanceTo(player.getPositionEyes(1f))
-            }
+            .sortedBy { it.distanceTo(player.getPositionEyes(1f)) }
             .take(maximumEntities)
-            .filter {
-                it.distanceTo(player.getPositionEyes(1f)) < range
-            }
+            .filter { it.distanceTo(player.getPositionEyes(1f)) < range }
+            .map { Triple(it.renderBoundingBox.offset(EntityUtils.getInterpolatedAmount(it, LambdaTessellator.pTicks())), entitySearchColor, GeometryMasks.Quad.ALL) }
             .toMutableList()
-        entityRenderer.clear()
-        renderList.forEach { entityRenderer.add(it, entitySearchColor) }
+        entityRenderer.replaceAll(renderList)
     }
 
     private fun SafeClientEvent.searchAllLoadedChunks() {
@@ -278,7 +276,6 @@ object Search : Module(
                 }
             }
             .toMutableList()
-
         blockRenderer.replaceAll(renderList)
     }
 
