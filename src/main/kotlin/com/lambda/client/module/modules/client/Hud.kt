@@ -2,6 +2,7 @@ package com.lambda.client.module.modules.client
 
 import com.lambda.client.module.Category
 import com.lambda.client.module.Module
+import com.lambda.client.setting.GuiConfig.setting
 import com.lambda.client.util.color.ColorHolder
 
 object Hud : Module(
@@ -16,4 +17,5 @@ object Hud : Module(
     val secondaryColor by setting("Secondary Color", ColorHolder(108, 0, 43), false)
     val chatSnap by setting("Chat Snap", true)
     val collisionSnapping by setting("Collision Snapping", true)
+    val f3Hide by setting("Hide on F3", true)
 }
