@@ -15,7 +15,12 @@ object AntiLeak : Module(
     private val rangeFactor by setting("Range Factor", 10.0, 1.0..100.0, 1.0, { rangeCheck }, description = "The factor to multiply/divide your coords by to determine the range")
 
     private val chatModifier = newMessageModifier(
-        filter = { MessageDetection.Message.SELF detectNot it.packet.message },
+        filter = {
+            MessageDetection.Message.ANY detectNot it.packet.message
+                && MessageDetection.Command.ANY detectNot it.packet.message
+                && MessageDetection.Other.BARITONE detectNot it.packet.message
+                && MessageDetection.Other.TPA_REQUEST detectNot it.packet.message
+        },
         modifier = {
             val message = it.packet.message
             val numbers = message
