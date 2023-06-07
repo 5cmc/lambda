@@ -70,7 +70,7 @@ abstract class AbstractHudElement(
             val currentScreen = mc.currentScreen
             if (currentScreen is GuiChat && !chatSnapping) {
                 val screenH = currentScreen.height
-                if (posY >= screenH - height - 3 && posX <= 3 && yShift == 0.0f) {
+                if (posY >= screenH - height - 3 && yShift == 0.0f) {
                     val prevPosYSnap = posY
                     yShift = -chatSnapY
                     snappedElements.clear()
@@ -94,8 +94,7 @@ abstract class AbstractHudElement(
             if (!snappedElements.contains(element)
                 && element.componentName != thisElement
                 && element.visible
-                && element.posY + element.height >= prevSnapY - 3
-                && element.posX <= 3) {
+                && element.posY + element.height >= prevSnapY - 3) {
                 snappedElements.add(element)
                 chatSnapCheck(element.componentName, element.posY)
                 element.yShift = -chatSnapY
