@@ -3,6 +3,7 @@ package com.lambda.client.command.commands
 import com.lambda.client.command.ClientCommand
 import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.mixin.extension.setValues
+import com.lambda.client.mixin.extension.useEntityAction
 import com.lambda.client.mixin.extension.useEntityId
 import com.lambda.client.util.items.clickSlotUnsynced
 import com.lambda.client.util.text.MessageSendHelper
@@ -449,6 +450,7 @@ object PacketCommand : ClientCommand(
                 executeSafe {
                     val packet = CPacketUseEntity()
                     packet.useEntityId = id.value
+                    packet.useEntityAction = CPacketUseEntity.Action.ATTACK
 
                     deployPacket(
                         packet,
