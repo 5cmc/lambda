@@ -47,6 +47,7 @@
       "accessor.render.AccessorShaderGroup",
       "accessor.render.AccessorViewFrustum",
       "baritone.MixinBaritoneSettings",
+      "entity.MixinAbstractHorse",
       "entity.MixinEntity",
       "entity.MixinEntityLivingBase",
       "entity.MixinEntityLlama",
