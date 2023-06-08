@@ -4,7 +4,6 @@ import com.lambda.client.commons.extension.sumByFloat
 import com.lambda.client.gui.AbstractLambdaGui
 import com.lambda.client.gui.rgui.Component
 import com.lambda.client.gui.rgui.InteractiveComponent
-import com.lambda.client.gui.rgui.component.Slider
 import com.lambda.client.module.modules.client.ClickGUI
 import com.lambda.client.module.modules.client.CustomFont
 import com.lambda.client.module.modules.client.GuiColors
@@ -149,12 +148,12 @@ open class ListWindow(
             }
         }
 
-        updateChild()
         children.forEach { it.onTick() }
     }
 
     override fun onRender(vertexHelper: VertexHelper, absolutePos: Vec2f) {
         super.onRender(vertexHelper, absolutePos)
+        updateChild()
 
         if (drawHandle) {
             val handleText = "....."
