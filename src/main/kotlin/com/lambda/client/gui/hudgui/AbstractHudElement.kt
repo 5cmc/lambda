@@ -75,7 +75,7 @@ abstract class AbstractHudElement(
                     yShift = -chatSnapY
                     snappedElements.clear()
                     GuiManager.getHudElementOrNull(componentName)?.let { snappedElements.add(it) }
-                    chatSnapCheck(componentName, prevPosYSnap)
+                    chatSnapCheck(componentName, prevPosYSnap, posX, posX + width)
                     chatSnapping = true
                 }
             } else if (currentScreen !is GuiChat && chatSnapping) {
@@ -89,14 +89,15 @@ abstract class AbstractHudElement(
         }
     }
 
-    private fun chatSnapCheck(thisElement: String, prevSnapY: Float) {
+    private fun chatSnapCheck(thisElement: String, prevSnapY: Float, prevSnapXMin: Float, prevSnapXMax: Float) {
         for (element in GuiManager.hudElements) {
             if (!snappedElements.contains(element)
                 && element.componentName != thisElement
                 && element.visible
-                && element.posY + element.height >= prevSnapY - 3) {
+                && element.posY + element.height >= prevSnapY - 3
+                && element.posX >= prevSnapXMin && element.posX <= prevSnapXMax) {
                 snappedElements.add(element)
-                chatSnapCheck(element.componentName, element.posY)
+                chatSnapCheck(element.componentName, element.posY, element.posX, element.posX + element.width)
                 element.yShift = -chatSnapY
             }
         }
