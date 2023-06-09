@@ -64,7 +64,7 @@ object NetherPathfinder: Module(
     private val throughBlocks by setting("Render Through Blocks", true)
     private val thickness by setting("Line Thickness", 1.0f, 0.25f..3.0f, 0.25f)
     private val segmentDistance by setting("Segment Distance", 5000, 1..10000, 1)
-    private val segmentRepathDist by setting("Segment Goal Distance", 300, 1..1000, 1,
+    private val segmentRepathDist by setting("Repath Distance", 300, 1..1000, 1,
         description = "Starts pathing for next segments if you are more than this distance away from the current end segment")
     private val rotatePlayer by setting("Rotate Player", false, consumer = { _, new ->
         playerProgressIndex = Int.MIN_VALUE
@@ -297,54 +297,58 @@ object NetherPathfinder: Module(
     fun goto(x: Int, z: Int) {
         if (pathLock.compareAndSet(false, true) && isNull(pathJob)) {
             pathJob = defaultScope.launch { runSafe {
-                MessageSendHelper.sendChatMessage("Calculating path to $x, $z...")
                 currentGoal = BlockPos(x.toDouble(), 64.0, z.toDouble())
-                multiSegmentPath = (abs(player.posX - x) > segmentDistance.toDouble() || abs(player.posZ - z) > segmentDistance.toDouble())
                 val t1 = System.currentTimeMillis()
                 var longs: LongArray? = null
-                val goalX = calculateGoalPoint(player.posX, x.toDouble(), segmentDistance.toDouble())
-                val goalZ = calculateGoalPoint(player.posZ, z.toDouble(), segmentDistance.toDouble())
+                val goalPos = calculateGoalPoint(player.position, currentGoal!!, segmentDistance.toDouble())
+                multiSegmentPath = (abs(goalPos.x - currentGoal!!.x) > 5 || abs(goalPos.z - currentGoal!!.z) > 5)
                 try {
-                        longs = PathFinder.pathFind(seed, false, true, player.posX.toInt(), player.posY.toInt(), player.posZ.toInt(),
-                            goalX,
-                            64,
-                            goalZ
-                        )
-                    } catch (e: Throwable) {
-                        LambdaMod.LOG.error(e)
-                    }
-                    if (longs != null) {
-                        val t2 = System.currentTimeMillis()
-                        val path: MutableList<BlockPos> = Arrays.stream(longs).mapToObj { serialized: Long -> BlockPos.fromLong(serialized) }.collect(Collectors.toList())
-                        if (isActive) { // allow us to "cancel" pathfind
-                            mc.addScheduledTask {
-                                playerProgressIndex = Int.MIN_VALUE
-                                setPath(path)
-                                scheduledFuture?.cancel(true)
-                                scheduledFuture = scheduledExecutor.scheduleWithFixedDelay({ scheduledGotoRepathCheck(path, x, z) }, 5000, repathSchedulerDelay.toLong(), TimeUnit.MILLISECONDS)
-                                MessageSendHelper.sendChatMessage(String.format("Found path in %.2f seconds", (t2 - t1) / 1000.0))
-                                pathJob = null
-                                pathLock.set(false)
-                            }
+                    MessageSendHelper.sendChatMessage("Calculating ${if (multiSegmentPath) "segment" else "" } path to ${goalPos.x}, ${goalPos.z}...")
+                    longs = PathFinder.pathFind(seed, false, true, player.posX.toInt(), player.posY.toInt(), player.posZ.toInt(),
+                        goalPos.x,
+                        64,
+                        goalPos.z
+                    )
+                } catch (e: Throwable) {
+                    LambdaMod.LOG.error(e)
+                }
+                if (longs != null) {
+                    val t2 = System.currentTimeMillis()
+                    val path: MutableList<BlockPos> = Arrays.stream(longs).mapToObj { serialized: Long -> BlockPos.fromLong(serialized) }.collect(Collectors.toList())
+                    if (isActive) { // allow us to "cancel" pathfind
+                        mc.addScheduledTask {
+                            playerProgressIndex = Int.MIN_VALUE
+                            setPath(path)
+                            scheduledFuture?.cancel(true)
+                            scheduledFuture = scheduledExecutor.scheduleWithFixedDelay({ scheduledGotoRepathCheck(path, x, z) }, 5000, repathSchedulerDelay.toLong(), TimeUnit.MILLISECONDS)
+                            MessageSendHelper.sendChatMessage(String.format("Found path in %.2f seconds", (t2 - t1) / 1000.0))
+                            pathJob = null
+                            pathLock.set(false)
                         }
-                    } else {
-                        pathJob = null
-                        pathLock.set(false)
                     }
+                } else {
+                    pathJob = null
+                    pathLock.set(false)
+                }
             } }
         } else {
             MessageSendHelper.sendChatMessage("Already pathing")
         }
     }
 
-    private fun calculateGoalPoint(playerP: Double, targetP: Double, maxDistance: Double): Int {
-        val distance = abs(targetP - playerP)
-        if (distance > maxDistance) {
-            val direction = if (targetP > playerP) 1 else -1
-            return (playerP + maxDistance * direction).toInt()
-        }
-        return targetP.toInt()
+    private fun calculateGoalPoint(playerPos: BlockPos, targetPos: BlockPos, maxDistance: Double): BlockPos {
+        val dx = targetPos.x - playerPos.x
+        val dz = targetPos.z - playerPos.z
+        val distance = playerPos.distanceTo(targetPos)
+
+        val ratio = maxDistance / distance
+        val goalX = playerPos.x + (dx * ratio).toInt()
+        val goalZ = playerPos.z + (dz * ratio).toInt()
+        val goalY = playerPos.y // Keep the player's current Y
+
+        return BlockPos(goalX, goalY, goalZ)
     }
+
 
     private fun setPath(p: List<BlockPos>) {
         path = p
