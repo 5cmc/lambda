@@ -41,6 +41,7 @@ import net.minecraft.network.play.client.CPacketPlayerTryUseItem
 import net.minecraft.network.play.server.SPacketPlayerPosLook
 import net.minecraft.util.EnumHand
 import net.minecraft.util.math.RayTraceResult
+import java.time.Instant
 import kotlin.math.*
 
 
@@ -138,6 +139,7 @@ object ElytraFlight : Module(
     private var elytraDurability = 0
     private var outOfDurability = false
     private var speedPercentage = 0.0
+    private var takeoffStartT = Instant.MAX
 
     private var verticalDirection = 0
     private val SafeClientEvent.isFlying get() = player.isElytraFlying
@@ -172,6 +174,7 @@ object ElytraFlight : Module(
                 if (!isFlying) {
                     takeoff()
                 } else {
+                    takeoffStartT = Instant.MAX
                     mc.timer.tickLength = 50.0f
                     player.isSprinting = false
                     mode.move(this)
@@ -298,6 +301,11 @@ object ElytraFlight : Module(
     }
 
     private fun SafeClientEvent.takeoff() {
+        if (takeoffStartT == Instant.MAX) takeoffStartT = Instant.now()
+        if (takeoffStartT.plusMillis(2000).isBefore(Instant.now())) {
+            reset()
+            return
+        }
         val distanceToGround = player.posY - world.getGroundPos(player).y
 
         /* Pause Takeoff if server is lagging, or player is on or close to ground, or player is in liquid */
@@ -553,7 +561,7 @@ object ElytraFlight : Module(
             Mode.STRICT -> FORWARD_PITCH
             else -> { 0f }
         }
-
+        takeoffStartT = Instant.MAX
         speedPercentage = accelerateStartSpeed /* Reset acceleration progress */
         mc.timer.tickLength = 50.0f
     }
