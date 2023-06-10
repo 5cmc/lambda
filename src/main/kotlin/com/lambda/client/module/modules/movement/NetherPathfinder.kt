@@ -70,6 +70,7 @@ object NetherPathfinder: Module(
         playerProgressIndex = Int.MIN_VALUE
         return@setting new
     })
+    private val onlyRotateWhenFlying by setting("Only Rotate When Flying", false, { rotatePlayer })
     private val rotateYaw by setting("Rotate Yaw", true, visibility = { rotatePlayer })
     private val rotatePitch by setting("Rotate Pitch", true, visibility = { rotatePlayer })
     private val rotatePitchAdjust by setting("Elytra Pitch Adjust", false, { rotatePlayer && rotatePitch},
@@ -141,6 +142,7 @@ object NetherPathfinder: Module(
         safeListener<TickEvent.ClientTickEvent> { event ->
             if (event.phase != TickEvent.Phase.END) return@safeListener
             if (!rotatePlayer) return@safeListener
+            if (onlyRotateWhenFlying && !player.isElytraFlying) return@safeListener
             path?.let { pathList ->
                 nextPathPos(pathList)?.let {
                     if (!pauseRotateBind.isEmpty && pauseRotateMode == PauseRotateMode.HOLD && Keyboard.isKeyDown(pauseRotateBind.key)) {
@@ -301,7 +303,7 @@ object NetherPathfinder: Module(
                 val t1 = System.currentTimeMillis()
                 var longs: LongArray? = null
                 val goalPos = calculateGoalPoint(player.position, currentGoal!!, segmentDistance.toDouble())
-                multiSegmentPath = (abs(goalPos.x - currentGoal!!.x) > 5 || abs(goalPos.z - currentGoal!!.z) > 5)
+                multiSegmentPath = (abs(goalPos.x - currentGoal!!.x) > 25 || abs(goalPos.z - currentGoal!!.z) > 25)
                 try {
                     MessageSendHelper.sendChatMessage("Calculating ${if (multiSegmentPath) "segment" else "" } path to ${goalPos.x}, ${goalPos.z}...")
                     longs = PathFinder.pathFind(seed, false, true, player.posX.toInt(), player.posY.toInt(), player.posZ.toInt(),
