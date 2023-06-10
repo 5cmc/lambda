@@ -264,7 +264,7 @@ class CopyJarTask extends DefaultTask {
     protected void exec() {
         project.copy {
             final gameDir = project.ext.gameDir;
-            final modDir = "$gameDir/mods/1.12.2"
+            final modDir = "$gameDir/mods"
 
             // find previous jar (if it exists)
             final previousJars = project.fileTree(dir: modDir).matching {
@@ -290,7 +290,7 @@ class CopyJarTask extends DefaultTask {
             }
 
             from project.jar
-            into "$gameDir/mods/1.12.2"
+            into "$gameDir/mods"
         }
     }
 }
