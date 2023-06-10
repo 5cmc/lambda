@@ -18,7 +18,7 @@ data class Vec2d(val x: Double = 0.0, val y: Double = 0.0) {
 
     fun lengthSquared() = (this.x.pow(2) + this.y.pow(2))
 
-
+    fun distanceTo(other: Vec2d) = hypot(this.x - other.x, this.y - other.y)
     operator fun div(vec2d: Vec2d) = div(vec2d.x, vec2d.y)
 
     operator fun div(divider: Double) = div(divider, divider)

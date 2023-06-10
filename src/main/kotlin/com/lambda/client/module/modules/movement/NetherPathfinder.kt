@@ -18,6 +18,7 @@ import com.lambda.client.util.math.Vec2d
 import com.lambda.client.util.math.VectorUtils.distanceTo
 import com.lambda.client.util.math.VectorUtils.magnitudeSquared
 import com.lambda.client.util.math.VectorUtils.scalarMultiply
+import com.lambda.client.util.math.VectorUtils.toVec2d
 import com.lambda.client.util.math.VectorUtils.toVec3d
 import com.lambda.client.util.text.MessageSendHelper
 import com.lambda.client.util.threads.defaultScope
@@ -302,14 +303,15 @@ object NetherPathfinder: Module(
                 currentGoal = BlockPos(x.toDouble(), 64.0, z.toDouble())
                 val t1 = System.currentTimeMillis()
                 var longs: LongArray? = null
-                val goalPos = calculateGoalPoint(player.position, currentGoal!!, segmentDistance.toDouble())
-                multiSegmentPath = (abs(goalPos.x - currentGoal!!.x) > 25 || abs(goalPos.z - currentGoal!!.z) > 25)
+                val goalPos = calculateSegmentGoalPoint(currentGoal!!, segmentDistance.toDouble())
+                val segmentGoalToCurrentGoalDist = goalPos.distanceTo(currentGoal!!.toVec2d())
+                multiSegmentPath = segmentGoalToCurrentGoalDist.isNaN() || segmentGoalToCurrentGoalDist > 5
                 try {
-                    MessageSendHelper.sendChatMessage("Calculating ${if (multiSegmentPath) "segment" else "" } path to ${goalPos.x}, ${goalPos.z}...")
+                    MessageSendHelper.sendChatMessage("Calculating${if (multiSegmentPath) " segment" else "" } path to ${goalPos.x.toInt()}, ${goalPos.y.toInt()}...")
                     longs = PathFinder.pathFind(seed, false, true, player.posX.toInt(), player.posY.toInt(), player.posZ.toInt(),
-                        goalPos.x,
+                        goalPos.x.toInt(),
                         64,
-                        goalPos.z
+                        goalPos.y.toInt()
                     )
                 } catch (e: Throwable) {
                     LambdaMod.LOG.error(e)
@@ -338,17 +340,13 @@ object NetherPathfinder: Module(
         }
     }
 
-    private fun calculateGoalPoint(playerPos: BlockPos, targetPos: BlockPos, maxDistance: Double): BlockPos {
-        val dx = targetPos.x - playerPos.x
-        val dz = targetPos.z - playerPos.z
-        val distance = playerPos.distanceTo(targetPos)
-
-        val ratio = maxDistance / distance
-        val goalX = playerPos.x + (dx * ratio).toInt()
-        val goalZ = playerPos.z + (dz * ratio).toInt()
-        val goalY = playerPos.y // Keep the player's current Y
-
-        return BlockPos(goalX, goalY, goalZ)
+    private fun SafeClientEvent.calculateSegmentGoalPoint(targetPos: BlockPos, maxDistance: Double): Vec2d {
+        val realDistance = player.position.toVec2d().distanceTo(targetPos.toVec2d())
+        val distance = if (realDistance.isNaN()) maxDistance else realDistance.coerceAtMost(maxDistance)
+        val theta = Math.toRadians(getRotationTo(targetPos.toVec3d()).x.toDouble()).toFloat()
+        val goalX = (player.posX - MathHelper.sin(theta) * distance)
+        val goalZ = (player.posZ + MathHelper.cos(theta) * distance)
+        return Vec2d(goalX, goalZ)
     }
 
 

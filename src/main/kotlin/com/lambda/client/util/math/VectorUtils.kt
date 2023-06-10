@@ -85,6 +85,10 @@ object VectorUtils {
         return toVec3d(0.0, 0.0, 0.0)
     }
 
+    fun Vec3i.toVec2d(): Vec2d {
+        return Vec2d(x.toDouble(), z.toDouble())
+    }
+
     fun Vec3i.toVec3d(offSet: Vec3d): Vec3d {
         return Vec3d(x + offSet.x, y + offSet.y, z + offSet.z)
     }
