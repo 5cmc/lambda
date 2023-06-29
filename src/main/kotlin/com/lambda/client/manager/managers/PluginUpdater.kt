@@ -6,7 +6,7 @@ import com.lambda.client.util.threads.BackgroundScope
 
 object PluginUpdater : Manager {
     init {
-        BackgroundScope.launchLooping("plugin", 1000L) {
+        BackgroundScope.launchLooping("plugin", 60000L) {
             LambdaClickGui.updatePlugins()
         }
     }

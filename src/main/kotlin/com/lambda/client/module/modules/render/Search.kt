@@ -16,7 +16,7 @@ import com.lambda.client.util.graphics.ESPRenderer
 import com.lambda.client.util.graphics.GeometryMasks
 import com.lambda.client.util.graphics.LambdaTessellator
 import com.lambda.client.util.graphics.ShaderHelper
-import com.lambda.client.util.math.VectorUtils.distanceTo
+import com.lambda.client.util.math.VectorUtils.manhattanDistanceTo
 import com.lambda.client.util.text.MessageSendHelper
 import com.lambda.client.util.text.formatValue
 import com.lambda.client.util.threads.defaultScope
@@ -44,7 +44,6 @@ import net.minecraft.util.text.TextComponentString
 import net.minecraft.world.chunk.Chunk
 import net.minecraftforge.fml.common.gameevent.TickEvent
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.ConcurrentMap
 import kotlin.collections.set
 import kotlin.math.max
 
@@ -86,7 +85,7 @@ object Search : Module(
 
     private val blockRenderer = ESPRenderer()
     private val entityRenderer = ESPRenderer()
-    private val foundBlockMap: ConcurrentMap<BlockPos, IBlockState> = ConcurrentHashMap()
+    private val foundBlockMap: MutableMap<BlockPos, IBlockState> = ConcurrentHashMap()
     private var blockRenderUpdateJob: Job? = null
     private var entityRenderUpdateJob: Job? = null
     private var blockSearchJob: Job? = null
@@ -175,8 +174,8 @@ object Search : Module(
         }
 
         safeListener<ConnectionEvent.Disconnect> {
-            blockRenderer.clear()
-            entityRenderer.clear()
+            blockRenderer.replaceAll(mutableListOf())
+            entityRenderer.replaceAll(mutableListOf())
             foundBlockMap.clear()
         }
     }
@@ -201,9 +200,9 @@ object Search : Module(
                     entitySearchDimensionFilter.value.find { dimFilter -> dimFilter.searchKey == entityName }?.dim
                 }?.contains(player.dimension) ?: true
             }
-            .sortedBy { it.distanceTo(player.getPositionEyes(1f)) }
+            .sortedBy { it.manhattanDistanceTo(player.position) }
             .take(maximumEntities)
-            .filter { it.distanceTo(player.getPositionEyes(1f)) < range }
+            .filter { it.manhattanDistanceTo(player.position) < range }
             .map {
                 Triple(
                     it.renderBoundingBox.offset(EntityUtils.getInterpolatedAmount(it, LambdaTessellator.pTicks())),
@@ -252,7 +251,7 @@ object Search : Module(
         // unload rendering on block pos > range
         foundBlockMap
             .filter {
-                playerPos.distanceTo(it.key) > max(mc.gameSettings.renderDistanceChunks * 16, range)
+                playerPos.manhattanDistanceTo(it.key) > max(mc.gameSettings.renderDistanceChunks * 16, range)
             }
             .map { it.key }
             .forEach { foundBlockMap.remove(it) }
@@ -265,7 +264,7 @@ object Search : Module(
                     }?.dim?.contains(player.dimension) ?: true
             }
             .map {
-                player.getPositionEyes(1f).distanceTo(it.key) to it.key
+                player.position.manhattanDistanceTo(it.key) to it.key
             }
             .filter { it.first < range }
             .take(maximumBlocks)
