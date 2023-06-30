@@ -60,6 +60,7 @@ object SeedOverlay: Module(
     private val yMax by setting("Y Maximum", 128, 0..255, 1)
     private val range by setting("Server View-Distance", 4, 1..16, 1)
     private val maxRenderedDifferences by setting("Max Rendered", 500, 1..5000, 1)
+    private val ignoreNewChunks by setting("Ignore NewChunks", true)
 
     private var worldGenerator: WorldGenerator? = null
     private var generatedWorld: World? = null
@@ -229,6 +230,7 @@ object SeedOverlay: Module(
                             // need to have all surrounding chunks loaded in order for structures/features to be populated
                             // otherwise we'll get large sections of false positives
                             // unwanted side effect: we won't compare blocks in chunks at edges of view distance
+                            if (ignoreNewChunks && NewChunksPlus.isNewChunk(sampleBlockPos)) continue
                             if (surroundingChunksLoaded(world, chunkPos.x, chunkPos.z)) {
                                 if (!surroundingChunksLoaded(genWorld, chunkPos.x, chunkPos.z)) {
                                     // force surrounding chunks to get loaded
