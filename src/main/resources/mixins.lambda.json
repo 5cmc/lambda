@@ -67,6 +67,7 @@
       "network.MixinNetHandlerPlayClient",
       "network.MixinNetworkManager",
       "optifine.MixinConfig",
+      "optifine.MixinLog",
       "player.MixinEntityPlayer",
       "player.MixinEntityPlayerSP",
       "player.MixinPlayerControllerMP",
