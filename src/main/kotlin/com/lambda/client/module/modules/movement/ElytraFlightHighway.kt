@@ -194,6 +194,7 @@ object ElytraFlightHighway : Module(
 
     private fun toggleAllOn() {
         if (viewLockConfigure) {
+            ViewLock.mode.value = ViewLock.Mode.TRADITIONAL
             ViewLock.yaw.value = true
             ViewLock.autoYaw.value = true
             ViewLock.hardAutoYaw.value = true

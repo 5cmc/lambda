@@ -47,6 +47,12 @@ object LambdaHudGui : AbstractLambdaGui<HudSettingWindow, AbstractHudElement>() 
         }
     }
 
+    override fun updateWindowOrder() {
+        val cacheList = windowList.sortedBy { it.lastActiveTime + if (it is AbstractHudElement) 1000000 else 0 }
+        windowList.clear()
+        windowList.addAll(cacheList)
+    }
+
     internal fun register(hudElement: AbstractHudElement) {
         val button = HudButton(hudElement)
         hudWindows[hudElement.category]?.add(button)
@@ -99,7 +105,7 @@ object LambdaHudGui : AbstractLambdaGui<HudSettingWindow, AbstractHudElement>() 
 
     init {
         safeListener<RenderOverlayEvent>(0) {
-            if (Hud.isDisabled || mc.currentScreen is LambdaHudGui) return@safeListener
+            if (Hud.isDisabled || mc.currentScreen is LambdaHudGui || (mc.gameSettings.showDebugInfo && Hud.f3Hide)) return@safeListener
 
             val vertexHelper = VertexHelper(GlStateUtils.useVbo())
             GlStateUtils.rescaleLambda()
@@ -117,6 +123,8 @@ object LambdaHudGui : AbstractLambdaGui<HudSettingWindow, AbstractHudElement>() 
     }
 
     private fun renderHudElement(vertexHelper: VertexHelper, window: AbstractHudElement) {
+        window.updatePrevPos()
+        window.updatePrevSize()
         glPushMatrix()
         glTranslatef(window.renderPosX, window.renderPosY, 0.0f)
 

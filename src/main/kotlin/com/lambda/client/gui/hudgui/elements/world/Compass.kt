@@ -2,7 +2,6 @@ package com.lambda.client.gui.hudgui.elements.world
 
 import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.gui.hudgui.HudElement
-import com.lambda.client.util.color.ColorHolder
 import com.lambda.client.util.graphics.VertexHelper
 import com.lambda.client.util.graphics.font.HAlign
 import com.lambda.client.util.graphics.font.TextComponent
@@ -20,8 +19,6 @@ internal object Compass : HudElement(
 
     private val axis by setting("Axis", false)
     private val shadow by setting("Text Shadow", true)
-    private val northColor by setting("North Color", ColorHolder(255, 0, 0))
-    private val otherDirectionColor by setting("Other Dir Color", ColorHolder(255, 255, 255))
 
     private enum class Direction(val axis: String) {
         N("-Z"),
@@ -45,7 +42,7 @@ internal object Compass : HudElement(
             val textComponent = TextComponent()
             textComponent.add(
                 text = if (axis) dir.axis else dir.name,
-                color = if (dir == Direction.N) northColor else otherDirectionColor)
+                color = if (dir == Direction.N) secondaryColor else primaryColor)
             textComponent.draw(horizontalAlign = HAlign.CENTER, drawShadow = shadow)
             GlStateManager.popMatrix()
         }

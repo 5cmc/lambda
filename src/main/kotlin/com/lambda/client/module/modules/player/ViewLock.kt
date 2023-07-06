@@ -2,9 +2,12 @@ package com.lambda.client.module.modules.player
 
 import com.lambda.client.module.Category
 import com.lambda.client.module.Module
+import com.lambda.client.util.math.RotationUtils.getRotationTo
+import com.lambda.client.util.text.MessageSendHelper
 import com.lambda.client.util.threads.safeListener
 import net.minecraft.client.entity.EntityPlayerSP
 import net.minecraft.entity.Entity
+import net.minecraft.util.math.Vec3d
 import net.minecraftforge.fml.common.gameevent.TickEvent
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo
 import kotlin.math.abs
@@ -18,26 +21,35 @@ object ViewLock : Module(
     category = Category.PLAYER,
     alias = arrayOf("YawLock", "PitchLock")
 ) {
-    private val page by setting("Page", Page.YAW)
+    val mode = setting("Mode", Mode.TRADITIONAL)
+    private val page by setting("Page", Page.YAW, { mode.value == Mode.TRADITIONAL })
 
-    val yaw = setting("Yaw", true, { page == Page.YAW })
-    val autoYaw = setting("Auto Yaw", true, { page == Page.YAW && yaw.value })
-    val hardAutoYaw = setting("Hard Auto Yaw", true, { page == Page.YAW && yaw.value && autoYaw.value },
+    val yaw = setting("Yaw", true, { page == Page.YAW && mode.value == Mode.TRADITIONAL })
+    val autoYaw = setting("Auto Yaw", true, { page == Page.YAW && yaw.value && mode.value == Mode.TRADITIONAL })
+    val hardAutoYaw = setting("Hard Auto Yaw", true, { page == Page.YAW && yaw.value && autoYaw.value && mode.value == Mode.TRADITIONAL },
         description = "Disables mouse movement snapping")
-    val disableMouseYaw = setting("Disable Mouse Yaw", true, { page == Page.YAW && yaw.value })
-    private val specificYaw by setting("Specific Yaw", 180.0f, -180.0f..180.0f, 1.0f, { page == Page.YAW && !autoYaw.value && yaw.value })
-    val yawSlice = setting("Yaw Slice", 8, 2..32, 1, { page == Page.YAW && autoYaw.value && yaw.value })
+    val disableMouseYaw = setting("Disable Mouse Yaw", true, { page == Page.YAW && yaw.value && mode.value == Mode.TRADITIONAL })
+    private val specificYaw by setting("Specific Yaw", 180.0f, -180.0f..180.0f, 1.0f, { page == Page.YAW && !autoYaw.value && yaw.value && mode.value == Mode.TRADITIONAL })
+    val yawSlice = setting("Yaw Slice", 8, 2..32, 1, { page == Page.YAW && autoYaw.value && yaw.value && mode.value == Mode.TRADITIONAL })
 
-    val pitch = setting("Pitch", true, { page == Page.PITCH })
-    private val autoPitch = setting("Auto Pitch", true, { page == Page.PITCH && pitch.value })
-    private val hardAutoPitch by setting("Hard Auto Pitch", true, { page == Page.PITCH && pitch.value && autoPitch.value },
+    val pitch = setting("Pitch", true, { page == Page.PITCH && mode.value == Mode.TRADITIONAL })
+    private val autoPitch = setting("Auto Pitch", true, { page == Page.PITCH && pitch.value && mode.value == Mode.TRADITIONAL })
+    private val hardAutoPitch by setting("Hard Auto Pitch", true, { page == Page.PITCH && pitch.value && autoPitch.value && mode.value == Mode.TRADITIONAL },
         description = "Disables mouse movement snapping")
-    private val disableMousePitch by setting("Disable Mouse Pitch", true, { page == Page.PITCH && pitch.value })
-    private val specificPitch by setting("Specific Pitch", 0.0f, -90.0f..90.0f, 1.0f, { page == Page.PITCH && !autoPitch.value && pitch.value })
-    private val pitchSlice = setting("Pitch Slice", 5, 2..32, 1, { page == Page.PITCH && autoPitch.value && pitch.value })
+    private val disableMousePitch by setting("Disable Mouse Pitch", true, { page == Page.PITCH && pitch.value && mode.value == Mode.TRADITIONAL })
+    private val specificPitch by setting("Specific Pitch", 0.0f, -90.0f..90.0f, 1.0f, { page == Page.PITCH && !autoPitch.value && pitch.value && mode.value == Mode.TRADITIONAL })
+    private val pitchSlice = setting("Pitch Slice", 5, 2..32, 1, { page == Page.PITCH && autoPitch.value && pitch.value && mode.value == Mode.TRADITIONAL })
+
+    private val xCoord by setting("X coordinate", "", { mode.value == Mode.COORDS })
+    private val yCoord by setting("Y coordinate", "", { mode.value == Mode.COORDS })
+    private val zCoord by setting("Z coordinate", "", { mode.value == Mode.COORDS })
 
     private enum class Page {
         YAW, PITCH
+    }
+
+    enum class Mode {
+        TRADITIONAL, COORDS
     }
 
     private var yawSnap = 0
@@ -57,6 +69,22 @@ object ViewLock : Module(
         safeListener<TickEvent.ClientTickEvent> {
             if (it.phase != TickEvent.Phase.END) return@safeListener
 
+            if (mode.value == Mode.COORDS) {
+                val x = xCoord.toDoubleOrNull()
+                val y = yCoord.toDoubleOrNull()
+                val z = zCoord.toDoubleOrNull()
+                if (x == null || y == null || z == null) {
+                    MessageSendHelper.sendErrorMessage("Invalid coordinates")
+                    disable()
+                    return@safeListener
+                }
+
+                val rotation = getRotationTo(Vec3d(x, y, z))
+                player.rotationYaw = rotation.x
+                player.rotationPitch = rotation.y
+                return@safeListener
+            }
+
             if (autoYaw.value || autoPitch.value) {
                 snapToSlice()
             }
@@ -73,7 +101,7 @@ object ViewLock : Module(
 
     @JvmStatic
     fun handleTurn(entity: Entity, deltaX: Float, deltaY: Float, ci: CallbackInfo) {
-        if (isDisabled) return
+        if (isDisabled || mode.value == Mode.COORDS) return
         val player = mc.player ?: return
         if (entity != player) return
 

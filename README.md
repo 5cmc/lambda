@@ -127,5 +127,15 @@ Test if the environment is set up correctly by building the client and running i
 
 Our [contributors](https://github.com/5cmc/lambda/graphs/contributors)
 
+[![Lambda contributors](https://contrib.rocks/image?repo=lambda-client/lambda)](https://github.com/lambda-client/lambda/graphs/contributors)
+
+[zeroeightysix](https://github.com/zeroeightysix) for the original [KAMI](https://github.com/zeroeightysix/KAMI)
+
+[KAMI Blue](https://github.com/kami-blue) for the continuation of [KAMI](https://github.com/zeroeightysix/KAMI)
+
+[ronmamo](https://github.com/ronmamo) for [Reflections](https://github.com/ronmamo/reflections)
+
+[MinecraftForge](https://github.com/MinecraftForge) for [Forge](https://github.com/MinecraftForge/MinecraftForge)
+
 > ### Disclaimer
 > This software does not contain any copyrighted Minecraft code. This is a Forge utility mod, only meant for use in anarchy environments. Do not use without permission of server administration.

@@ -7,6 +7,7 @@ import com.lambda.client.gui.AbstractLambdaGui
 import com.lambda.client.gui.clickgui.component.*
 import com.lambda.client.gui.clickgui.window.ModuleSettingWindow
 import com.lambda.client.gui.rgui.Component
+import com.lambda.client.gui.rgui.windows.ColorPicker
 import com.lambda.client.gui.rgui.windows.ListWindow
 import com.lambda.client.module.AbstractModule
 import com.lambda.client.module.Category
@@ -74,6 +75,12 @@ object LambdaClickGui : AbstractLambdaGui<ModuleSettingWindow, AbstractModule>()
         setPluginButtonVisibility { true }
         setRemotePluginButtonVisibility { true }
         remotePluginWindow.visible = false
+    }
+
+    override fun updateWindowOrder() {
+        val cacheList = windowList.sortedBy { it.lastActiveTime + if (it is ModuleSettingWindow || it is ColorPicker) 1000000 else 0 }
+        windowList.clear()
+        windowList.addAll(cacheList)
     }
 
     override fun newSettingWindow(element: AbstractModule, mousePos: Vec2f): ModuleSettingWindow {
@@ -273,6 +280,7 @@ object LambdaClickGui : AbstractLambdaGui<ModuleSettingWindow, AbstractModule>()
         val allButtons = ModuleManager.modules
             .groupBy { it.category.displayName }
             .mapValues { (_, modules) -> modules.map { ModuleButton(it) } }
+        allButtons.forEach { it.value.forEach { it.onGuiInit() }}
 
         windows.filter { window ->
             window != pluginWindow

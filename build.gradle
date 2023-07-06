@@ -20,10 +20,27 @@ apply plugin: 'net.minecraftforge.gradle'
 apply plugin: 'org.spongepowered.mixin'
 apply plugin: 'com.github.johnrengelman.shadow'
 
-version project.modVersion
+version project.modVersion + "-" + 'git rev-parse --short HEAD'.execute().text.trim()
 group project.modGroup
 
 archivesBaseName = "lambda"
+
+tasks.register('writeVersion') {
+    group 'build'
+    description 'Write version to file'
+
+    doLast {
+        if (project.version.length() > 8) {
+            var f = file(project.buildDir.absolutePath + '/resources/main/lambda_version.txt')
+            f.parentFile.mkdirs()
+            println "Writing version: " + project.version
+            f.write(project.version)
+        } else {
+            println "Unable to determine full version"
+        }
+    }
+    outputs.upToDateWhen { false }
+}
 
 compileJava {
     sourceCompatibility = targetCompatibility = '1.8'
@@ -149,6 +166,7 @@ processResources {
         include 'mcmod.info'
         expand version: version, 'mcversion': minecraftVersion
     }
+    finalizedBy 'writeVersion'
 }
 
 tasks.register('buildApiSource', Jar) { // Generate sources
@@ -174,6 +192,15 @@ tasks.register('buildAll') {
     dependsOn 'buildApi'
     dependsOn 'buildApiSource'
     dependsOn 'build'
+}
+
+tasks.register('clearLibs') {
+    group 'build'
+    description 'Clears the libs folder'
+
+    doLast {
+        file(project.buildDir.absolutePath + "/libs").deleteDir()
+    }
 }
 
 shadowJar {
@@ -203,6 +230,7 @@ shadowJar {
     relocate 'kotlinx', 'com.lambda.shadow.kotlinx'
     finalizedBy 'configureReobfTaskForReobfShadowJar', 'reobfShadowJar'
     mustRunAfter 'jar'
+    dependsOn 'clearLibs'
 }
 
 reobf {
@@ -236,7 +264,7 @@ class CopyJarTask extends DefaultTask {
     protected void exec() {
         project.copy {
             final gameDir = project.ext.gameDir;
-            final modDir = "$gameDir/mods/1.12.2"
+            final modDir = "$gameDir/mods"
 
             // find previous jar (if it exists)
             final previousJars = project.fileTree(dir: modDir).matching {
@@ -262,7 +290,7 @@ class CopyJarTask extends DefaultTask {
             }
 
             from project.jar
-            into "$gameDir/mods/1.12.2"
+            into "$gameDir/mods"
         }
     }
 }

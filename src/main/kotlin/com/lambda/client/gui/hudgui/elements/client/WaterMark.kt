@@ -21,7 +21,7 @@ internal object WaterMark : LabelHud(
 
     override fun SafeClientEvent.updateText() {
         displayText.add("5C ${LambdaMod.NAME}", primaryColor)
-        displayText.add(LambdaMod.VERSION, secondaryColor)
+        displayText.add(LambdaMod.FULL_VERSION, secondaryColor)
         if (!isLatestVersion) displayText.add(" Update Available! ($latestVersion)", ColorHolder(255, 0, 0))
     }
 

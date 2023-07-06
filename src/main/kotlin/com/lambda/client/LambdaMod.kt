@@ -3,6 +3,7 @@ package com.lambda.client
 import com.lambda.client.event.ForgeEventProcessor
 import com.lambda.client.event.LambdaEventBus
 import com.lambda.client.event.events.RealWorldTickEvent
+import com.lambda.client.gui.clickgui.LambdaClickGui
 import com.lambda.client.util.ConfigUtils
 import com.lambda.client.util.KamiCheck
 import com.lambda.client.util.threads.BackgroundScope
@@ -19,7 +20,6 @@ import java.io.IOException
 import java.io.InputStream
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
-import java.lang.UnsatisfiedLinkError;
 import java.util.*
 
 @Suppress("UNUSED_PARAMETER")
@@ -36,6 +36,14 @@ class LambdaMod {
         const val NAME = "Lambda"
         const val ID = "lambda"
         const val DIRECTORY = "lambda"
+
+        val FULL_VERSION = LambdaMod::class.java.classLoader.getResourceAsStream("lambda_version.txt")?.let { stream ->
+            Scanner(stream).use { scanner ->
+                scanner.nextLine()
+            }
+        } ?: run {
+            "DEV"
+        }
 
         const val VERSION = "3.3.0"
 
@@ -62,7 +70,7 @@ class LambdaMod {
 
     @Mod.EventHandler
     fun init(event: FMLInitializationEvent) {
-        LOG.info("Initializing $NAME $VERSION")
+        LOG.info("Initializing $NAME $FULL_VERSION")
 
         pathFinderInit()
 
@@ -73,10 +81,6 @@ class LambdaMod {
         ConfigUtils.moveAllLegacyConfigs()
         ConfigUtils.loadAll()
 
-        BackgroundScope.start()
-        BackgroundScope.launchLooping("RealWorldTick", 50L) {
-            LambdaEventBus.post(RealWorldTickEvent())
-        }
 //        LambdaClickGui.populateRemotePlugins()
 
         KamiCheck.runCheck()
@@ -87,6 +91,10 @@ class LambdaMod {
     @Mod.EventHandler
     fun postInit(event: FMLPostInitializationEvent) {
         ready = true
+        BackgroundScope.launchLooping("RealWorldTick", 50L) {
+            LambdaEventBus.post(RealWorldTickEvent())
+        }
+        BackgroundScope.start()
     }
 
     private fun pathFinderInit() {

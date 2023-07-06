@@ -47,6 +47,7 @@ abstract class SettingWindow<T : Any>(
                     else -> null
                 }?.also {
                     children.add(it)
+                    it.onGuiInit()
                 }
             }
             initialized = true

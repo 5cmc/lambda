@@ -10,11 +10,13 @@ import com.lambda.client.module.Category
 import com.lambda.client.module.Module
 import com.lambda.client.module.modules.client.Hud
 import com.lambda.client.setting.settings.impl.collection.CollectionSetting
+import com.lambda.client.util.EntityUtils
 import com.lambda.client.util.color.ColorHolder
 import com.lambda.client.util.graphics.ESPRenderer
 import com.lambda.client.util.graphics.GeometryMasks
+import com.lambda.client.util.graphics.LambdaTessellator
 import com.lambda.client.util.graphics.ShaderHelper
-import com.lambda.client.util.math.VectorUtils.distanceTo
+import com.lambda.client.util.math.VectorUtils.manhattanDistanceTo
 import com.lambda.client.util.text.MessageSendHelper
 import com.lambda.client.util.text.formatValue
 import com.lambda.client.util.threads.defaultScope
@@ -42,7 +44,6 @@ import net.minecraft.util.text.TextComponentString
 import net.minecraft.world.chunk.Chunk
 import net.minecraftforge.fml.common.gameevent.TickEvent
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.ConcurrentMap
 import kotlin.collections.set
 import kotlin.math.max
 
@@ -84,7 +85,7 @@ object Search : Module(
 
     private val blockRenderer = ESPRenderer()
     private val entityRenderer = ESPRenderer()
-    private val foundBlockMap: ConcurrentMap<BlockPos, IBlockState> = ConcurrentHashMap()
+    private val foundBlockMap: MutableMap<BlockPos, IBlockState> = ConcurrentHashMap()
     private var blockRenderUpdateJob: Job? = null
     private var entityRenderUpdateJob: Job? = null
     private var blockSearchJob: Job? = null
@@ -150,7 +151,7 @@ object Search : Module(
         }
 
         safeListener<ChunkDataEvent> {
-            // We avoid listening to SPacketChunkData directly here as even on PostReceive the chunk is not always
+            // We avoid listening to SPacketChunkData directly here, as even on PostReceive the chunk is not always
             // fully loaded into the world. Chunk load is handled on a separate thread in mc code.
             // i.e. world.getChunk(x, z) can and will return an empty chunk in the packet event
             defaultScope.launch {
@@ -173,8 +174,8 @@ object Search : Module(
         }
 
         safeListener<ConnectionEvent.Disconnect> {
-            blockRenderer.clear()
-            entityRenderer.clear()
+            blockRenderer.replaceAll(mutableListOf())
+            entityRenderer.replaceAll(mutableListOf())
             foundBlockMap.clear()
         }
     }
@@ -199,16 +200,18 @@ object Search : Module(
                     entitySearchDimensionFilter.value.find { dimFilter -> dimFilter.searchKey == entityName }?.dim
                 }?.contains(player.dimension) ?: true
             }
-            .sortedBy {
-                it.distanceTo(player.getPositionEyes(1f))
-            }
+            .sortedBy { it.manhattanDistanceTo(player.position) }
             .take(maximumEntities)
-            .filter {
-                it.distanceTo(player.getPositionEyes(1f)) < range
+            .filter { it.manhattanDistanceTo(player.position) < range }
+            .map {
+                Triple(
+                    it.renderBoundingBox.offset(EntityUtils.getInterpolatedAmount(it, LambdaTessellator.pTicks())),
+                    entitySearchColor,
+                    GeometryMasks.Quad.ALL
+                )
             }
             .toMutableList()
-        entityRenderer.clear()
-        renderList.forEach { entityRenderer.add(it, entitySearchColor) }
+        entityRenderer.replaceAll(renderList)
     }
 
     private fun SafeClientEvent.searchAllLoadedChunks() {
@@ -248,7 +251,7 @@ object Search : Module(
         // unload rendering on block pos > range
         foundBlockMap
             .filter {
-                playerPos.distanceTo(it.key) > max(mc.gameSettings.renderDistanceChunks * 16, range)
+                playerPos.manhattanDistanceTo(it.key) > max(mc.gameSettings.renderDistanceChunks * 16, range)
             }
             .map { it.key }
             .forEach { foundBlockMap.remove(it) }
@@ -261,7 +264,7 @@ object Search : Module(
                     }?.dim?.contains(player.dimension) ?: true
             }
             .map {
-                player.getPositionEyes(1f).distanceTo(it.key) to it.key
+                player.position.manhattanDistanceTo(it.key) to it.key
             }
             .filter { it.first < range }
             .take(maximumBlocks)
@@ -278,7 +281,6 @@ object Search : Module(
                 }
             }
             .toMutableList()
-
         blockRenderer.replaceAll(renderList)
     }
 
@@ -303,8 +305,12 @@ object Search : Module(
             val pos = BlockPos(x, y, z)
             val blockState = chunk.getBlockState(pos)
             if (isOldSign(blockState, pos)) {
-                val signState = if (blockState.block == Blocks.STANDING_SIGN) OldStandingSign(blockState) else OldWallSign(blockState)
-                blocks.add((pos to signState))
+                val signState = if (blockState.block == Blocks.STANDING_SIGN) {
+                    OldStandingSign(blockState)
+                } else {
+                    OldWallSign(blockState)
+                }
+                blocks.add(pos to signState)
                 continue // skip searching for regular sign at this pos
             }
             if (searchQuery(blockState, pos)) blocks.add(pos to blockState)
@@ -317,8 +323,8 @@ object Search : Module(
         if (block == Blocks.AIR) return false
         return (blockSearchList.contains(block.registryName.toString())
             && blockSearchDimensionFilter.value.find { dimFilter ->
-                dimFilter.searchKey == block.registryName.toString()
-            }?.dim?.contains(player.dimension) ?: true)
+            dimFilter.searchKey == block.registryName.toString()
+        }?.dim?.contains(player.dimension) ?: true)
             || isIllegalBedrock(state, pos)
             || isIllegalWater(state)
     }
@@ -327,15 +333,9 @@ object Search : Module(
         if (!illegalBedrock.value) return false
         if (state.block != Blocks.BEDROCK) return false
         return when (player.dimension) {
-            0 -> {
-                pos.y >= 5
-            }
-            -1 -> {
-                pos.y in 5..122
-            }
-            else -> {
-                false
-            }
+            0 -> pos.y >= 5
+            -1 -> pos.y in 5..122
+            else -> false
         }
     }
 
@@ -351,7 +351,8 @@ object Search : Module(
 
     private fun SafeClientEvent.isOldSignText(pos: BlockPos): Boolean {
         // Explanation: Old signs on 2b2t (pre-2015 <1.9 ?) have older style NBT text tags.
-        // we can tell them apart by checking if there are siblings in the tag. Old signs won't have siblings.
+        // We can tell them apart by checking if there are siblings in the tag.
+        // Old signs won't have siblings.
         val signTextComponents = listOf(world.getTileEntity(pos))
             .filterIsInstance<TileEntitySign>()
             .flatMap { it.signText.toList() }

@@ -2,6 +2,8 @@ package com.lambda.client.module.modules.render
 
 import com.google.common.cache.CacheBuilder
 import com.google.common.collect.EvictingQueue
+import com.lambda.client.LambdaMod
+import com.lambda.client.event.SafeClientEvent
 import com.lambda.client.event.events.PacketEvent
 import com.lambda.client.event.events.RenderRadarEvent
 import com.lambda.client.event.events.RenderWorldEvent
@@ -9,6 +11,7 @@ import com.lambda.client.manager.managers.TimerManager
 import com.lambda.client.mixin.extension.renderPosX
 import com.lambda.client.mixin.extension.renderPosY
 import com.lambda.client.mixin.extension.renderPosZ
+import com.lambda.client.mixin.extension.viewFrustum
 import com.lambda.client.module.Category
 import com.lambda.client.module.Module
 import com.lambda.client.util.BaritoneUtils
@@ -20,9 +23,12 @@ import com.lambda.client.util.graphics.LambdaTessellator
 import com.lambda.client.util.graphics.RenderUtils2D
 import com.lambda.client.util.math.Vec2d
 import com.lambda.client.util.math.VectorUtils.distanceTo
+import com.lambda.client.util.threads.defaultScope
 import com.lambda.client.util.threads.onMainThread
 import com.lambda.client.util.threads.safeAsyncListener
 import com.lambda.client.util.threads.safeListener
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import net.minecraft.client.renderer.BufferBuilder
 import net.minecraft.client.renderer.vertex.DefaultVertexFormats
@@ -30,8 +36,10 @@ import net.minecraft.network.play.server.SPacketChunkData
 import net.minecraft.network.play.server.SPacketUnloadChunk
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.ChunkPos
+import net.minecraftforge.fml.common.gameevent.TickEvent
 import org.lwjgl.opengl.GL11.*
 import java.time.Instant
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import kotlin.math.hypot
 import kotlin.math.pow
@@ -50,24 +58,52 @@ object NewChunksPlus : Module(
     }
 
     private val mode by setting("New Chunks Mode", DetectionMode.PACKET)
+    private val inverse by setting("Inverse", false, consumer = {_, new ->
+        if (new) initSeenChunks()
+        new
+    })
     private val range by setting("Render Range", 1500, 64..2048, 32, description = "Maximum range for chunks to be highlighted")
     private val renderMode by setting("Render Mode", RenderMode.OUTLINE)
-    private val packetChunkYOffset by setting("Packet Chunk Y Offset", 40, -10..256, 4, fineStep = 1, description = "Packet chunk render offset in Y axis")
-    private val timerChunkYOffset by setting("Timer Chunk Y Offset", 50, -10..256, 4, fineStep = 1, description = "Timer chunk render offset in Y axis")
+    private val packetChunkYOffset by setting("Packet Chunk Y Offset", 40, -10..256, 4, fineStep = 1, description = "Packet chunk render offset in Y axis",
+        visibility = { mode == DetectionMode.PACKET || mode == DetectionMode.BOTH })
+    private val timerChunkYOffset by setting("Timer Chunk Y Offset", 50, -10..256, 4, fineStep = 1, description = "Timer chunk render offset in Y axis",
+        visibility = { mode == DetectionMode.TIMER || mode == DetectionMode.BOTH })
     private val maxNumber by setting("Max Number", 5000, 1000..10000, 500, description = "Maximum number of chunks to keep")
-    private val packetChunkColor by setting("Packet Chunk Color", ColorHolder(255, 64, 64, 200), description = "Packet Chunks Highlighting color")
-    private val timeChunkColor by setting("Timer Chunk Color", ColorHolder(64, 255, 64, 200), description = "Timer Chunks Highlighting color")
+    private val packetChunkColor by setting("Packet Chunk Color", ColorHolder(255, 64, 64, 200), description = "Packet Chunks Highlighting color",
+        visibility = { mode == DetectionMode.PACKET || mode == DetectionMode.BOTH })
+    private val timeChunkColor by setting("Timer Chunk Color", ColorHolder(64, 255, 64, 200), description = "Timer Chunks Highlighting color",
+        visibility = { mode == DetectionMode.TIMER || mode == DetectionMode.BOTH })
     private val thickness by setting("Thickness", 1.5f, 0.1f..4.0f, 0.1f, description = "Thickness of the highlighting square")
-    private val timer by setting("Chunk timer constant in ms", -200, -300..300, 1, description = "A lower timer means chunks have less time to load before being marked")
-    private val distanceFactor by setting("Chunk distance timer factor", 35, 0..100, 1, description = "Apply a multiplier to timer, closer chunks are loaded first")
-    private val distanceExponent by setting("Chunk distance timer exponent", 1.6, 1.0..3.0, 0.1, description = "Apply an exponent to player distance from chunks")
+    private val timer by setting("Chunk timer constant in ms", -200, -300..300, 1, description = "A lower timer means chunks have less time to load before being marked",
+        visibility = { mode == DetectionMode.TIMER || mode == DetectionMode.BOTH })
+    private val distanceFactor by setting("Chunk distance timer factor", 35, 0..100, 1, description = "Apply a multiplier to timer, closer chunks are loaded first",
+        visibility = { mode == DetectionMode.TIMER || mode == DetectionMode.BOTH })
+    private val distanceExponent by setting("Chunk distance timer exponent", 1.6, 1.0..3.0, 0.1, description = "Apply an exponent to player distance from chunks",
+        visibility = { mode == DetectionMode.TIMER || mode == DetectionMode.BOTH })
+    val noRender by setting("NewChunk NoRender", false, description = "Prevent world chunks from rendering if identified as NewChunks")
+    private val portalDetection by setting("Portal Detection", false, description = "Detect areas where portals could have been placed", consumer = {_, new ->
+        if (new) initSeenChunks()
+        new
+    }, visibility = { mode == DetectionMode.PACKET || mode == DetectionMode.BOTH })
+    private val portalDetectionRange by setting("Portal Detection Range", 500, 64..1000, 1, description = "Maximum range for portal areas to be detected in",
+        visibility = { portalDetection })
+    private val portalDetectionYOffset by setting("Portal Detection Y Offset", 30, -10..256, 4, fineStep = 1, description = "Portal detection render offset in Y axis",
+        visibility = { portalDetection })
+    private val portalDetectionColor by setting("Portal Detection Color", ColorHolder(255, 255, 255, 200), description = "Portal detection highlighting color",
+        visibility = { portalDetection })
 
     private val packetChunks = LinkedHashSet<ChunkPos>()
     private val timeChunks = LinkedHashSet<ChunkPos>()
+    private val portalDetectionChunks = LinkedHashSet<ChunkPos>()
     private val unloadChunkTimes = EvictingQueue.create<Long>(30)
-    private val distanceCache = CacheBuilder.newBuilder()
+    private val portalDetectionDistanceCache = CacheBuilder.newBuilder()
         .expireAfterWrite(500, TimeUnit.MILLISECONDS)
         .build<ChunkPos, Boolean>()
+    private val renderRangeDistanceCache = CacheBuilder.newBuilder()
+        .expireAfterWrite(500, TimeUnit.MILLISECONDS)
+        .build<ChunkPos, Boolean>()
+    private val seenChunks = ConcurrentHashMap<ChunkPos, Long>()
+    private var portalDetectionSearchJob: Job? = null
 
     private enum class RenderMode {
         OUTLINE, FILLED
@@ -83,6 +119,8 @@ object NewChunksPlus : Module(
                     packetChunks.clear()
                     timeChunks.clear()
                     unloadChunkTimes.clear()
+                    portalDetectionSearchJob?.cancel()
+                    seenChunks.clear()
                 }
             }
         }
@@ -96,15 +134,30 @@ object NewChunksPlus : Module(
                 -Wrapper.minecraft.renderManager.renderPosY,
                 -Wrapper.minecraft.renderManager.renderPosZ
             )
-
+            val seenChunksRendered = HashSet<ChunkPos>()
             if (mode == DetectionMode.PACKET || mode == DetectionMode.BOTH) {
                 val y = packetChunkYOffset.toDouble()
                 synchronized(packetChunks) {
-                    for (chunkPos in packetChunks) {
-                        if (distanceCache.get(chunkPos) { player.distanceTo(chunkPos) > range }) continue
-                        when(renderMode) {
-                            RenderMode.OUTLINE -> renderOutline(buffer, y, chunkPos, packetChunkColor)
-                            RenderMode.FILLED -> renderFilled(buffer, y, chunkPos, packetChunkColor)
+                    if (inverse) {
+                        synchronized(seenChunks) {
+                            for (entry in seenChunks) {
+                                if (packetChunks.contains(entry.key)) continue
+                                if (entry.value > Instant.now().minusMillis(1000).toEpochMilli()) continue
+                                if (renderRangeDistanceCache.get(entry.key) { player.distanceTo(entry.key) > range }) continue
+                                when(renderMode) {
+                                    RenderMode.OUTLINE -> renderOutline(buffer, y, entry.key, packetChunkColor)
+                                    RenderMode.FILLED -> renderFilled(buffer, y, entry.key, packetChunkColor)
+                                }
+                                seenChunksRendered.add(entry.key)
+                            }
+                        }
+                    } else {
+                        for (chunkPos in packetChunks) {
+                            if (renderRangeDistanceCache.get(chunkPos) { player.distanceTo(chunkPos) > range }) continue
+                            when(renderMode) {
+                                RenderMode.OUTLINE -> renderOutline(buffer, y, chunkPos, packetChunkColor)
+                                RenderMode.FILLED -> renderFilled(buffer, y, chunkPos, packetChunkColor)
+                            }
                         }
                     }
                 }
@@ -113,11 +166,38 @@ object NewChunksPlus : Module(
             if (mode == DetectionMode.TIMER || mode == DetectionMode.BOTH) {
                 val y = timerChunkYOffset.toDouble()
                 synchronized(timeChunks) {
-                    for (chunkPos in timeChunks) {
-                        if (distanceCache.get(chunkPos) { player.distanceTo(chunkPos) > range }) continue
-                        when(renderMode) {
-                            RenderMode.OUTLINE -> renderOutline(buffer, y, chunkPos, timeChunkColor)
-                            RenderMode.FILLED -> renderFilled(buffer, y, chunkPos, timeChunkColor)
+                    if (inverse) {
+                        synchronized(seenChunks) {
+                            for (entry in seenChunks) {
+                                if (seenChunksRendered.contains(entry.key)) continue
+                                if (timeChunks.contains(entry.key)) continue
+                                if (entry.value > Instant.now().minusMillis(1000).toEpochMilli()) continue
+                                if (renderRangeDistanceCache.get(entry.key) { player.distanceTo(entry.key) > range }) continue
+                                when(renderMode) {
+                                    RenderMode.OUTLINE -> renderOutline(buffer, y, entry.key, timeChunkColor)
+                                    RenderMode.FILLED -> renderFilled(buffer, y, entry.key, timeChunkColor)
+                                }
+                            }
+                        }
+                    } else {
+                        for (chunkPos in timeChunks) {
+                            if (renderRangeDistanceCache.get(chunkPos) { player.distanceTo(chunkPos) > range }) continue
+                            when(renderMode) {
+                                RenderMode.OUTLINE -> renderOutline(buffer, y, chunkPos, timeChunkColor)
+                                RenderMode.FILLED -> renderFilled(buffer, y, chunkPos, timeChunkColor)
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (portalDetection && (mode == DetectionMode.PACKET || mode == DetectionMode.BOTH)) {
+                synchronized(portalDetectionChunks) {
+                    for (chunkPos in portalDetectionChunks) {
+                        if (portalDetectionDistanceCache.get(chunkPos) { player.distanceTo(chunkPos) > portalDetectionRange}) continue
+                        when (renderMode) {
+                            RenderMode.OUTLINE -> renderOutline(buffer, portalDetectionYOffset.toDouble(), chunkPos, portalDetectionColor)
+                            RenderMode.FILLED -> renderFilled(buffer, portalDetectionYOffset.toDouble(), chunkPos, portalDetectionColor)
                         }
                     }
                 }
@@ -148,7 +228,7 @@ object NewChunksPlus : Module(
             }
 
             if ((mode == DetectionMode.PACKET || mode == DetectionMode.BOTH) && !packet.isFullChunk) {
-            val chunk = world.getChunk(event.packet.chunkX, event.packet.chunkZ)
+                val chunk = world.getChunk(event.packet.chunkX, event.packet.chunkZ)
                 synchronized(packetChunks) {
                     if (packetChunks.add(chunk.pos)) {
                         if (packetChunks.size > maxNumber) {
@@ -160,6 +240,19 @@ object NewChunksPlus : Module(
                     }
                 }
             }
+            if ((inverse || portalDetection) && packet.isFullChunk) {
+                synchronized(seenChunks) {
+                    seenChunks.putIfAbsent(ChunkPos(packet.chunkX, packet.chunkZ), Instant.now().toEpochMilli())
+                    if (seenChunks.size > maxNumber) {
+                        seenChunks
+                            .keys()
+                            .toList()
+                            .sortedByDescending { player.distanceTo(it) }
+                            .take(maxNumber / 10)
+                            .forEach { seenChunks.remove(it) }
+                    }
+                }
+            }
         }
 
         safeAsyncListener<PacketEvent.PostReceive> { event ->
@@ -168,6 +261,49 @@ object NewChunksPlus : Module(
                 synchronized(unloadChunkTimes) {
                     val now = Instant.now().toEpochMilli()
                     unloadChunkTimes.offer(now)
+                }
+            }
+        }
+
+        safeListener<TickEvent.ClientTickEvent> {
+            if (it.phase != TickEvent.Phase.END) return@safeListener
+            if (portalDetection && (mode == DetectionMode.PACKET || mode == DetectionMode.BOTH)) {
+                if (portalDetectionSearchJob == null || portalDetectionSearchJob?.isCompleted == true) {
+                    portalDetectionSearchJob = defaultScope.launch {
+                        try {
+                            val chunks = getPortalDetectionSearchChunks()
+                            val portalAreaChunks: MutableSet<ChunkPos> = HashSet()
+
+                            for (chunk in chunks) {
+                                var allSeen = true
+                                val portalChunkTempSet = HashSet<ChunkPos>()
+                                for (xOffset in 0 until 15) {
+                                    for (zOffset in 0 until 15) {
+                                        val currentChunk = ChunkPos(chunk.x + xOffset, chunk.z + zOffset)
+                                        portalChunkTempSet.add(currentChunk)
+                                        if (!chunks.contains(currentChunk)) {
+                                            allSeen = false
+                                            portalChunkTempSet.clear()
+                                            break
+                                        }
+                                    }
+
+                                    if (!allSeen) {
+                                        portalChunkTempSet.clear()
+                                        break
+                                    }
+                                }
+
+                                if (allSeen) portalAreaChunks.addAll(portalChunkTempSet)
+                            }
+                            synchronized(portalDetectionChunks) {
+                                portalDetectionChunks.clear()
+                                portalDetectionChunks.addAll(portalAreaChunks)
+                            }
+                        } catch (ex: Exception) {
+                            LambdaMod.LOG.error("Error searching for portal detection chunks", ex)
+                        }
+                    }
                 }
             }
         }
@@ -228,6 +364,19 @@ object NewChunksPlus : Module(
         }
     }
 
+    private fun SafeClientEvent.getPortalDetectionSearchChunks(): HashSet<ChunkPos> {
+        synchronized(packetChunks) {
+            synchronized(seenChunks) {
+                return seenChunks
+                    .filter { it.value < Instant.now().minusMillis(1000).toEpochMilli() }
+                    .filter { !portalDetectionDistanceCache.get(it.key) { player.distanceTo(it.key) > portalDetectionRange } }
+                    .filter { !packetChunks.contains(it.key) }
+                    .map { it.key }
+                    .toHashSet()
+            }
+        }
+    }
+
     private fun renderOutline(buffer: BufferBuilder, y: Double, chunkPos: ChunkPos, color: ColorHolder) {
         buffer.begin(GL_LINE_LOOP, DefaultVertexFormats.POSITION_COLOR)
         buffer.pos(chunkPos.xStart.toDouble(), y, chunkPos.zStart.toDouble()).color(color.r, color.g, color.b, color.a).endVertex()
@@ -277,5 +426,33 @@ object NewChunksPlus : Module(
             BlockPos(mc.player.posX - (xSpeed * ping), 0.0, mc.player.posZ - (zSpeed * ping)))
 
         return hypot((correctedChunkPos.x - (chunk.x)).toDouble(), (correctedChunkPos.z - (chunk.z)).toDouble())
+    }
+
+    @JvmStatic
+    fun isNewChunk(pos: BlockPos): Boolean {
+        val chunkPos = ChunkPos(pos)
+        return when (mode) {
+            DetectionMode.BOTH -> {
+                packetChunks.contains(chunkPos) || timeChunks.contains(chunkPos)
+            }
+
+            DetectionMode.PACKET -> {
+                packetChunks.contains(chunkPos)
+            }
+
+            DetectionMode.TIMER -> {
+                timeChunks.contains(chunkPos)
+            }
+        }
+    }
+
+    private fun initSeenChunks() {
+        synchronized(seenChunks) {
+            mc.renderGlobal.viewFrustum.renderChunks
+                .filter { !it.getCompiledChunk().isEmpty }
+                .map { ChunkPos(it.position) }
+                .toHashSet()
+                .forEach { seenChunks.putIfAbsent(it,  Instant.now().toEpochMilli())}
+        }
     }
 }
