@@ -130,10 +130,10 @@ dependencies {
     compileOnly 'org.jetbrains:annotations:23.0.0'
 
     // This Baritone will NOT be included in the jar
-    implementation('cabaletta:baritone-deobf-unoptimized-mcp-dev:1.2').setChanging(true)
+    implementation files("libs/baritone-deobf-1.2.17.jar")
 
     // This Baritone WILL be included in the jar
-    onlyJarLibs('cabaletta:baritone-api:1.2').setChanging(true)
+    onlyJarLibs files("libs/baritone-api-forge-1.2.17.jar")
 
     // Add everything in jarLibs to implementation (compile)
     implementation configurations.jarLibs
