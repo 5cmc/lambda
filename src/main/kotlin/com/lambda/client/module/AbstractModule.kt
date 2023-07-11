@@ -4,7 +4,6 @@ import com.lambda.client.commons.interfaces.Alias
 import com.lambda.client.commons.interfaces.Nameable
 import com.lambda.client.event.LambdaEventBus
 import com.lambda.client.event.events.ModuleToggleEvent
-import com.lambda.client.event.events.RealWorldTickEvent
 import com.lambda.client.gui.clickgui.LambdaClickGui
 import com.lambda.client.manager.managers.NotificationManager
 import com.lambda.client.module.modules.client.ClickGUI
@@ -20,6 +19,7 @@ import com.lambda.client.util.notifications.NotificationType
 import com.lambda.client.util.text.MessageSendHelper
 import com.lambda.client.util.threads.safeListener
 import net.minecraft.client.Minecraft
+import net.minecraftforge.fml.common.gameevent.InputEvent.KeyInputEvent
 import org.lwjgl.input.Keyboard
 import org.lwjgl.input.Mouse
 
@@ -155,7 +155,7 @@ abstract class AbstractModule(
 
         // clicks is deliberately not re-organised when changed.
 
-        safeListener<RealWorldTickEvent> {
+        safeListener<KeyInputEvent> {
             if (!bind.value.isEmpty && toggleMode.value == ToggleMode.HOLD) {
                 bind.value.mouseKey?.let {
                     if (!Mouse.isButtonDown(it-1)) {
