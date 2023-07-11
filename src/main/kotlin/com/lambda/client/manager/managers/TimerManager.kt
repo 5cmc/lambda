@@ -9,6 +9,7 @@ import com.lambda.client.mixin.extension.timer
 import com.lambda.client.module.AbstractModule
 import com.lambda.client.util.TickTimer
 import com.lambda.client.util.TimeUnit
+import org.lwjgl.Sys
 import java.util.*
 
 object TimerManager : Manager {
@@ -18,6 +19,8 @@ object TimerManager : Manager {
     private var modified = false
 
     var tickLength = 50.0f; private set
+    var realWorldTickPartialTicks = 0.0f; private set
+    private var lastSyncSysClock = 0f
 
     init {
         listener<RunGameLoopEvent.Start> {
@@ -36,6 +39,11 @@ object TimerManager : Manager {
             }
 
             tickLength = mc.timer.tickLength
+            var elapsedPartialTicks = ((Sys.getTime() * 1000L / 50f) - lastSyncSysClock) / 50f
+            lastSyncSysClock = elapsedPartialTicks
+            realWorldTickPartialTicks += elapsedPartialTicks
+            var elapsedTicks = realWorldTickPartialTicks.toInt()
+            realWorldTickPartialTicks -= elapsedTicks.toFloat()
         }
     }
 
