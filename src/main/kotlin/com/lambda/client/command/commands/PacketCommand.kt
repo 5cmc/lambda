@@ -166,7 +166,6 @@ object PacketCommand : ClientCommand(
                                     "${channel.value} ${data.value}"
                                 )
                             }
-
                     }
                 }
             }
@@ -251,7 +250,6 @@ object PacketCommand : ClientCommand(
                                     )
                                 }
                             }
-
                         }
                     }
                 }
@@ -519,7 +517,7 @@ object PacketCommand : ClientCommand(
     }
 
     private fun SafeClientEvent.deployPacket(packet: Packet<*>, info: String) {
-        // bypass packet cancel :trollepic:
+        // bypasses packet cancel :trollepic:
         connection.networkManager.sendPacket(packet, null)
         MessageSendHelper.sendChatMessage("Sent ${TextFormatting.GRAY}${packet.javaClass.name.split(".").lastOrNull()}${TextFormatting.DARK_RED} > ${TextFormatting.GRAY}$info")
     }

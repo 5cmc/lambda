@@ -48,6 +48,7 @@ import net.minecraft.world.chunk.Chunk
 import net.minecraftforge.fml.common.gameevent.TickEvent
 import net.minecraftforge.fml.common.registry.ForgeRegistries
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ConcurrentMap
 import kotlin.collections.set
 import kotlin.math.max
 
@@ -90,7 +91,7 @@ object Search : Module(
 
     private val blockRenderer = ESPRenderer()
     private val entityRenderer = ESPRenderer()
-    private val foundBlockMap: MutableMap<BlockPos, IBlockState> = ConcurrentHashMap()
+    private val foundBlockMap: ConcurrentMap<BlockPos, IBlockState> = ConcurrentHashMap()
     private var blockRenderUpdateJob: Job? = null
     private var entityRenderUpdateJob: Job? = null
     private var blockSearchJob: Job? = null
@@ -145,6 +146,7 @@ object Search : Module(
         safeListener<TickEvent.ClientTickEvent> {
             if (blockSearchIdHashSet.size != blockSearchList.size) {
                 updateBlockSearchIdSet()
+                defaultScope.launch { searchAllLoadedChunks() }
             }
             if (blockRenderUpdateJob == null || blockRenderUpdateJob?.isCompleted == true) {
                 blockRenderUpdateJob = defaultScope.launch {
@@ -182,18 +184,20 @@ object Search : Module(
         }
 
         safeListener<ConnectionEvent.Disconnect> {
-            blockRenderer.replaceAll(mutableListOf())
+            blockRenderer.replaceAll(mutableListOf()) // safe replace during possible iterator to prevent crashes
             entityRenderer.replaceAll(mutableListOf())
             foundBlockMap.clear()
         }
     }
 
     private fun blockSearchListUpdateListener(newBool: Boolean) {
-        updateBlockSearchIdSet()
         foundBlockMap.entries
             .filterNot { blockSearchIdHashSet.contains(it.value.block.id) }
             .forEach { foundBlockMap.remove(it.key) }
-        if (newBool && isEnabled) runSafe { searchAllLoadedChunks() }
+        if (newBool) runSafe {
+            updateBlockSearchIdSet()
+            searchAllLoadedChunks()
+        }
     }
 
     private fun updateBlockSearchIdSet() {
