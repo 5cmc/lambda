@@ -19,7 +19,8 @@ import com.lambda.client.util.notifications.NotificationType
 import com.lambda.client.util.text.MessageSendHelper
 import com.lambda.client.util.threads.safeListener
 import net.minecraft.client.Minecraft
-import net.minecraftforge.fml.common.gameevent.InputEvent.KeyInputEvent
+import net.minecraftforge.fml.common.gameevent.TickEvent
+import net.minecraftforge.fml.common.gameevent.TickEvent.ClientTickEvent
 import org.lwjgl.input.Keyboard
 import org.lwjgl.input.Mouse
 
@@ -155,17 +156,12 @@ abstract class AbstractModule(
 
         // clicks is deliberately not re-organised when changed.
 
-        safeListener<KeyInputEvent> {
-            if (!bind.value.isEmpty && toggleMode.value == ToggleMode.HOLD) {
-                bind.value.mouseKey?.let {
-                    if (!Mouse.isButtonDown(it-1)) {
-                        toggle()
-                    }
-                } ?: run {
-                    if (!Keyboard.isKeyDown(bind.value.key)) {
-                        toggle()
-                    }
-                }
+        safeListener<ClientTickEvent> {
+            if (it.phase != TickEvent.Phase.START || bind.value.isEmpty || toggleMode.value != ToggleMode.HOLD) return@safeListener
+            bind.value.mouseKey?.let {
+                if (!Mouse.isButtonDown(it-1)) toggle()
+            } ?: run {
+                if (!Keyboard.isKeyDown(bind.value.key)) toggle()
             }
         }
     }
