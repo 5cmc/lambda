@@ -68,7 +68,9 @@ class LambdaMod {
     @Mod.EventHandler
     fun init(event: FMLInitializationEvent) {
         LOG.info("Initializing $NAME $FULL_VERSION")
-
+        // load this class so that baritone doesn't crash
+        // see https://github.com/cabaletta/baritone/issues/3859
+        val baritoneTroll = baritone.api.utils.BetterBlockPos::class.java
         pathFinderInit()
 
         LoaderWrapper.loadAll()
