@@ -1,4 +1,4 @@
-package com.lambda.client.module.modules.movement
+package com.lambda.client.module.modules.misc
 
 import com.lambda.client.event.events.ConnectionEvent
 import com.lambda.client.event.events.PacketEvent
@@ -10,7 +10,6 @@ import net.minecraft.network.play.client.CPacketConfirmTeleport
 import net.minecraft.network.play.client.CPacketPlayer
 import net.minecraft.network.play.client.CPacketPlayer.Position
 import net.minecraft.network.play.client.CPacketPlayer.PositionRotation
-import net.minecraft.network.play.server.SPacketDestroyEntities
 import net.minecraft.network.play.server.SPacketPlayerPosLook
 import net.minecraft.network.play.server.SPacketSpawnObject
 import java.util.*
@@ -22,6 +21,7 @@ object TPCancel : Module(
     description = "odpay experimental module, bypasses teleports from pearls (needs 1 block space above head)",
     category = Category.MISC
 ) {
+    private val startSuspend by setting("Suspend on enable", false)
 //    private val delay by setting("Delay", 5, 0..20, 1, unit = " ticks")
 
     private var TPs = 0
@@ -35,6 +35,12 @@ object TPCancel : Module(
             thrownPearlId = -1
 //            thrown = false
             packets.clear()
+            if (startSuspend) {
+//                TPs = 1
+                MessageSendHelper.sendChatMessage("Packet suspension enabled")
+                rubberband()
+                thrownPearlId = -1337
+            }
         }
 
         onDisable {
@@ -82,6 +88,7 @@ object TPCancel : Module(
 
         safeListener<PacketEvent.Receive> {
             if (it.packet is SPacketPlayerPosLook) {
+//                MessageSendHelper.sendChatMessage("tp")
                 if (thrownPearlId != -1) {
                     if (TPs > 0) {
                         MessageSendHelper.sendChatMessage("Rubberband corrected")
