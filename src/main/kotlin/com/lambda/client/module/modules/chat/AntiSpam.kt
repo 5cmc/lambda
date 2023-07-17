@@ -7,7 +7,12 @@ import com.lambda.client.util.text.MessageDetection
 import com.lambda.client.util.text.MessageSendHelper
 import com.lambda.client.util.text.SpamFilters
 import com.lambda.client.util.threads.safeListener
+import com.lambda.mixin.accessor.gui.AccessorGuiNewChat
+import net.minecraft.client.gui.GuiNewChat
+import net.minecraft.util.text.ITextComponent
+import net.minecraft.util.text.Style
 import net.minecraft.util.text.TextComponentString
+import net.minecraft.util.text.TextFormatting
 import net.minecraftforge.client.event.ClientChatReceivedEvent
 import java.util.concurrent.ConcurrentHashMap
 import java.util.regex.Pattern
@@ -37,12 +42,13 @@ object AntiSpam : Module(
 
     /* Page Two */
     private val aggressiveFiltering by setting("Aggressive Filtering", true, { page == Page.SETTINGS })
-    private val duplicates by setting("Duplicates", true, { page == Page.SETTINGS })
-    private val duplicatesTimeout by setting("Duplicates Timeout", 30, 1..600, 5, { duplicates && page == Page.SETTINGS }, unit = "s")
+    val duplicates by setting("Deduplication", true,
+        description = "Deduplicates messages in-place with an occurrences counter", visibility = { page == Page.SETTINGS })
+    private val duplicatesTimeout by setting("Deduplication Timeout", 120, 1..600, 5, { duplicates && page == Page.SETTINGS }, unit = "s")
     private val filterOwn by setting("Filter Own", false, { page == Page.SETTINGS })
     private val filterDMs by setting("Filter DMs", false, { page == Page.SETTINGS })
     private val filterServer by setting("Filter Server", false, { page == Page.SETTINGS })
-    private val showBlocked by setting("Show Blocked", ShowBlocked.LOG_FILE, { page == Page.SETTINGS })
+    private val showBlocked by setting("Show Blocked", ShowBlocked.NONE, { page == Page.SETTINGS })
 
     private enum class Mode {
         REPLACE, HIDE
@@ -62,7 +68,10 @@ object AntiSpam : Module(
         NONE, LOG_FILE, CHAT, BOTH
     }
 
-    private val messageHistory = ConcurrentHashMap<String, Long>()
+    class MutablePair<A, B>(var first: A, var second: B)
+
+    // message hash -> (occurrences, lastReceived)
+    private val messageHistory = ConcurrentHashMap<Int, MutablePair<Int, Long>>()
     private val settingMap = hashMapOf(
         greenText to SpamFilters.greenText,
         specialCharBegin to SpamFilters.specialBeginning,
@@ -78,6 +87,8 @@ object AntiSpam : Module(
         slurs to SpamFilters.slurs,
         swears to SpamFilters.swears
     )
+    private val dedupeRegex = " \\[\\d+]".toRegex()
+    private val occurrencesStyle = Style().setColor(TextFormatting.GRAY)
 
     init {
         onDisable {
@@ -89,11 +100,7 @@ object AntiSpam : Module(
                 event.isCanceled = true
             }
 
-            messageHistory.values.removeIf { System.currentTimeMillis() - it > 600000 }
-
-            if (duplicates && checkDupes(event.message.unformattedText)) {
-                event.isCanceled = true
-            }
+            messageHistory.values.removeIf { System.currentTimeMillis() - it.second > 600000 }
 
             val pattern = isSpam(event.message.unformattedText)
 
@@ -170,19 +177,6 @@ object AntiSpam : Module(
         }
     }
 
-    private fun checkDupes(message: String): Boolean {
-        var isDuplicate = false
-
-        if (messageHistory.containsKey(message) &&
-            (System.currentTimeMillis() - messageHistory[message]!!) / 1000 < duplicatesTimeout) isDuplicate = true
-        messageHistory[message] = System.currentTimeMillis()
-
-        if (isDuplicate) {
-            sendResult("Duplicate", message)
-        }
-        return isDuplicate
-    }
-
     private fun String.getBytes(): Int {
         return this.toByteArray().size
     }
@@ -212,5 +206,30 @@ object AntiSpam : Module(
     private fun sendResult(name: String, message: String) {
         if (showBlocked == ShowBlocked.CHAT || showBlocked == ShowBlocked.BOTH) MessageSendHelper.sendChatMessage("$chatName $name: $message")
         if (showBlocked == ShowBlocked.LOG_FILE || showBlocked == ShowBlocked.BOTH) LambdaMod.LOG.info("$chatName $name: $message")
+    }
+
+    @JvmStatic
+    fun handlePrintChatMessage(guiNewChat: GuiNewChat, message: ITextComponent) {
+        if (isDisabled || !duplicates) return
+        val messageTextHash = message.unformattedText.hashCode()
+        var occurrences = 0
+        var doDedupe = false
+        messageHistory[messageTextHash]?.let {
+            doDedupe = System.currentTimeMillis() - it.second < (duplicatesTimeout * 1000)
+            if (!doDedupe) {
+                messageHistory[messageTextHash] = MutablePair(1, System.currentTimeMillis())
+                return@let
+            }
+            it.second = System.currentTimeMillis()
+            occurrences = ++it.first
+        } ?: run { messageHistory[messageTextHash] = MutablePair(1, System.currentTimeMillis()) }
+        if (!doDedupe || occurrences <= 1) return
+        (guiNewChat as AccessorGuiNewChat).chatLines.find {
+            it.chatLineID != 0 // don't remove messages without ID's. can cause us to remove multiple unrelated messages
+                && it.chatComponent.unformattedText.replace(dedupeRegex, "").hashCode() == messageTextHash
+        }?.let {
+            guiNewChat.deleteChatLine(it.chatLineID)
+            message.appendSibling(TextComponentString(" [$occurrences]").setStyle(occurrencesStyle))
+        }
     }
 }

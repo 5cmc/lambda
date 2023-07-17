@@ -19,6 +19,7 @@
       "accessor.gui.AccessorGuiChat",
       "accessor.gui.AccessorGuiDisconnected",
       "accessor.gui.AccessorGuiEditSign",
+      "accessor.gui.AccessorGuiNewChat",
       "accessor.gui.AccessorGuiScreen",
       "accessor.network.AccessorCPacketChatMessage",
       "accessor.network.AccessorCPacketClientSettings",
