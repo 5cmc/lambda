@@ -26,7 +26,7 @@ internal object Time : LabelHud(
         }
         if (showTime.value) {
             var time = TimeUtils.getTime(timeFormat.value, timeUnit.value)
-            if (cutoffTimeLeadingZero.value && time[0] == '0') time = time.removeRange(0, 1)
+            if (cutoffTimeLeadingZero.value && time.isNotEmpty() && time[0] == '0') time = time.removeRange(0, 1)
             time.forEach { displayText.add(it.toString(), if (it.isDigit()) primaryColor else secondaryColor) }
         }
     }

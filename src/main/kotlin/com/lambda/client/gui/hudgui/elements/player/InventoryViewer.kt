@@ -71,7 +71,7 @@ internal object InventoryViewer : HudElement(
             buffer.pos(0.0, 0.0, 0.0).tex(0.02734375, 0.32421875).endVertex() // (7 / 256), (83 / 256)
             buffer.pos(0.0, hudHeight.toDouble(), 0.0).tex(0.02734375, 0.53125).endVertex() // (7 / 256), (136 / 256)
             buffer.pos(hudWidth.toDouble(), 0.0, 0.0).tex(0.65625, 0.32421875).endVertex() // (168 / 256), (83 / 256)
-            buffer.pos(hudHeight.toDouble(), hudHeight.toDouble(), 0.0).tex(0.65625, 0.53125).endVertex() // (168 / 256), (136 / 256)
+            buffer.pos(hudWidth.toDouble(), hudHeight.toDouble(), 0.0).tex(0.65625, 0.53125).endVertex() // (168 / 256), (136 / 256)
             tessellator.draw()
         } else if (showIcon) {
             mc.renderEngine.bindTexture(lambdaIcon)
@@ -94,7 +94,6 @@ internal object InventoryViewer : HudElement(
 
 
     init {
-
         safeListener<PacketEvent.Receive> {
             if (it.packet !is SPacketOpenWindow) return@safeListener
             if (it.packet.guiId != "minecraft:container") return@safeListener

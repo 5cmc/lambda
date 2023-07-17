@@ -126,11 +126,6 @@ internal object ForgeEventProcessor {
         LambdaEventBus.post(event)
     }
 
-    @SubscribeEvent
-    fun onGuiOpenEvent(event: GuiOpenEvent) {
-        LambdaEventBus.post(event)
-    }
-
     /**
      * Includes events of subclasses like ChunkEvent and GetCollisionBoxesEvent
      */

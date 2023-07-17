@@ -17,6 +17,8 @@ internal object Coordinates : LabelHud(
     private val showZ by setting("Show Z", true)
     private val showXYZText by setting("Show XYZ Text", true)
     private val showNetherOverworld by setting("Show Nether/Overworld", true)
+    private val printDimensionName by setting("Print Dimension Name", false)
+    private val showNetherOverworldMultiline by setting("Show Nether/Overworld Multiline", false, { showNetherOverworld })
     private val decimalPlaces by setting("Decimal Places", 1, 0..4, 1)
     private val thousandsSeparator by setting("Thousands Separator", false)
 
@@ -25,19 +27,22 @@ internal object Coordinates : LabelHud(
 
     override fun SafeClientEvent.updateText() {
         val entity = mc.renderViewEntity ?: player
-
         if (showXYZText) {
             displayText.add("XYZ", secondaryColor)
         }
-        displayText.add(getFormattedCoords(entity.positionVector))
-
+        if (showNetherOverworldMultiline)
+            displayText.addLine(getFormattedCoords(entity.positionVector))
+        else
+            displayText.add(getFormattedCoords(entity.positionVector))
         if (showNetherOverworld) {
-
-            when (entity.dimension) {
+            when (world.provider.dimension) {
                 -1 -> { // Nether
+                    if (printDimensionName) displayText.add("Nether", secondaryColor)
                     displayText.add(getFormattedCoords(entity.positionVector * netherToOverworld, true))
                 }
                 0 -> { // Overworld
+                    if (printDimensionName)
+                        displayText.add("Overworld", secondaryColor)
                     displayText.add(getFormattedCoords(entity.positionVector * overworldToNether, true))
                 }
             }
@@ -61,10 +66,9 @@ internal object Coordinates : LabelHud(
 
     private fun roundOrInt(input: Double): String {
         val separatorFormat = if (thousandsSeparator) "," else ""
-
         return "%$separatorFormat.${decimalPlaces}f".format(input)
     }
 
-    private fun StringBuilder.appendWithComma(string: String) = append(if (length > 0) ", $string" else string)
+    private fun StringBuilder.appendWithComma(string: String) = append(if (isNotEmpty()) ", $string" else string)
 
 }

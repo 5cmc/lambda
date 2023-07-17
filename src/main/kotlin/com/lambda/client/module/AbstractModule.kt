@@ -5,7 +5,6 @@ import com.lambda.client.commons.interfaces.Nameable
 import com.lambda.client.event.LambdaEventBus
 import com.lambda.client.event.events.ModuleToggleEvent
 import com.lambda.client.gui.clickgui.LambdaClickGui
-import com.lambda.client.manager.managers.NotificationManager
 import com.lambda.client.module.modules.client.ClickGUI
 import com.lambda.client.setting.configs.NameableConfig
 import com.lambda.client.setting.settings.AbstractSetting
@@ -15,7 +14,6 @@ import com.lambda.client.setting.settings.impl.other.BindSetting
 import com.lambda.client.setting.settings.impl.primitive.BooleanSetting
 import com.lambda.client.setting.settings.impl.primitive.EnumSetting
 import com.lambda.client.util.Bind
-import com.lambda.client.util.notifications.NotificationType
 import com.lambda.client.util.text.MessageSendHelper
 import com.lambda.client.util.threads.safeListener
 import net.minecraft.client.Minecraft
@@ -47,7 +45,6 @@ abstract class AbstractModule(
     val clicks = IntegerSetting("Clicks", 0, 0..Int.MAX_VALUE, 1, { false }).also(::addSetting) // Not nice, however easiest way to save it.
     enum class ToggleMode {
         TOGGLE, HOLD
-        // todo: idea: hold but only if this module was triggered by the bind. e.g. clickgui click acts like toggle instead of hold
     }
 
     val fullSettingList get() = (config as NameableConfig<Nameable>).getSettings(this)
@@ -72,10 +69,6 @@ abstract class AbstractModule(
         enabled.value = !enabled.value
         isPaused = false
         if (enabled.value) clicks.value++
-
-        if (this.category != Category.CLIENT) {
-            NotificationManager.registerNotification("$chatName ${if (enabled.value) "Enabled" else "Disabled"}", NotificationType.INFO)
-        }
     }
 
     fun enable() {
