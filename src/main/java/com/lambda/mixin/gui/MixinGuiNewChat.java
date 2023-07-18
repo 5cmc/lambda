@@ -2,6 +2,7 @@ package com.lambda.mixin.gui;
 
 import com.lambda.client.module.modules.chat.AntiSpam;
 import com.lambda.client.module.modules.chat.ExtraChatHistory;
+import com.lambda.client.module.modules.player.PacketLogger;
 import com.lambda.client.module.modules.render.NoRender;
 import kotlin.random.Random;
 import net.minecraft.client.gui.ChatLine;
@@ -38,12 +39,12 @@ public abstract class MixinGuiNewChat {
 
     @Inject(method = "printChatMessage", at = @At("HEAD"), cancellable = true)
     public void printChatMessageInject(ITextComponent chatComponent, CallbackInfo ci) {
-        if (AntiSpam.INSTANCE.isDisabled() || !AntiSpam.INSTANCE.getDuplicates()) return;
-        // modify message in place if its a dupe
-        AntiSpam.handlePrintChatMessage((GuiNewChat) (Object) this, chatComponent);
-
-        // send message with a random ID. Otherwise all messages have ID 0. Needed to be able to remove old dupe messages.
-        ci.cancel();
-        printChatMessageWithOptionalDeletion(chatComponent, Random.Default.nextInt());
+        if ((AntiSpam.INSTANCE.isEnabled() && AntiSpam.INSTANCE.getDuplicates()) || (PacketLogger.INSTANCE.isEnabled() && PacketLogger.INSTANCE.getDeduping())) {
+            // modify message in place if its a dupe
+            AntiSpam.handlePrintChatMessage((GuiNewChat) (Object) this, chatComponent);
+            // send message with a random ID. Otherwise all messages have ID 0. Needed to be able to remove old dupe messages.
+            ci.cancel();
+            printChatMessageWithOptionalDeletion(chatComponent, Random.Default.nextInt());
+        }
     }
 }

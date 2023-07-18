@@ -3,6 +3,7 @@ package com.lambda.client.module.modules.chat
 import com.lambda.client.LambdaMod
 import com.lambda.client.module.Category
 import com.lambda.client.module.Module
+import com.lambda.client.util.MutablePair
 import com.lambda.client.util.text.MessageDetection
 import com.lambda.client.util.text.MessageSendHelper
 import com.lambda.client.util.text.SpamFilters
@@ -67,8 +68,6 @@ object AntiSpam : Module(
     private enum class ShowBlocked {
         NONE, LOG_FILE, CHAT, BOTH
     }
-
-    class MutablePair<A, B>(var first: A, var second: B)
 
     // message hash -> (occurrences, lastReceived)
     private val messageHistory = ConcurrentHashMap<Int, MutablePair<Int, Long>>()

@@ -10,12 +10,13 @@ import com.lambda.client.mixin.extension.*
 import com.lambda.client.module.Category
 import com.lambda.client.module.Module
 import com.lambda.client.util.FolderUtils
-import com.lambda.client.util.TickTimer
-import com.lambda.client.util.TimeUnit
+import com.lambda.client.util.MutablePair
 import com.lambda.client.util.text.MessageSendHelper
 import com.lambda.client.util.threads.defaultScope
+import com.lambda.client.util.threads.onMainThreadSafe
 import com.lambda.client.util.threads.runSafe
 import com.lambda.client.util.threads.safeListener
+import com.lambda.mixin.accessor.gui.AccessorGuiNewChat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import net.minecraft.block.Block
@@ -32,6 +33,7 @@ import java.io.File
 import java.io.FileWriter
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
+import java.util.concurrent.ConcurrentHashMap
 
 object PacketLogger : Module(
     name = "PacketLogger",
@@ -47,6 +49,8 @@ object PacketLogger : Module(
     private val showClientTicks by setting("Show Client Ticks", false, description = "Show timestamps of client ticks.", visibility = { page == Page.GENERAL })
     private val ignoreCancelled by setting("Ignore Cancelled", true, description = "Ignore cancelled packets.", visibility = { page == Page.GENERAL })
     val logMode by setting("Log Mode", LogMode.ALL, description = "Log to chat, to a file, HUD, or both.", visibility = { page == Page.GENERAL })
+    val deduping by setting("Deduping", true, description = "Deduplicate packets in chat and HUD", visibility = { page == Page.GENERAL && logMode != LogMode.FILE })
+    private val duplicatesTimeout by setting("Deduplication Timeout", 120, 1..600, 5, { page == Page.GENERAL && logMode != LogMode.FILE && deduping }, unit = "s")
     private val captureTiming by setting("Capture Timing", CaptureTiming.POST, description = "Sets point of time for scan event.", visibility = { page == Page.GENERAL })
     private val openLogFolder by setting("Open Log Folder...", false, consumer = { _, _ ->
         FolderUtils.openFolder(FolderUtils.packetLogFolder)
@@ -351,10 +355,11 @@ object PacketLogger : Module(
     private var start = 0L
     private var last = 0L
     private var lastTick = 0L
-    private val timer = TickTimer(TimeUnit.SECONDS)
 
     private var filename = ""
     private var lines = ArrayList<String>()
+    private val packetHistory = ConcurrentHashMap<Int, MutablePair<Int, Long>>()
+    val occurrenceRegex = " \\[\\d+\\]".toRegex();
 
     private enum class Page {
         GENERAL, CLIENT, SERVER
@@ -394,10 +399,13 @@ object PacketLogger : Module(
 
         onDisable {
             write()
+            packetHistory.clear()
         }
 
         safeListener<TickEvent.ClientTickEvent> {
             if (it.phase != TickEvent.Phase.START) return@safeListener
+
+            packetHistory.values.removeIf { System.currentTimeMillis() - it.second > 600000 }
 
             if (showClientTicks) {
                 synchronized(this@PacketLogger) {
@@ -1741,7 +1749,40 @@ object PacketLogger : Module(
             }
 
             if (logMode == LogMode.CHAT_AND_FILE || logMode == LogMode.CHAT || logMode == LogMode.ALL) {
-                MessageSendHelper.sendChatMessage(string)
+                defaultScope.launch {
+                    onMainThreadSafe {
+                        var duped = false
+                        if (deduping) {
+                            val packetNameHash = packet::class.java.simpleName.hashCode()
+                            var occurrences = 0
+                            var doDedupe = false
+                            packetHistory[packetNameHash]?.let {
+                                doDedupe = System.currentTimeMillis() - it.second < duplicatesTimeout * 1000
+                                if (!doDedupe) {
+                                    packetHistory[packetNameHash] = MutablePair(1, System.currentTimeMillis())
+                                    return@let
+                                }
+                                it.second = System.currentTimeMillis()
+                                occurrences = ++it.first
+                            } ?: run { packetHistory[packetNameHash] = MutablePair(1, System.currentTimeMillis()) }
+                            if (doDedupe && occurrences > 1) {
+                                val chatGui = Companion.mc.ingameGUI.chatGUI
+                                (Companion.mc.ingameGUI.chatGUI as AccessorGuiNewChat).chatLines.find {
+                                    val chat = it.chatComponent.unformattedText
+                                    return@find it.chatLineID != 0
+                                        && chat.startsWith("§7[§9λ§7] ")
+                                        && chat.contains(packet::class.java.simpleName)
+                                }?.let {
+                                    chatGui.deleteChatLine(it.chatLineID)
+                                    string.replace(occurrenceRegex, "")
+                                    MessageSendHelper.sendChatMessage(string + " ${TextFormatting.GRAY}[${occurrences}]${TextFormatting.RESET}")
+                                    duped = true
+                                }
+                            }
+                        }
+                        if (!duped) MessageSendHelper.sendChatMessage(string)
+                    }
+                }
             }
 
             if (logMode == LogMode.ONLY_HUD || logMode == LogMode.ALL) {
