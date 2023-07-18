@@ -45,6 +45,22 @@ public class MixinGuiPlayerTabOverlay {
         return ExtraTab.subList(preSubList, list);
     }
 
+    // j4, number of columns
+    @ModifyVariable(method = "renderPlayerlist", at = @At(value = "LOAD", ordinal = 5), index = 10)
+    public int modifyColNumVar(int colNum) {
+        if (ExtraTab.INSTANCE.isEnabled())
+            return (int) Math.ceil(preSubList.size() / ((double) ExtraTab.INSTANCE.getRowsPerColumn()));
+        else return colNum;
+    }
+
+    // i4, row count per column
+    @ModifyVariable(method = "renderPlayerlist", at = @At(value = "LOAD", ordinal = 1), index = 9)
+    public int modifyRowNumVar(int rowCount) {
+        if (ExtraTab.INSTANCE.isEnabled())
+            return ExtraTab.INSTANCE.getRowsPerColumn();
+        else return rowCount;
+    }
+
     @Redirect(method = "renderPlayerlist", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiPlayerTabOverlay;drawRect(IIIII)V", ordinal = 2))
     public void getRectArgs(final int left, final int top, final int right, final int bottom, final int color) {
         if (ExtraTab.INSTANCE.isEnabled() && ExtraTab.INSTANCE.getOnlineTime() && ExtraTab.INSTANCE.getOnlineBar()) {
@@ -111,5 +127,5 @@ public class MixinGuiPlayerTabOverlay {
             return instance.isEncrypted();
         }
     }
-    
+
 }

@@ -34,6 +34,7 @@ object ExtraTab : Module(
     category = Category.RENDER
 ) {
     private val tabSize by setting("Max Players", 265, 80..400, 5)
+    val rowsPerColumn by setting("Players Per Column", 35, 20..50, 1)
     private val highlightFriends by setting("Highlight Friends", true)
     private val color by setting("Color", EnumTextColor.GREEN, { highlightFriends })
     val ping by setting("Ping", Mode.SHOW)
