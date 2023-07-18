@@ -10,6 +10,6 @@ object ProxyManager : Manager {
 
     fun isProxy(): Boolean {
         val serverBrand = mc.player.serverBrand ?: "Unknown Server Type"
-        return serverBrand == "Proxy";
+        return serverBrand.startsWith("ZenithProxy");
     }
 }
