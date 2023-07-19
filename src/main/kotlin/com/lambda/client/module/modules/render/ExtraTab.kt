@@ -38,6 +38,7 @@ object ExtraTab : Module(
     private val highlightFriends by setting("Highlight Friends", true)
     private val color by setting("Color", EnumTextColor.GREEN, { highlightFriends })
     val ping by setting("Ping", Mode.SHOW)
+    val displayBots by setting("Display bots", BotsMode.SHOW)
     val onlineTime by setting("2b2t Online Times", true)
     val onlineTimer by setting("Online timer", false, { onlineTime })
     val onlineBar by setting("Online Bar", true, { onlineTime })
@@ -45,17 +46,23 @@ object ExtraTab : Module(
     enum class Mode {
         SHOW, HIDDEN
     }
+    enum class BotsMode {
+        SHOW, HIDDEN, GREY
+    }
 
     private const val maxOnlineSeconds = 21600L // 6 Hours, valid for 2b2t as of writing
     private const val apiUrl = "https://api.2b2t.vc/tablist"
+    private const val botlistApiUrl = "https://api.2b2t.vc/bots/month"
     private val parser = JsonParser()
     private val dataUpdateTimer = TickTimer(TimeUnit.SECONDS)
     private var hasInitialized = false
 
     // playername -> joinedAt (epoch seconds)
     private var tablistData = ConcurrentHashMap<String, Long>()
+    private var botlistData = HashSet<String>()
 
     init {
+        getBotlistData()
         onDisable {
             tablistData.clear()
             hasInitialized = false
@@ -98,6 +105,23 @@ object ExtraTab : Module(
         }
     }
 
+    private fun getBotlistData() {
+        defaultScope.launch(Dispatchers.IO) {
+            runCatching {
+                ConnectionUtils.requestRawJsonFrom(botlistApiUrl) {
+                    LambdaMod.LOG.error("Failed querying queue data", it)
+                }?.let { data ->
+                    val json = parser.parse(data).asJsonArray
+                    json.forEach { e ->
+                        val jsonObject = e.asJsonObject
+                        val playerName = jsonObject.get("playerName")?.asString
+                        playerName?.let { name ->
+                            botlistData.add(name)
+                            }
+                        }}
+            }
+        }
+    }
     private fun updateTabDataJoins() {
         defaultScope.launch(Dispatchers.IO) {
             runCatching {
@@ -128,6 +152,11 @@ object ExtraTab : Module(
         if (highlightFriends)
             if (FriendManager.isFriend(name))
                 newName = color format newName
+        if (displayBots == BotsMode.GREY) {
+            if (name in botlistData) {
+                newName = EnumTextColor.GRAY format newName
+            }
+        }
         if (onlineTime)
             tablistData[name]?.let {
                 val duration = Instant.now().epochSecond - it
@@ -141,7 +170,20 @@ object ExtraTab : Module(
 
     @JvmStatic
     fun subList(list: List<NetworkPlayerInfo>, newList: List<NetworkPlayerInfo>): List<NetworkPlayerInfo> {
-        return if (isDisabled) newList else list.subList(0, tabSize.coerceAtMost(list.size))
+        var noBotList: MutableList<NetworkPlayerInfo> = list.toMutableList()
+        if (isEnabled) {
+            if (displayBots == BotsMode.HIDDEN) {
+                list.forEach {
+                    if (it.gameProfile.name in botlistData) {
+                        noBotList.remove(it)
+                    }
+                }
+            }
+            var modifiedList = noBotList.toList()
+            return modifiedList.subList(0, tabSize.coerceAtMost(modifiedList.size))
+        } else {
+            return newList
+        }
     }
 
     @JvmStatic
