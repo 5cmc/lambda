@@ -17,6 +17,7 @@ import com.lambda.client.util.text.format
 import com.lambda.client.util.threads.defaultScope
 import com.lambda.client.util.threads.safeListener
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import net.minecraft.client.gui.Gui
 import net.minecraft.client.network.NetworkPlayerInfo
@@ -55,32 +56,41 @@ object ExtraTab : Module(
     private const val botlistApiUrl = "https://api.2b2t.vc/bots/month"
     private val parser = JsonParser()
     private val dataUpdateTimer = TickTimer(TimeUnit.SECONDS)
-    private var hasInitialized = false
+    private var hasInitializedOnlineTimes = false
+    private var botlistUpdateJob: Job? = null
 
     // playername -> joinedAt (epoch seconds)
     private var tablistData = ConcurrentHashMap<String, Long>()
     private var botlistData = HashSet<String>()
 
     init {
-        if (displayBots != BotsMode.SHOW)
-            getBotlistData()
+
         onDisable {
             tablistData.clear()
-            hasInitialized = false
+            hasInitializedOnlineTimes = false
+        }
+
+        onEnable {
+            hasInitializedOnlineTimes = false
         }
 
         safeListener<TickEvent.ClientTickEvent> {
-            if (it.phase != TickEvent.Phase.END || !onlineTime) return@safeListener
-            if (dataUpdateTimer.tick(300L) // API caches tablist data for 5 minutes
-                || !hasInitialized) {
-                hasInitialized = true
-                updateTabDataJoins()
+            if (it.phase != TickEvent.Phase.END) return@safeListener
+            if (onlineTime) {
+                if (dataUpdateTimer.tick(300L) // API caches tablist data for 5 minutes
+                    || !hasInitializedOnlineTimes) {
+                    hasInitializedOnlineTimes = true
+                    updateTabDataJoins()
+                }
             }
+            if (displayBots != BotsMode.SHOW && botlistData.isEmpty() && botlistUpdateJob?.isActive != true)
+                getBotlistData()
         }
 
         listener<ConnectionEvent.Disconnect> {
             tablistData.clear()
-            hasInitialized = false
+            botlistData.clear()
+            hasInitializedOnlineTimes = false
         }
 
         safeListener<PacketEvent.Receive> {
@@ -107,23 +117,19 @@ object ExtraTab : Module(
     }
 
     private fun getBotlistData() {
-        defaultScope.launch(Dispatchers.IO) {
+        botlistUpdateJob = defaultScope.launch(Dispatchers.IO) {
             runCatching {
                 ConnectionUtils.requestRawJsonFrom(botlistApiUrl) {
                     LambdaMod.LOG.error("Failed querying queue data", it)
                 }?.let { data ->
-                    botlistData.clear()
-                    val json = parser.parse(data).asJsonArray
-                    json.forEach { e ->
-                        val jsonObject = e.asJsonObject
-                        val playerName = jsonObject.get("pname")?.asString
-                        playerName?.let { name ->
-                            botlistData.add(name)
-                            }
-                        }}
+                    botlistData = parser.parse(data).asJsonArray
+                        .mapNotNull { it.asJsonObject.get("pname")?.asString }
+                        .toHashSet()
+                }
             }
         }
     }
+
     private fun updateTabDataJoins() {
         defaultScope.launch(Dispatchers.IO) {
             runCatching {
@@ -151,14 +157,12 @@ object ExtraTab : Module(
         val name = info.displayName?.formattedText
             ?: ScorePlayerTeam.formatPlayerName(info.playerTeam, info.gameProfile.name)
         var newName = name
+        if (displayBots == BotsMode.GREY)
+            if (botlistData.contains(name))
+                newName = EnumTextColor.GRAY format newName
         if (highlightFriends)
             if (FriendManager.isFriend(name))
                 newName = color format newName
-        if (displayBots == BotsMode.GREY) {
-            if (botlistData.contains(name)) {
-                newName = EnumTextColor.GRAY format newName
-            }
-        }
         if (onlineTime && onlineTimer)
             tablistData[name]?.let {
                 val duration = Instant.now().epochSecond - it
@@ -172,16 +176,10 @@ object ExtraTab : Module(
 
     @JvmStatic
     fun subList(list: List<NetworkPlayerInfo>, newList: List<NetworkPlayerInfo>): List<NetworkPlayerInfo> {
-        var noBotList: MutableList<NetworkPlayerInfo> = list.toMutableList()
         if (isEnabled) {
-            if (displayBots == BotsMode.HIDDEN) {
-                list.forEach {
-                    if (it.gameProfile.name in botlistData) {
-                        noBotList.remove(it)
-                    }
-                }
-            }
-            var modifiedList = noBotList.toList()
+            val modifiedList: List<NetworkPlayerInfo> =
+                if (displayBots == BotsMode.HIDDEN) list.filterNot { it.gameProfile.name in botlistData }.toList()
+                else list
             return modifiedList.subList(0, tabSize.coerceAtMost(modifiedList.size))
         } else {
             return newList
@@ -191,7 +189,7 @@ object ExtraTab : Module(
     @JvmStatic
     fun drawExpendRect(left: Int, top: Int, right: Int, bottom: Int, playerName: String) {
         tablistData[playerName]?.let {
-            var barStart = left + 8 // head icon 8 wide
+            val barStart = left + 8 // head icon 8 wide
             val barPoint = (barStart + ((right - barStart) * ((Instant.now().epochSecond - it).toDouble() / maxOnlineSeconds)).toInt())
             Gui.drawRect(barPoint, top, right, bottom, 553648127)
             Gui.drawRect(barStart, top, barPoint, bottom, rgbToHex(0, 255, 0, 100))

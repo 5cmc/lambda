@@ -28,6 +28,7 @@ import java.util.UUID;
 public class MixinGuiPlayerTabOverlay {
 
     private List<NetworkPlayerInfo> preSubList = CollectionsKt.emptyList();
+    private int newListSize = 0;
     private int lastRectLeft;
     private int lastRectTop;
     private int lastRectRight;
@@ -42,25 +43,25 @@ public class MixinGuiPlayerTabOverlay {
 
     @ModifyVariable(method = "renderPlayerlist", at = @At(value = "STORE", ordinal = 1), ordinal = 0)
     public List<NetworkPlayerInfo> renderPlayerlistStorePlayerListPost(List<NetworkPlayerInfo> list) {
-        return ExtraTab.subList(preSubList, list);
+        final List<NetworkPlayerInfo> newList = ExtraTab.subList(preSubList, list);
+        newListSize = newList.size();
+        return newList;
     }
 
     // j4, number of columns
     @ModifyVariable(method = "renderPlayerlist", at = @At(value = "LOAD", ordinal = 5), index = 10)
     public int modifyColNumVar(int colNum) {
-//        if (ExtraTab.INSTANCE.isEnabled())
-//            return (int) Math.ceil(preSubList.size() / ((double) ExtraTab.INSTANCE.getRowsPerColumn()));
-//        else return colNum;
-        return colNum;
+        if (ExtraTab.INSTANCE.isEnabled())
+            return (int) Math.ceil(newListSize / ((double) ExtraTab.INSTANCE.getRowsPerColumn()));
+        else return colNum;
     }
 
     // i4, row count per column
     @ModifyVariable(method = "renderPlayerlist", at = @At(value = "LOAD", ordinal = 1), index = 9)
     public int modifyRowNumVar(int rowCount) {
-//        if (ExtraTab.INSTANCE.isEnabled())
-//            return ExtraTab.INSTANCE.getRowsPerColumn();
-//        else return rowCount;
-        return rowCount;
+        if (ExtraTab.INSTANCE.isEnabled())
+            return ExtraTab.INSTANCE.getRowsPerColumn();
+        else return rowCount;
     }
 
     @Redirect(method = "renderPlayerlist", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiPlayerTabOverlay;drawRect(IIIII)V", ordinal = 2))
