@@ -35,7 +35,7 @@ object ExtraTab : Module(
 ) {
     private val tabSize by setting("Max Players", 265, 80..400, 5)
     val rowsPerColumn by setting("Players Per Column", 35, 20..50, 1)
-    private val highlightFriends by setting("Highlight Friends", true)
+    val highlightFriends by setting("Highlight Friends", true)
     private val color by setting("Color", EnumTextColor.GREEN, { highlightFriends })
     val ping by setting("Ping", Mode.SHOW)
     val displayBots by setting("Display bots", BotsMode.SHOW)
@@ -62,7 +62,8 @@ object ExtraTab : Module(
     private var botlistData = HashSet<String>()
 
     init {
-        getBotlistData()
+        if (displayBots != BotsMode.SHOW)
+            getBotlistData()
         onDisable {
             tablistData.clear()
             hasInitialized = false
@@ -111,10 +112,11 @@ object ExtraTab : Module(
                 ConnectionUtils.requestRawJsonFrom(botlistApiUrl) {
                     LambdaMod.LOG.error("Failed querying queue data", it)
                 }?.let { data ->
+                    botlistData.clear()
                     val json = parser.parse(data).asJsonArray
                     json.forEach { e ->
                         val jsonObject = e.asJsonObject
-                        val playerName = jsonObject.get("playerName")?.asString
+                        val playerName = jsonObject.get("pname")?.asString
                         playerName?.let { name ->
                             botlistData.add(name)
                             }
@@ -153,11 +155,11 @@ object ExtraTab : Module(
             if (FriendManager.isFriend(name))
                 newName = color format newName
         if (displayBots == BotsMode.GREY) {
-            if (name in botlistData) {
+            if (botlistData.contains(name)) {
                 newName = EnumTextColor.GRAY format newName
             }
         }
-        if (onlineTime)
+        if (onlineTime && onlineTimer)
             tablistData[name]?.let {
                 val duration = Instant.now().epochSecond - it
                 newName += " [" +
@@ -189,9 +191,10 @@ object ExtraTab : Module(
     @JvmStatic
     fun drawExpendRect(left: Int, top: Int, right: Int, bottom: Int, playerName: String) {
         tablistData[playerName]?.let {
-            val barPoint = (left + ((right - left) * ((Instant.now().epochSecond - it).toDouble() / maxOnlineSeconds)).toInt())
+            var barStart = left + 8 // head icon 8 wide
+            val barPoint = (barStart + ((right - barStart) * ((Instant.now().epochSecond - it).toDouble() / maxOnlineSeconds)).toInt())
             Gui.drawRect(barPoint, top, right, bottom, 553648127)
-            Gui.drawRect(left, top, barPoint, bottom, rgbToHex(0, 255, 0, 100))
+            Gui.drawRect(barStart, top, barPoint, bottom, rgbToHex(0, 255, 0, 100))
             GlStateManager.color(1.0f, 1.0f, 1.0f, 1.0f)
             GlStateManager.enableBlend()
         }
