@@ -62,6 +62,11 @@ internal object ForgeEventProcessor {
     }
 
     @SubscribeEvent
+    fun onGuiOpenEvent(event: GuiOpenEvent) {
+        LambdaEventBus.post(event)
+    }
+
+    @SubscribeEvent
     fun onRenderPre(event: RenderGameOverlayEvent.Pre) {
         LambdaEventBus.post(event)
     }
